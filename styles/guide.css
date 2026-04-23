@@ -46,7 +46,7 @@
 }
 
 .guide-syntax {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Menlo', 'Monaco', 'Consolas', 'Cascadia Code', 'Courier New', monospace;
   font-size: 13px;
   font-weight: 700;
   color: #f5d0fe; /* condition-badge color for consistency */
