@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Snippet++ Settings</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="options.css">
+</head>
+
+<body class="i18n-loading">
+  <div class="app-container">
+    <aside class="sidebar">
+      <div class="logo">
+        <span class="logo-icon">✨</span>
+        <span class="logo-text">Snippet++</span>
+      </div>
+      <nav class="nav-tabs">
+        <button class="nav-btn active" data-tab="general">
+          <span class="nav-icon">⚙️</span> <span data-i18n="tabs_general">General Settings</span>
+        </button>
+        <button class="nav-btn" data-tab="snippets">
+          <span class="nav-icon">📝</span> <span data-i18n="tabs_snippets">Snippet Editor</span>
+        </button>
+        <button class="nav-btn" data-tab="guide">
+          <span class="nav-icon">📖</span> <span data-i18n="tabs_guide">Syntax Guide</span>
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="footer-actions">
+          <button id="export-btn" class="secondary-btn" title="Export Settings">📤 <span
+              data-i18n="settings_export">Export</span></button>
+          <button id="import-btn" class="secondary-btn" title="Import Settings">📥 <span
+              data-i18n="settings_import">Import</span></button>
+        </div>
+        <input type="file" id="import-file" style="display:none" accept=".sppcfg">
+      </div>
+    </aside>
+
+    <main class="content-area">
+      <section id="general-tab" class="tab-content active">
+        <header class="tab-header">
+          <h1 data-i18n="settings_title">General Settings</h1>
+        </header>
+
+        <div class="settings-grid">
+          <div class="setting-card">
+            <div class="card-info">
+              <h3 data-i18n="settings_next_cursor">다음 커서로 이동</h3>
+              <p data-i18n="settings_next_cursor_desc">텍스트 치환 후 다음 플레이스홀더로 점프할 단축키를 지정하세요.</p>
+            </div>
+            <div class="card-action">
+              <div class="hotkey-input">
+                <span id="hotkey-display-nextCursor">Ctrl + Space</span>
+                <button class="record-btn" data-key="nextCursor" data-i18n="settings_change">Change</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <div class="card-info">
+              <h3 data-i18n="settings_add_snippet">스니펫 추가</h3>
+              <p data-i18n="settings_add_snippet_desc">에디터에서 새로운 스니펫을 빠르게 추가할 단축키를 지정하세요.</p>
+            </div>
+            <div class="card-action">
+              <div class="hotkey-input">
+                <span id="hotkey-display-addSnippet">Alt + N</span>
+                <button class="record-btn" data-key="addSnippet" data-i18n="settings_change">Change</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <div class="card-info">
+              <h3 data-i18n="settings_toggle_fold">스니펫 접기/펴기</h3>
+              <p data-i18n="settings_toggle_fold_desc">현재 선택된 스니펫의 상세 내용을 접거나 폅니다.</p>
+            </div>
+            <div class="card-action">
+              <div class="hotkey-input">
+                <span id="hotkey-display-toggleFold">Alt + L</span>
+                <button class="record-btn" data-key="toggleFold" data-i18n="settings_change">Change</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <div class="card-info">
+              <h3 data-i18n="settings_particles">치환 시각 효과</h3>
+              <p data-i18n="settings_particles_desc">스니펫이 치환될 때 사방으로 퍼지는 파티클과 파동 효과를 보여줍니다.</p>
+            </div>
+            <div class="card-action">
+              <label class="switch">
+                <input type="checkbox" id="particles-toggle" checked>
+                <span class="slider round"></span>
+              </label>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <section id="snippets-tab" class="tab-content">
+        <div class="snippets-layout">
+          <aside class="groups-nav">
+            <div class="groups-nav-header">
+              <h2 data-i18n="groups_title">Groups</h2>
+              <div class="nav-header-actions">
+                <button id="import-group-btn" class="icon-btn secondary" title="Import Group">📥</button>
+                <button id="add-group-btn" class="icon-btn" title="Add New Group">+</button>
+                <input type="file" id="import-group-file" style="display:none" accept=".sppgrp">
+              </div>
+            </div>
+            <div id="groups-list" class="groups-list">
+              <!-- Group items injected here -->
+            </div>
+          </aside>
+
+          <div id="group-editor-container" class="group-editor">
+            <div id="no-group-selected" class="empty-state">
+              <h3><span class="empty-icon">📂</span> <span data-i18n="groups_title">No Group Selected</span></h3>
+              <p data-i18n="groups_no_group">왼쪽 목록에서 그룹을 선택하거나 새로운 그룹을 만드세요.</p>
+            </div>
+
+            <div id="active-group-editor">
+              <div class="group-header">
+                <div class="group-main-row">
+                  <input type="text" id="active-group-name" class="group-name-input" data-i18n="groups_placeholder">
+                  <div class="group-actions">
+                    <button id="export-group-btn" class="icon-btn secondary" title="Export this group">📤</button>
+                    <button id="add-snippet-btn" class="primary-btn">+ <span data-i18n="groups_add_snippet">Add
+                        Snippet</span></button>
+                    <button id="delete-group-btn" class="secondary-btn danger" data-i18n="settings_reset">Delete
+                      Group</button>
+                  </div>
+                </div>
+
+                <div class="disabled-sites-section">
+                  <div class="section-header">
+                    <div class="site-mode-selector" id="site-mode-selector">
+                      <button class="mode-btn active" data-mode="blacklist"
+                        data-i18n="groups_blacklist">Blacklist</button>
+                      <button class="mode-btn" data-mode="whitelist" data-i18n="groups_whitelist">Whitelist</button>
+                    </div>
+                    <button id="add-site-btn" class="add-site-btn" title="사이트 추가">+</button>
+                  </div>
+                  <div id="disabled-sites-list" class="disabled-sites-list">
+                    <!-- Site rows injected here -->
+                  </div>
+                </div>
+              </div>
+              <div id="snippets-list" class="snippets-list">
+                <!-- Snippet rows injected here -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="guide-tab" class="tab-content">
+        <header class="tab-header">
+          <h1 data-i18n="guide_title">Syntax Guide</h1>
+        </header>
+
+        <div class="guide-grid">
+          <!-- Basic Placeholders -->
+          <div class="guide-card">
+            <h2><span class="guide-tag" data-i18n="guide_categories_basic">Basic</span> <span
+                data-i18n="guide_sections_placeholders">Placeholders</span></h2>
+            <div class="guide-section">
+              <div class="guide-item">
+                <span class="guide-syntax">{{#0}}, {{#1}}, ... / {{cursor}}</span>
+                <span class="guide-desc" data-i18n="guide_items_cursor_desc">텍스트 삽입 후 Tab 키를 눌러 이동할 커서 순서를 지정합니다.</span>
+                <div class="guide-example">Item: {{#0}}</div>
+              </div>
+              <div class="guide-item">
+                <span class="guide-syntax">{{# expr }}</span>
+                <span class="guide-desc" data-i18n="guide_items_dynamic_cursor_desc">표현식을 사용하여 커서 순서를 동적으로 지정합니다.</span>
+                <div class="guide-example">{{# $var + 1 }}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- System Info Functions -->
+          <div class="guide-card">
+            <h2><span class="guide-tag" data-i18n="guide_categories_info">Info</span> <span
+                data-i18n="guide_sections_system">System Functions</span></h2>
+            <div class="guide-section">
+              <div class="guide-item">
+                <span class="guide-syntax">{{date()}}, {{time()}}, {{datetime()}}</span>
+                <span class="guide-desc" data-i18n="guide_items_date_desc">현재 날짜와 시간을 삽입합니다.</span>
+                <div class="guide-example">
+                  {{date('YYYY/MM/DD (ddd)')}} <br>
+                  {{time('HH시 mm분')}}
+                </div>
+              </div>
+              <div class="guide-item">
+                <span class="guide-syntax">{{url()}}, {{domain()}}, {{title()}}</span>
+                <span class="guide-desc" data-i18n="guide_items_url_desc">현재 탭의 주소, 도메인, 제목 정보를 삽입합니다.</span>
+              </div>
+              <div class="guide-item">
+                <span class="guide-syntax">{{clipboard()}}</span>
+                <span class="guide-desc" data-i18n="guide_items_clipboard_desc">클립보드에 복사된 텍스트를 비동기로 가져와 삽입합니다.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- User Input Functions -->
+          <div class="guide-card">
+            <h2><span class="guide-tag" data-i18n="guide_categories_input">Input</span> <span
+                data-i18n="guide_sections_interaction">Interaction</span></h2>
+            <div class="guide-section">
+              <div class="guide-item">
+                <span class="guide-syntax">{{prompt('Message')}}</span>
+                <span class="guide-desc" data-i18n="guide_items_prompt_desc">사용자로부터 입력을 받는 팝업을 띄우고, 입력된 값을 본문에
+                  삽입합니다.</span>
+                <div class="guide-example">Name: {{prompt('이름을 입력하세요')}}</div>
+              </div>
+              <div class="guide-item">
+                <span class="guide-syntax">{{choice('Title', 'Opt1', 'Opt2', ...)}}</span>
+                <span class="guide-desc" data-i18n="guide_items_choice_desc">여러 옵션 중 하나를 선택하는 메뉴를 띄웁니다. 숫자키(1~9)로도 선택 가능합니다.</span>
+                <div class="guide-example">Food: {{choice('메뉴 선택', '치킨', '피자', '햄버거')}}</div>
+              </div>
+              <div class="guide-tip">
+                <div class="guide-tip-title" data-i18n="guide_items_prompt_tip">💡 Tip: 동적 프롬프트</div>
+                <div class="guide-tip-content" data-i18n="guide_items_prompt_tip_desc">
+                  프롬프트 메시지에도 변수나 수식을 사용할 수 있습니다.
+                  <br>예: <code>{{prompt($title + '의 가격')}}</code>
+                </div>
+              </div>
+            </div>
+          </div>
+
+
+          <!-- Random Functions -->
+          <div class="guide-card">
+            <h2><span class="guide-tag" data-i18n="guide_categories_random">Random</span> <span
+                data-i18n="guide_sections_generators">Generators</span></h2>
+            <div class="guide-section">
+              <div class="guide-item">
+                <span class="guide-syntax">{{uuid()}}</span>
+                <span class="guide-desc" data-i18n="guide_items_uuid_desc">무작위 UUID v4 식별자를 생성하여 삽입합니다.</span>
+              </div>
+              <div class="guide-item">
+                <span class="guide-syntax">{{random(a ~ b)}}</span>
+                <span class="guide-desc" data-i18n="guide_items_random_range_desc">지정한 범위(a와 b 사이)의 무작위 정수를
+                  생성합니다.</span>
+                <div class="guide-example">{{random(1 ~ 100)}} / {{random($min ~ $min + 10)}}</div>
+              </div>
+              <div class="guide-item">
+                <span class="guide-syntax">{{random(expr1, expr2, ...)}}</span>
+                <span class="guide-desc" data-i18n="guide_items_random_list_desc">콤마로 구분된 인자 중 하나를 무작위 선택합니다.</span>
+                <div class="guide-example">{{random('치킨', '피자', 10+20)}}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- String Functions -->
+          <div class="guide-card">
+            <h2><span class="guide-tag" data-i18n="guide_categories_string">String</span> <span
+                data-i18n="guide_sections_manipulation">Manipulation</span></h2>
+            <div class="guide-section">
+              <div class="guide-item">
+                <span class="guide-syntax">{{len(s)}}</span>
+                <span class="guide-desc" data-i18n="guide_items_len_desc">문자열의 길이를 반환합니다.</span>
+              </div>
+              <div class="guide-item">
+                <span class="guide-syntax">{{upper(s)}}, {{lower(s)}}, {{capitalize(s)}}</span>
+                <span class="guide-desc" data-i18n="guide_items_transform_desc">대문자, 소문자, 첫 글자 대문자 변환을 수행합니다.</span>
+              </div>
+              <div class="guide-item">
+                <span class="guide-syntax">{{substr(s, start, len)}}</span>
+                <span class="guide-desc" data-i18n="guide_items_substr_desc">지정한 위치부터 원하는 길이만큼 문자열을 자릅니다.</span>
+                <div class="guide-example">{{substr('Snippet++', 0, 7)}} → Snippet</div>
+              </div>
+              <div class="guide-item">
+                <span class="guide-syntax">{{replace(s, old, new)}}</span>
+                <span class="guide-desc" data-i18n="guide_items_replace_desc">문자열 내의 특정 텍스트를 다른 텍스트로 치환합니다.</span>
+              </div>
+              <div class="guide-item">
+                <span class="guide-syntax">{{trim(s)}}</span>
+                <span class="guide-desc" data-i18n="guide_items_trim_desc">문자열 앞뒤의 모든 공백을 제거합니다.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Type Conversion -->
+          <div class="guide-card">
+            <h2><span class="guide-tag" data-i18n="guide_categories_basic">Type</span> <span
+                data-i18n="guide_sections_manipulation">Conversion</span></h2>
+            <div class="guide-section">
+              <div class="guide-item">
+                <span class="guide-syntax">{{str(val)}}</span>
+                <span class="guide-desc" data-i18n="guide_items_str_desc">값을 문자열로 강제 변환합니다.</span>
+              </div>
+              <div class="guide-item">
+                <span class="guide-syntax">{{num(val)}}</span>
+                <span class="guide-desc" data-i18n="guide_items_num_desc">값을 숫자형(소수점 포함)으로 변환합니다.</span>
+              </div>
+              <div class="guide-item">
+                <span class="guide-syntax">{{int(val)}}</span>
+                <span class="guide-desc" data-i18n="guide_items_int_desc">값을 정수형으로 변환합니다. (소수점 절삭)</span>
+                <div class="guide-example">{{int('10.5') + 1}} → 11</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Math Functions -->
+          <div class="guide-card">
+            <h2><span class="guide-tag" data-i18n="guide_categories_expr">Math</span> <span
+                data-i18n="guide_sections_math">Functions</span></h2>
+            <div class="guide-section">
+              <div class="guide-item">
+                <span class="guide-syntax">{{round(n)}}, {{ceil(n)}}, {{floor(n)}}</span>
+                <span class="guide-desc" data-i18n="guide_items_round_desc">반올림, 올림, 내림을 수행합니다.</span>
+              </div>
+              <div class="guide-item">
+                <span class="guide-syntax">{{min(a, b, ...)}}, {{max(a, b, ...)}}</span>
+                <span class="guide-desc" data-i18n="guide_items_min_max_desc">주어진 값들 중 최솟값 또는 최댓값을 반환합니다.</span>
+                <div class="guide-example">{{max(1, 10, $var)}}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Arguments -->
+          <div class="guide-card">
+            <h2><span class="guide-tag" data-i18n="guide_categories_args">Arguments</span> <span
+                data-i18n="guide_sections_capture">Trigger Capture</span></h2>
+            <div class="guide-section">
+              <div class="guide-item">
+                <span class="guide-syntax">${name:regex:flags}</span>
+                <span class="guide-desc" data-i18n="guide_items_capture_desc">트리거에서 변수를 캡처합니다. (플래그 지정 가능)</span>
+                <div class="guide-example">;;${id:\d+} (결과: ;;123)</div>
+              </div>
+              <div class="guide-item">
+                <span class="guide-syntax">{{$name}}</span>
+                <span class="guide-desc" data-i18n="guide_items_variable_desc">캡처한 변수를 본문에서 사용합니다. (하늘색 강조)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Conditionals -->
+          <div class="guide-card">
+            <h2><span class="guide-tag" data-i18n="guide_categories_logic">Logic</span> <span
+                data-i18n="guide_sections_conditionals">Conditionals</span></h2>
+            <div class="guide-section">
+              <div class="guide-item">
+                <span class="guide-syntax">{{if expr}} ... {{endif}}</span>
+                <span class="guide-desc" data-i18n="guide_items_if_desc">조건에 따라 텍스트를 노출합니다.</span>
+                <div class="guide-example">{{if $type == 'bug'}}[BUG]{{else}}[TASK]{{endif}}</div>
+              </div>
+              <div class="guide-item">
+                <span class="guide-syntax">{{elif expr}}, {{else}}</span>
+                <span class="guide-desc" data-i18n="guide_items_elif_else_desc">다중 조건이나 예외 처리를 지원합니다.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Switch/Case -->
+          <div class="guide-card">
+            <h2><span class="guide-tag" data-i18n="guide_categories_logic">Logic</span> <span
+                data-i18n="guide_sections_switch">Switch/Case</span></h2>
+            <div class="guide-section">
+              <div class="guide-item">
+                <span class="guide-syntax">{{switch expr}} ... {{endswitch}}</span>
+                <span class="guide-desc" data-i18n="guide_items_switch_desc">하나의 식 결과를 여러 값과 비교합니다.</span>
+              </div>
+              <div class="guide-item">
+                <span class="guide-syntax">{{case val}} ... {{endcase}}</span>
+                <span class="guide-desc" data-i18n="guide_items_case_desc">비교 대상 블록입니다. 콤마로 여러 값을 지정할 수 있습니다.</span>
+                <div class="guide-example">{{case 'A', 'B'}}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Loops -->
+          <div class="guide-card">
+            <h2><span class="guide-tag" data-i18n="guide_categories_loops">Loops</span> <span
+                data-i18n="guide_sections_iteration">Iteration</span></h2>
+            <div class="guide-section">
+              <div class="guide-item">
+                <span class="guide-syntax">{{for expr}} ... {{endfor}}</span>
+                <span class="guide-desc" data-i18n="guide_items_for_desc">내용을 지정된 횟수만큼 반복합니다.</span>
+              </div>
+              <div class="guide-item">
+                <span class="guide-syntax">{{index}}</span>
+                <span class="guide-desc" data-i18n="guide_items_index_desc">현재 인덱스를 표시합니다. (0부터 시작)</span>
+                <div class="guide-example">{{for 3}} ({{index}}) {{endfor}}</div>
+              </div>
+            </div>
+          </div>
+
+
+          <!-- Variables & Expressions -->
+          <div class="guide-card">
+            <h2><span class="guide-tag" data-i18n="guide_categories_expr">Expr</span> <span
+                data-i18n="guide_sections_math">Variables & Math</span></h2>
+            <div class="guide-section">
+              <div class="guide-item">
+                <span class="guide-syntax">{{set $var = expr}}</span>
+                <span class="guide-desc" data-i18n="guide_items_set_desc">변수를 선언하고 계산 결과를 저장합니다. +=, -=, *=, /=, %= 연산자로 기존 변수 값을 수정할 수 있습니다.</span>
+                <div class="guide-example">
+                  {{set $count = 0}} <br>
+                  {{for 5}} {{set $count += 1}} {{endfor}} <br>
+                  Result: {{$count}}
+                </div>
+              </div>
+              <div class="guide-item">
+                <span class="guide-syntax">{{expr}} (Math & Logic)</span>
+                <span class="guide-desc" data-i18n="guide_items_expr_desc">중괄호 안에서 연산(+, -, *, /, %)과 함수 호출을
+                  수행합니다.</span>
+                <div class="guide-example">Score: {{($p1 + $p2) / 2}}</div>
+              </div>
+              <div class="guide-tip">
+                <div class="guide-tip-title" data-i18n="guide_items_scope_tip">💡 Tip: 변수 유효 범위 (Scope)</div>
+                <div class="guide-tip-content" data-i18n="guide_items_scope_tip_desc">
+                  외부에서 선언된 변수는 <code>if</code>, <code>for</code>, <code>switch</code> 블록 내부에서도 수정할 수 있습니다.
+                  단, 블록 내부에서 처음 정의된 변수는 블록이 종료되면 자동으로 사라집니다.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Formatting -->
+          <div class="guide-card">
+            <h2><span class="guide-tag" data-i18n="guide_categories_misc">Misc</span> <span
+                data-i18n="guide_sections_formatting">Formatting</span></h2>
+            <div class="guide-section">
+              <div class="guide-item">
+                <span class="guide-syntax">{{backspace()}}, {{bs()}}</span>
+                <span class="guide-desc" data-i18n="guide_items_backspace_desc">백스페이스 동작을 수행하여 이전 문자를 하나 지웁니다.</span>
+                <div class="guide-example">ABC{{bs()}}D → Result: ABD</div>
+              </div>
+              <div class="guide-item">
+                <span class="guide-syntax">\ (Line Continuation)</span>
+                <span class="guide-desc" data-i18n="guide_items_line_cont_desc">줄 끝에 \를 붙이면 다음 줄과의 개행 및 다음 줄의 들여쓰기를 제거합니다.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Options modules (load order matters: state first, main last) -->
+  <script src="utils/constants.js"></script>
+  <script src="options/i18n.js"></script>
+  <script src="utils/triggers.js"></script>
+  <script src="options/state.js"></script>
+  <script src="options/storage.js"></script>
+  <script src="options/hotkeys.js"></script>
+  <script src="options/groups.js"></script>
+  <script src="options/highlight.js"></script>
+  <script src="options/snippets.js"></script>
+  <script src="options/main.js"></script>
+  <div id="status-message">
+    <span class="status-icon"></span>
+    <span class="status-text"></span>
+  </div>
+</body>
+
+</html>

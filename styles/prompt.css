@@ -1,0 +1,214 @@
+/* ============================================================
+   SNIPPET++ PROMPT MODAL
+   ============================================================ */
+
+.spp-prompt-overlay,
+.spp-prompt-overlay *,
+.spp-prompt-overlay *:before,
+.spp-prompt-overlay *:after {
+  box-sizing: border-box !important;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+}
+
+.spp-prompt-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: rgba(15, 23, 42, 0.4) !important;
+  backdrop-filter: blur(4px) !important;
+  z-index: 2147483647 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  animation: spp-fade-in 0.2s ease !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.spp-prompt-modal {
+  width: 400px !important;
+  max-width: 90vw !important;
+  background: #0f172a !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 16px !important;
+  padding: 24px !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+  animation: spp-slide-up 0.3s cubic-bezier(0.19, 1, 0.22, 1) !important;
+  display: block !important;
+}
+
+.spp-prompt-header {
+  margin-bottom: 20px !important;
+}
+
+.spp-prompt-title {
+  color: #94a3b8 !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  margin-bottom: 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  line-height: 1.2 !important;
+}
+
+.spp-prompt-message {
+  color: #f8fafc !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  line-height: 1.4 !important;
+}
+
+.spp-prompt-body {
+  margin-bottom: 24px !important;
+}
+
+.spp-prompt-input {
+  width: 100% !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 10px !important;
+  padding: 12px 16px !important;
+  color: #f8fafc !important;
+  font-size: 15px !important;
+  outline: none !important;
+  transition: all 0.2s !important;
+  display: block !important;
+  height: auto !important;
+  line-height: 1.4 !important;
+  margin: 0 !important;
+}
+
+.spp-prompt-input:focus {
+  border-color: #6366f1 !important;
+  background: rgba(99, 102, 241, 0.05) !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+}
+
+.spp-prompt-footer {
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 12px !important;
+}
+
+.spp-prompt-btn {
+  padding: 10px 18px !important;
+  border-radius: 10px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.2s !important;
+  border: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  line-height: 1.2 !important;
+  margin: 0 !important;
+}
+
+.spp-prompt-btn-cancel {
+  background: transparent !important;
+  color: #94a3b8 !important;
+}
+
+.spp-prompt-btn-confirm {
+  background: #6366f1 !important;
+  color: white !important;
+}
+
+.spp-prompt-btn-confirm:hover {
+  background: #4f46e5;
+  transform: translateY(-1px);
+}
+
+/* ── Choice Modal ── */
+.spp-choice-body {
+  margin-bottom: 24px !important;
+  max-height: 300px !important;
+  overflow-y: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  padding-right: 4px !important;
+}
+
+.spp-choice-item {
+  display: flex !important;
+  align-items: center !important;
+  padding: 12px 16px !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 10px !important;
+  cursor: pointer !important;
+  transition: all 0.2s !important;
+  gap: 12px !important;
+}
+
+.spp-choice-item:hover,
+.spp-choice-item.active {
+  background: rgba(99, 102, 241, 0.1) !important;
+  border-color: #6366f1 !important;
+  transform: translateX(4px) !important;
+}
+
+.spp-choice-key {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 20px !important;
+  height: 20px !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 4px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #94a3b8 !important;
+}
+
+.spp-choice-item.active .spp-choice-key {
+  background: #6366f1 !important;
+  color: white !important;
+}
+
+.spp-choice-text {
+  color: #f8fafc !important;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+}
+
+/* Custom Scrollbar for Choice Body */
+.spp-choice-body::-webkit-scrollbar {
+  width: 4px !important;
+}
+.spp-choice-body::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+.spp-choice-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 10px !important;
+}
+
+@keyframes spp-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes spp-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -1,0 +1,64 @@
+/* ============================================================
+   BASE — Design Tokens, Reset, Global, Scrollbar, Animations
+   ============================================================ */
+
+:root {
+  --bg-color:       #0f172a;
+  --sidebar-bg:     #1e293b;
+  --content-bg:     #0f172a;
+  --card-bg:        rgba(30, 41, 59, 0.7);
+  --accent-color:   #6366f1;
+  --accent-hover:   #818cf8;
+  --text-primary:   #f8fafc;
+  --text-secondary: #94a3b8;
+  --border-color:   #334155;
+  --success-color:  #10b981;
+  --error-color:    #ef4444;
+  --glass-border:   rgba(255, 255, 255, 0.1);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── i18n Loading State ── */
+body.i18n-loading .app-container {
+  filter: blur(10px);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.app-container {
+  transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}

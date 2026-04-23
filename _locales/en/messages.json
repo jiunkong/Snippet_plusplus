@@ -1,0 +1,320 @@
+{
+  "tabs_general": {
+    "message": "General Settings"
+  },
+  "tabs_snippets": {
+    "message": "Snippet Editor"
+  },
+  "tabs_guide": {
+    "message": "Syntax Guide"
+  },
+  "groups_title": {
+    "message": "GROUPS"
+  },
+  "groups_add_group": {
+    "message": "Add Group"
+  },
+  "groups_no_group": {
+    "message": "Select a group or create one to start."
+  },
+  "groups_placeholder": {
+    "message": "New Group"
+  },
+  "groups_default_name": {
+    "message": "New Group"
+  },
+  "groups_delete_confirm": {
+    "message": "Are you sure you want to delete this group?"
+  },
+  "groups_site_mode": {
+    "message": "Site Mode"
+  },
+  "groups_blacklist": {
+    "message": "Blacklist"
+  },
+  "groups_whitelist": {
+    "message": "Whitelist"
+  },
+  "groups_add_site": {
+    "message": "Add Site"
+  },
+  "groups_site_placeholder": {
+    "message": "example.com"
+  },
+  "groups_add_snippet": {
+    "message": "Add Snippet"
+  },
+  "settings_title": {
+    "message": "General Settings"
+  },
+  "settings_next_cursor": {
+    "message": "Next Cursor"
+  },
+  "settings_next_cursor_desc": {
+    "message": "Set the hotkey to jump to the next placeholder after replacement."
+  },
+  "settings_add_snippet": {
+    "message": "Add Snippet"
+  },
+  "settings_add_snippet_desc": {
+    "message": "Set the hotkey to quickly add a new snippet in the editor."
+  },
+  "settings_toggle_fold": {
+    "message": "Toggle Fold"
+  },
+  "settings_toggle_fold_desc": {
+    "message": "Collapse or expand the details of the currently selected snippet."
+  },
+  "settings_particles": {
+    "message": "Visual Effects"
+  },
+  "settings_particles_desc": {
+    "message": "Show particles and wave effects when a snippet is replaced."
+  },
+  "settings_language": {
+    "message": "Language"
+  },
+  "settings_language_desc": {
+    "message": "Select the interface language."
+  },
+  "settings_change": {
+    "message": "Change"
+  },
+  "settings_export": {
+    "message": "Export"
+  },
+  "settings_import": {
+    "message": "Import"
+  },
+  "settings_reset": {
+    "message": "Delete Group"
+  },
+  "settings_reset_confirm": {
+    "message": "This will wipe all your snippets and settings. Are you sure?"
+  },
+  "guide_title": {
+    "message": "Syntax Guide"
+  },
+  "guide_categories_basic": {
+    "message": "Basic"
+  },
+  "guide_categories_info": {
+    "message": "Info"
+  },
+  "guide_categories_input": {
+    "message": "Input"
+  },
+  "guide_categories_random": {
+    "message": "Random"
+  },
+  "guide_categories_string": {
+    "message": "String"
+  },
+  "guide_categories_args": {
+    "message": "Arguments"
+  },
+  "guide_categories_logic": {
+    "message": "Logic"
+  },
+  "guide_categories_loops": {
+    "message": "Loops"
+  },
+  "guide_categories_expr": {
+    "message": "Expr"
+  },
+  "guide_categories_misc": {
+    "message": "Misc"
+  },
+  "guide_sections_placeholders": {
+    "message": "Placeholders"
+  },
+  "guide_sections_system": {
+    "message": "System Functions"
+  },
+  "guide_sections_interaction": {
+    "message": "Interaction"
+  },
+  "guide_sections_generators": {
+    "message": "Generators"
+  },
+  "guide_sections_manipulation": {
+    "message": "Manipulation"
+  },
+  "guide_sections_capture": {
+    "message": "Trigger Capture"
+  },
+  "guide_sections_conditionals": {
+    "message": "Conditionals"
+  },
+  "guide_sections_switch": {
+    "message": "Switch/Case"
+  },
+  "guide_sections_iteration": {
+    "message": "Iteration"
+  },
+  "guide_sections_math": {
+    "message": "Variables & Math"
+  },
+  "guide_sections_formatting": {
+    "message": "Formatting"
+  },
+  "guide_items_cursor_desc": {
+    "message": "Set the tab order for moving the cursor after replacement."
+  },
+  "guide_items_dynamic_cursor_desc": {
+    "message": "Use expressions to set the cursor order dynamically."
+  },
+  "guide_items_date_desc": {
+    "message": "Inserts the current date and time."
+  },
+  "guide_items_url_desc": {
+    "message": "Inserts address, domain, or title of the current tab."
+  },
+  "guide_items_clipboard_desc": {
+    "message": "Asynchronously fetches and inserts clipboard text."
+  },
+  "guide_items_prompt_desc": {
+    "message": "Shows a popup for user input and inserts the value."
+  },
+  "guide_items_choice_desc": {
+    "message": "Displays a menu to select one of several options. Can also be selected with numeric keys (1-9)."
+  },
+  "guide_items_prompt_tip": {
+    "message": "Tip: Dynamic Prompt"
+  },
+  "guide_items_prompt_tip_desc": {
+    "message": "Variables or formulas can be used in prompt messages."
+  },
+  "guide_items_uuid_desc": {
+    "message": "Generates and inserts a random UUID v4."
+  },
+  "guide_items_random_range_desc": {
+    "message": "Generates a random integer between a and b."
+  },
+  "guide_items_random_list_desc": {
+    "message": "Randomly selects one of the comma-separated arguments."
+  },
+  "guide_items_len_desc": {
+    "message": "Returns the length of the string."
+  },
+  "guide_items_transform_desc": {
+    "message": "Performs uppercase, lowercase, or capitalization."
+  },
+  "guide_items_replace_desc": {
+    "message": "Replaces specific text within a string with other text."
+  },
+  "guide_items_trim_desc": {
+    "message": "Removes all leading and trailing whitespace from a string."
+  },
+  "guide_items_substr_desc": {
+    "message": "Cuts the string to the desired length from a specified position."
+  },
+  "guide_items_str_desc": {
+    "message": "Forcefully converts a value to a string."
+  },
+  "guide_items_num_desc": {
+    "message": "Converts a value to a numeric type (including decimals)."
+  },
+  "guide_items_int_desc": {
+    "message": "Converts a value to an integer type (truncates decimals)."
+  },
+  "guide_items_round_desc": {
+    "message": "Performs rounding, ceiling, or flooring."
+  },
+  "guide_items_min_max_desc": {
+    "message": "Returns the minimum or maximum among given values."
+  },
+  "guide_items_capture_desc": {
+    "message": "Captures variables from the trigger (flags supported)."
+  },
+  "guide_items_variable_desc": {
+    "message": "Use captured variables in the body (highlighted)."
+  },
+  "guide_items_if_desc": {
+    "message": "Shows text according to the condition."
+  },
+  "guide_items_elif_else_desc": {
+    "message": "Supports multiple conditions or fallback."
+  },
+  "guide_items_switch_desc": {
+    "message": "Compares an expression result with multiple values."
+  },
+  "guide_items_case_desc": {
+    "message": "Comparison block. Multiple values can be specified."
+  },
+  "guide_items_for_desc": {
+    "message": "Repeats content for a specified number of times."
+  },
+  "guide_items_index_desc": {
+    "message": "Shows the current index (starts from 0)."
+  },
+  "guide_items_set_desc": {
+    "message": "Declares a variable and stores the calculation result."
+  },
+  "guide_items_expr_desc": {
+    "message": "Performs math (+, -, *, /, %) and function calls."
+  },
+  "guide_items_scope_tip": {
+    "message": "💡 Tip: Variable Scope"
+  },
+  "guide_items_scope_tip_desc": {
+    "message": "Variables declared outside can be modified inside if, for, and switch blocks. However, variables first defined inside a block disappear when the block ends."
+  },
+  "guide_items_backspace_desc": {
+    "message": "Performs a backspace action to delete the previous character."
+  },
+  "guide_items_line_cont_desc": {
+    "message": "Adding \\ at the end of a line removes the newline and the following line's indentation."
+  },
+  "snippets_trigger_label": {
+    "message": "Trigger"
+  },
+  "snippets_replacement_label": {
+    "message": "Replacement"
+  },
+  "snippets_trigger_placeholder": {
+    "message": "Trigger (e.g. /hello)"
+  },
+  "snippets_name_placeholder": {
+    "message": "Snippet Name (Optional)"
+  },
+  "snippets_replacement_placeholder": {
+    "message": "Enter snippet content here..."
+  },
+  "status_saved": {
+    "message": "Saved ✨"
+  },
+  "status_export_started": {
+    "message": "Export Started 📤"
+  },
+  "status_import_confirm": {
+    "message": "Import settings?"
+  },
+  "status_invalid_file": {
+    "message": "Invalid file"
+  },
+  "status_group_export_started": {
+    "message": "Group Export Started 📤"
+  },
+  "status_group_import_confirm": {
+    "message": "Import group \"{name}\"?"
+  },
+  "status_group_imported": {
+    "message": "Group Imported ✨"
+  },
+  "default_group_name": {
+    "message": "General"
+  },
+  "default_snippet_name": {
+    "message": "Welcome Message"
+  },
+  "default_snippet_replacement": {
+    "message": "Hello, {{cursor}}!\nI'm here to guide you about {{cursor}} today."
+  },
+  "app_name": {
+    "message": "Snippet++"
+  },
+  "app_description": {
+    "message": "Intelligent text expansion tool with powerful syntax and dynamic features."
+  }
+}

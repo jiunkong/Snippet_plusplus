@@ -1,0 +1,64 @@
+/* Input/Textarea Flash */
+@keyframes ss-flash-glow {
+  0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.8); border-color: #6366f1; }
+  100% { box-shadow: 0 0 0 20px rgba(99, 102, 241, 0); border-color: inherit; }
+}
+
+.ss-replacement-flash {
+  animation: ss-flash-glow 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Enhanced Ripple */
+@keyframes ss-ripple-out {
+  0% { transform: scale(0); opacity: 1; border-width: 4px; }
+  100% { transform: scale(4.5); opacity: 0; border-width: 1px; }
+}
+
+.ss-ripple-container {
+  position: absolute;
+  pointer-events: none;
+  z-index: 999999;
+  width: 10px;
+  height: 10px;
+}
+
+.ss-ripple {
+  position: absolute;
+  top: -15px;
+  left: -15px;
+  width: 30px;
+  height: 30px;
+  border: 3px solid #6366f1;
+  border-radius: 50%;
+  animation: ss-ripple-out 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Sparkles */
+@keyframes ss-sparkle-fly {
+  0% { transform: translate(0, 0) scale(0) rotate(0deg); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(1.2) rotate(180deg); opacity: 0; }
+}
+
+.ss-sparkle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: rgba(251, 191, 36, 0.4);
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+  animation: ss-sparkle-fly 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Placeholder styles */
+.ss-placeholder {
+  background: rgba(99, 102, 241, 0.15);
+  border-bottom: 2px solid #6366f1;
+  border-radius: 2px;
+  padding: 0 4px;
+  margin: 0 2px;
+  color: #6366f1;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-block;
+  transition: all 0.2s;
+  font-family: 'JetBrains Mono', monospace;
+}

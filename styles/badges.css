@@ -1,0 +1,144 @@
+/* ============================================================
+   BADGES — Syntax highlighting badges & error messages
+   ============================================================ */
+
+/* ── Base Shape ── */
+.syntax-badge,
+.keyword-badge,
+.error-badge {
+  border-radius: 2px;
+  font-weight: 700;
+}
+
+.cursor-badge {
+  border-radius: 2px;
+  font-weight: 400; /* Use 400 to prevent alignment shift */
+  background: rgba(99, 102, 241, 0.3);
+  color: var(--accent-hover);
+  border-bottom: 2px solid var(--accent-color);
+}
+
+.cursor-syntax-badge {
+  border-radius: 2px;
+  font-weight: 700;
+  background: rgba(99, 102, 241, 0.3);
+  color: var(--accent-hover);
+  border-bottom: 2px solid var(--accent-color);
+}
+
+.cursor-expr-badge {
+  border-radius: 2px;
+  font-weight: 400;
+  background: rgba(99, 102, 241, 0.3);
+  border-bottom: 2px solid var(--accent-color);
+}
+
+/* Syntax — {{, }}, ( , ) (purple) */
+.syntax-badge {
+  background: rgba(217, 70, 239, 0.15);
+  color: #d946ef;
+  border-bottom: 2px solid #d946ef;
+}
+
+/* Keyword — if, for, set, switch (purple) */
+.keyword-badge {
+  background: rgba(217, 70, 239, 0.15);
+  color: #d946ef;
+  border-bottom: 2px solid #d946ef;
+}
+
+/* Color-only highlighting for mixed expressions */
+.hl-fn {
+  color: #fde68a !important; /* Light Yellow */
+  font-weight: 700;
+}
+
+.hl-fn-rand {
+  color: #fb923c !important; /* Orange */
+  font-weight: 700;
+}
+
+.hl-fn-err {
+  color: #ef4444 !important; /* Red */
+  font-weight: 700;
+  text-decoration: underline wavy #ef4444 !important;
+}
+
+.hl-var {
+  color: #7dd3fc !important; /* Sky Blue */
+  font-weight: 700;
+}
+
+.hl-fn-type {
+  color: #10b981 !important; /* Emerald Green */
+  font-weight: 700;
+}
+
+.hl-regex {
+  color: #fb7185 !important; /* Rose */
+  font-weight: 700;
+}
+
+/* Expression — Arguments, Variables, Logic (soft lavender) */
+.expr-badge {
+  background: rgba(217, 70, 239, 0.15);
+  border-bottom: 2px solid #d946ef;
+  font-weight: 400;
+}
+
+/* Error (red + wavy underline) */
+.error-badge {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border-bottom: 2px solid #ef4444;
+  text-decoration: underline wavy #ef4444;
+}
+
+/* Flag — regex flags (dark green) */
+.flag-badge {
+  background: rgba(22, 101, 52, 0.25);
+  color: #4ade80;
+  border-bottom: 2px solid #16a34a;
+}
+
+/* Trigger Argument Wrapper (for continuous underline) */
+.arg-badge {
+  background: rgba(217, 70, 239, 0.15);
+  border-bottom: 2px solid #d946ef;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.arg-badge .syntax-badge,
+.arg-badge .flag-badge {
+  background: transparent !important;
+  border-bottom: none !important;
+}
+
+/* Cursor Expression Wrapper (for blue continuous underline) */
+.cursor-arg-badge {
+  background: rgba(99, 102, 241, 0.3);
+  border-bottom: 2px solid var(--accent-color);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+/* ── Error message container ── */
+.error-msg-container {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: rgba(239, 68, 68, 0.1);
+  border-left: 3px solid #ef4444;
+  border-radius: 4px;
+  color: #fca5a5;
+  font-size: 12px;
+  line-height: 1.4;
+  display: flex;
+  align-items: center;
+}
+
+.error-msg-container::before {
+  content: '⚠️';
+  margin-right: 8px;
+  font-size: 14px;
+}

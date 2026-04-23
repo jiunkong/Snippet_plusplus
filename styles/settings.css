@@ -1,0 +1,211 @@
+/* ============================================================
+   SETTINGS TAB — Setting cards, Hotkey input, Toggle switch
+   ============================================================ */
+
+.settings-grid {
+  display: grid;
+  gap: 24px;
+  padding-bottom: 40px;
+}
+
+.setting-card {
+  background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  padding: 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* ── Hotkey ── */
+.hotkey-input {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #0f172a;
+  padding: 10px 20px;
+  border-radius: 14px;
+  border: 1px solid var(--border-color);
+  min-width: 240px;
+  justify-content: space-between;
+}
+
+#hotkey-display {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  color: var(--accent-hover);
+}
+
+/* ── Theme / Language Select ── */
+.theme-select {
+  background: #0f172a;
+  color: #f8fafc;
+  border: 1px solid var(--border-color);
+  padding: 10px 20px;
+  border-radius: 14px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  min-width: 120px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 15px center;
+  background-size: 16px;
+  padding-right: 40px;
+}
+
+.theme-select:hover {
+  border-color: var(--accent-color);
+  background-color: #1e293b;
+}
+
+.theme-select:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.record-btn {
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.record-btn.recording {
+  background: var(--error-color);
+  animation: pulse 1s infinite;
+}
+
+/* ── Toggle Switch ── */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: #334155;
+  transition: .4s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+input:checked+.slider {
+  background-color: var(--accent-color);
+}
+
+input:focus+.slider {
+  box-shadow: 0 0 1px var(--accent-color);
+}
+
+input:checked+.slider:before {
+  transform: translateX(20px);
+}
+
+.slider.round {
+  border-radius: 34px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
+
+/* ── Status message (Premium Toast) ── */
+#status-message {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  padding: 10px 20px;
+  border-radius: 14px;
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  z-index: 10000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  letter-spacing: -0.01em;
+}
+
+#status-message.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+.status-icon {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 10px;
+}
+
+#status-message.success .status-icon {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+#status-message.success .status-icon::before {
+  content: "✓";
+}
+
+#status-message.error .status-icon {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+#status-message.error .status-icon::before {
+  content: "✕";
+}
+
+#status-message.success {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(16, 185, 129, 0.1);
+}
+
+#status-message.error {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(239, 68, 68, 0.1);
+}
