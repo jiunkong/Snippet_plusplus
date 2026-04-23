@@ -130,13 +130,36 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
     for (let part of parts) {
       part = part.trim();
       if (!part) continue;
-      if (/[=!><]/.test(part)) {
-        const ops = part.split(/[=!><]+/);
-        if (ops.length < 2 || !ops[0].trim() || !ops[1].trim()) return `비교 연산의 피연산자가 누락되었습니다: "${part}"`;
+      const compOpRegex = /==|!=|>=|<=|>|</;
+      if (compOpRegex.test(part)) {
+        const ops = part.split(compOpRegex);
+        if (ops.some(op => !op.trim())) return `비교 연산의 피연산자가 누락되었습니다: "${part}"`;
       }
     }
 
     if (/\bindex\b/.test(cond) && activeForDepth === 0) return "index는 for 루프 내부에서만 사용할 수 있습니다.";
+
+    // Check Ternary Balance (? and :)
+    let ternaryDepth = 0;
+    let inQTest = null;
+    let pDepthTest = 0;
+    for (let i = 0; i < cond.length; i++) {
+        const c = cond[i];
+        if ((c === "'" || c === '"') && !inQTest) inQTest = c;
+        else if (c === inQTest) inQTest = null;
+        if (!inQTest) {
+            if (c === '(') pDepthTest++;
+            else if (c === ')') pDepthTest--;
+            if (pDepthTest === 0) {
+                if (c === '?') ternaryDepth++;
+                else if (c === ':') {
+                    ternaryDepth--;
+                    if (ternaryDepth < 0) return "':'에 매칭되는 '?'가 없습니다.";
+                }
+            }
+        }
+    }
+    if (ternaryDepth > 0) return "'?'에 매칭되는 ':'가 없습니다.";
 
     const stripped = cond.replace(/(['"])(?:(?!\1).|\\\1)*\1/g, '""');
     const tokens = stripped.match(/[\p{L}_][\p{L}\p{N}_]*/gu) || [];
@@ -266,6 +289,9 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
           output += char;
         }
         currentDepth--;
+      } 
+      else if (char === '?' || char === ':') {
+        output += `<span class="hl-op">${char}</span>`;
       } 
       // C. Handle variables: $name and special 'index'
       else if (char === '$' || (char === 'i' && text.substring(i, i + 5) === 'index')) {

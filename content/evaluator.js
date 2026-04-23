@@ -199,6 +199,54 @@ function evaluateExpression(expr, args) {
     } else break;
   }
 
+  // 1.5 Ternary Operator (condition ? trueExpr : falseExpr)
+  let ternaryStart = -1;
+  let inQ = null;
+  let pDepth = 0;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if ((c === "'" || c === '"') && !inQ) inQ = c;
+    else if (c === inQ) inQ = null;
+    if (!inQ) {
+      if (c === '(') pDepth++;
+      else if (c === ')') pDepth--;
+      if (pDepth === 0 && c === '?') { ternaryStart = i; break; }
+    }
+  }
+
+  if (ternaryStart !== -1) {
+    // Find the matching ':' for this '?'
+    let ternaryEnd = -1;
+    let tDepth = 1;
+    let inQE = null;
+    let pDepthE = 0;
+    for (let i = ternaryStart + 1; i < text.length; i++) {
+      const c = text[i];
+      if ((c === "'" || c === '"') && !inQE) inQE = c;
+      else if (c === inQE) inQE = null;
+      if (!inQE) {
+        if (c === '(') pDepthE++;
+        else if (c === ')') pDepthE--;
+        if (pDepthE === 0) {
+          if (c === '?') tDepth++;
+          else if (c === ':') {
+            tDepth--;
+            if (tDepth === 0) { ternaryEnd = i; break; }
+          }
+        }
+      }
+    }
+
+    if (ternaryEnd !== -1) {
+      const condRaw = text.substring(0, ternaryStart);
+      const trueRaw = text.substring(ternaryStart + 1, ternaryEnd);
+      const falseRaw = text.substring(ternaryEnd + 1);
+      
+      const conditionRes = evaluateCondition(condRaw, args);
+      return evaluateExpression(conditionRes ? trueRaw : falseRaw, args);
+    }
+  }
+
   // 2. Logic OR (||)
   let orIdx = -1;
   let qOR = null;

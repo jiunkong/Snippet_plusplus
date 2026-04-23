@@ -79,6 +79,11 @@
   font-weight: 700;
 }
 
+.hl-op {
+  color: #d946ef !important; /* Purple */
+  font-weight: 700;
+}
+
 /* Expression — Arguments, Variables, Logic (soft lavender) */
 .expr-badge {
   background: rgba(217, 70, 239, 0.15);
