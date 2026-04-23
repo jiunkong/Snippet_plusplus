@@ -71,6 +71,12 @@
   "settings_particles_desc": {
     "message": "Show particles and wave effects when a snippet is replaced."
   },
+  "settings_shift_cursor": {
+    "message": "Shift Cursor Levels"
+  },
+  "settings_shift_cursor_desc": {
+    "message": "Automatically shifts existing placeholders backward to prioritize the newly inserted snippet's flow."
+  },
   "settings_language": {
     "message": "Language"
   },
@@ -123,7 +129,7 @@
     "message": "Expr"
   },
   "guide_categories_misc": {
-    "message": "Misc"
+    "message": "기타"
   },
   "guide_sections_placeholders": {
     "message": "Placeholders"
@@ -316,5 +322,110 @@
   },
   "app_description": {
     "message": "Intelligent text expansion tool with powerful syntax and dynamic features."
+  },
+  "err_endif_no_if": {
+    "message": "endif tag without matching if."
+  },
+  "err_elif_else_outside_if": {
+    "message": "elif/else can only be used inside an if block."
+  },
+  "err_endfor_no_for": {
+    "message": "endfor tag without matching for."
+  },
+  "err_endswitch_no_switch": {
+    "message": "endswitch tag without matching switch."
+  },
+  "err_endcase_no_case": {
+    "message": "endcase tag without matching case."
+  },
+  "err_enddefault_no_default": {
+    "message": "enddefault tag without matching default."
+  },
+  "err_if_unclosed": {
+    "message": "if block is not closed (missing endif)."
+  },
+  "err_for_unclosed": {
+    "message": "for loop is not closed (missing endfor)."
+  },
+  "err_switch_unclosed": {
+    "message": "switch block is not closed (missing endswitch)."
+  },
+  "err_case_unclosed": {
+    "message": "case block is not closed (missing endcase)."
+  },
+  "err_default_unclosed": {
+    "message": "default block is not closed (missing enddefault)."
+  },
+  "err_assignment_instead_of_comparison": {
+    "message": "Use '==' instead of '=' for comparison in conditions."
+  },
+  "err_logical_operator_single": {
+    "message": "Use '&&', '||' instead of '&', '|' for logical operators."
+  },
+  "err_unmatched_close_paren": {
+    "message": "Closing parenthesis ')' has no matching opening parenthesis."
+  },
+  "err_unmatched_open_paren": {
+    "message": "Opening parenthesis '(' has no matching closing parenthesis."
+  },
+  "err_missing_operand": {
+    "message": "Missing operand for comparison: \"$1\""
+  },
+  "err_index_outside_for": {
+    "message": "index can only be used inside a for loop."
+  },
+  "err_ternary_no_matching_question": {
+    "message": "':' has no matching '?'."
+  },
+  "err_ternary_no_matching_colon": {
+    "message": "'?' has no matching ':'."
+  },
+  "err_var_start_with_dollar": {
+    "message": "Variables must start with '$': $1"
+  },
+  "err_var_name_required": {
+    "message": "Variable name is required after '$'."
+  },
+  "err_undefined_variable": {
+    "message": "Undefined variable: $1"
+  },
+  "err_fn_no_args_allowed": {
+    "message": "Function \"$1()\" cannot have arguments."
+  },
+  "err_fn_args_required": {
+    "message": "Function \"$1()\" requires arguments."
+  },
+  "err_fn_one_arg_exact": {
+    "message": "Function \"$1()\" requires exactly 1 argument."
+  },
+  "err_fn_one_arg_max": {
+    "message": "Function \"$1()\" allows only 1 argument."
+  },
+  "err_fn_min_one_arg": {
+    "message": "Function \"$1()\" requires at least 1 argument."
+  },
+  "err_substr_args": {
+    "message": "Function \"substr()\" requires 2 or 3 arguments."
+  },
+  "err_replace_args": {
+    "message": "Function \"replace()\" requires 3 arguments."
+  },
+  "err_random_args": {
+    "message": "Function \"random()\" requires arguments."
+  },
+  "err_range_both_values_required": {
+    "message": "Range specify (~) requires both values: \"$1\""
+  },
+  "err_cursor_number_required": {
+    "message": "Cursor number or expression required (e.g. {{#1}}, {{#$index}})."
+  },
+  "err_set_operator_required": {
+    "message": "set syntax requires '=' or compound assignment (+=, -=, etc.)."
+  },
+  "err_unknown_tag": {
+    "message": "Unknown tag: {{$1}}"
+  },
+  "err_trigger_arg_regex_required": {
+    "message": "Trigger argument definition requires regex (e.g. ${id:\\d+})"
   }
 }

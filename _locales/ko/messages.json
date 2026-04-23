@@ -71,6 +71,12 @@
   "settings_particles_desc": {
     "message": "스니펫이 치환될 때 사방으로 퍼지는 파티클과 파동 효과를 보여줍니다."
   },
+  "settings_shift_cursor": {
+    "message": "커서 레벨 자동 조정"
+  },
+  "settings_shift_cursor_desc": {
+    "message": "스니펫 삽입 시 문서의 기존 커서 위치를 뒤로 밀어 항상 새 스니펫을 먼저 입력하도록 합니다."
+  },
   "settings_language": {
     "message": "언어 (Language)"
   },
@@ -180,7 +186,7 @@
     "message": "여러 옵션 중 하나를 선택하는 메뉴를 띄웁니다. 숫자키(1~9)로도 선택 가능합니다."
   },
   "guide_items_prompt_tip": {
-    "message": "💡 Tip: 동적 프롬프트"
+    "message": "\ud83d\udca1 Tip: \ub3d9\uc801 \ud504\ub86c\ud504\ud2b8"
   },
   "guide_items_prompt_tip_desc": {
     "message": "프롬프트 메시지에도 변수나 수식을 사용할 수 있습니다."
@@ -255,7 +261,7 @@
     "message": "중괄호 안에서 연산(+, -, *, /, %)과 함수 호출을 수행합니다."
   },
   "guide_items_scope_tip": {
-    "message": "💡 Tip: 변수 유효 범위 (Scope)"
+    "message": "\ud83d\udca1 Tip: \ubcc0\uc218 \uc720\ud6a8 \ubc94\uc704 (Scope)"
   },
   "guide_items_scope_tip_desc": {
     "message": "외부에서 선언된 변수는 if, for, switch 블록 내부에서도 수정할 수 있습니다. 단, 블록 내부에서 처음 정의된 변수는 블록이 종료되면 자동으로 사라집니다."
@@ -316,5 +322,110 @@
   },
   "app_description": {
     "message": "강력한 문법과 동적 기능을 지원하는 지능형 텍스트 확장 도구"
+  },
+  "err_endif_no_if": {
+    "message": "endif에 매칭되는 if가 없습니다."
+  },
+  "err_elif_else_outside_if": {
+    "message": "elif/else는 if 블록 내부에서만 사용할 수 있습니다."
+  },
+  "err_endfor_no_for": {
+    "message": "endfor에 매칭되는 for가 없습니다."
+  },
+  "err_endswitch_no_switch": {
+    "message": "endswitch에 매칭되는 switch가 없습니다."
+  },
+  "err_endcase_no_case": {
+    "message": "endcase에 매칭되는 case가 없습니다."
+  },
+  "err_enddefault_no_default": {
+    "message": "enddefault에 매칭되는 default가 없습니다."
+  },
+  "err_if_unclosed": {
+    "message": "if 블록이 닫히지 않았습니다 (endif 누락)."
+  },
+  "err_for_unclosed": {
+    "message": "for 루프가 닫히지 않았습니다 (endfor 누락)."
+  },
+  "err_switch_unclosed": {
+    "message": "switch 블록이 닫히지 않았습니다 (endswitch 누락)."
+  },
+  "err_case_unclosed": {
+    "message": "case 블록이 닫히지 않았습니다 (endcase 누락)."
+  },
+  "err_default_unclosed": {
+    "message": "default 블록이 닫히지 않았습니다 (enddefault 누락)."
+  },
+  "err_assignment_instead_of_comparison": {
+    "message": "조건문에서 '=' 대신 '=='를 사용해야 합니다."
+  },
+  "err_logical_operator_single": {
+    "message": "논리 연산자 '&', '|' 대신 '&&', '||'를 사용해야 합니다."
+  },
+  "err_unmatched_close_paren": {
+    "message": "닫는 괄호 ')'에 매칭되는 여는 괄호가 없습니다."
+  },
+  "err_unmatched_open_paren": {
+    "message": "여는 괄호 '('에 매칭되는 닫는 괄호가 없습니다."
+  },
+  "err_missing_operand": {
+    "message": "비교 연산의 피연산자가 누락되었습니다: \"$1\""
+  },
+  "err_index_outside_for": {
+    "message": "index는 for 루프 내부에서만 사용할 수 있습니다."
+  },
+  "err_ternary_no_matching_question": {
+    "message": "':'에 매칭되는 '?'가 없습니다."
+  },
+  "err_ternary_no_matching_colon": {
+    "message": "'?'에 매칭되는 ':'가 없습니다."
+  },
+  "err_var_start_with_dollar": {
+    "message": "변수는 '$'로 시작해야 합니다: $1"
+  },
+  "err_var_name_required": {
+    "message": "'$' 뒤에 인자 이름이 필요합니다."
+  },
+  "err_undefined_variable": {
+    "message": "정의되지 않은 변수입니다: $1"
+  },
+  "err_fn_no_args_allowed": {
+    "message": "\"$1()\" 함수는 인자를 가질 수 없습니다."
+  },
+  "err_fn_args_required": {
+    "message": "\"$1()\" 함수는 인자가 필요합니다."
+  },
+  "err_fn_one_arg_exact": {
+    "message": "\"$1()\" 함수는 정확히 1개의 인자가 필요합니다."
+  },
+  "err_fn_one_arg_max": {
+    "message": "\"$1()\" 함수는 1개의 인자만 허용합니다."
+  },
+  "err_fn_min_one_arg": {
+    "message": "\"$1()\" 함수는 최소 1개의 인자가 필요합니다."
+  },
+  "err_substr_args": {
+    "message": "\"substr()\" 함수는 2개 또는 3개의 인자가 필요합니다."
+  },
+  "err_replace_args": {
+    "message": "\"replace()\" 함수는 3개의 인자가 필요합니다."
+  },
+  "err_random_args": {
+    "message": "\"random()\" 함수는 인자가 필요합니다."
+  },
+  "err_range_both_values_required": {
+    "message": "범위 지정(~)은 양쪽 값이 모두 필요합니다: \"$1\""
+  },
+  "err_cursor_number_required": {
+    "message": "커서 번호나 수식이 필요합니다 (예: {{#1}}, {{#$index}})."
+  },
+  "err_set_operator_required": {
+    "message": "set 구문에는 '=' 또는 복합 할당 연산자(+=, -= 등)가 필요합니다."
+  },
+  "err_unknown_tag": {
+    "message": "알 수 없는 태그입니다: {{$1}}"
+  },
+  "err_trigger_arg_regex_required": {
+    "message": "트리거 인자 정의에는 정규식이 필요합니다 (예: ${id:\\d+})"
   }
 }

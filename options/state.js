@@ -19,6 +19,7 @@ let currentConfig = {
   addSnippet: "Alt+N",
   toggleFold: "Alt+L",
   showParticles: true,
+  shiftCursorLevels: true,
   language: "ko"
 };
 let snippetGroups = [];

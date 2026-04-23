@@ -206,6 +206,14 @@ async function selectAndReplace(el, info, context, triggerLength, replacement, a
   // 2. PROCESS TEMPLATE (may show prompt modal)
   const processedReplacement = await processTemplate(replacement, args);
   
+  // --- Shift existing placeholders if enabled ---
+  if (config.shiftCursorLevels) {
+    const newMaxLevel = getMaxCursorLevel(processedReplacement);
+    if (newMaxLevel > 0) {
+      shiftVisualPlaceholders(el, newMaxLevel);
+    }
+  }
+  
   // 3. IF CANCELLED, JUST STOP
   if (processedReplacement === null || (processedReplacement === "" && replacement.includes('prompt('))) {
     return { start: 0 };

@@ -148,3 +148,50 @@ function getCaretCoordinates(element, position) {
   document.body.removeChild(div);
   return coords;
 }
+
+/**
+ * Returns the maximum cursor level found in the given text.
+ */
+function getMaxCursorLevel(text) {
+  let max = -1;
+  // Check static tags {{#1}}, {{#2}}
+  for (const m of text.matchAll(CURSOR_REGEX)) {
+    const level = (m[1] === 'cursor' || m[1] === '#c' || m[1] === '#cursor') ? 0 : (parseInt(m[1].substring(1), 10) || 0);
+    if (level > max) max = level;
+  }
+  // Check visual tags ⟦1⟧
+  for (const m of text.matchAll(VISUAL_CURSOR_REGEX)) {
+    const level = parseInt(m[1], 10) || 0;
+    if (level > max) max = level;
+  }
+  return max;
+}
+
+/**
+ * Increments existing placeholder levels by the given offset.
+ */
+function shiftVisualPlaceholders(target, offset) {
+  if (offset <= 0) return target;
+
+  if (typeof target === 'string') {
+    return target.replace(VISUAL_CURSOR_REGEX, (match, level) => {
+      const newLevel = parseInt(level, 10) + offset;
+      return `${VISUAL_OPEN}${newLevel}${VISUAL_CLOSE}`;
+    });
+  }
+
+  // If target is an Element, we must update its content/value
+  const info = getTargetInfo(target);
+  if (info.isInput) {
+    target.value = target.value.replace(VISUAL_CURSOR_REGEX, (match, level) => {
+      const newLevel = parseInt(level, 10) + offset;
+      return `${VISUAL_OPEN}${newLevel}${VISUAL_CLOSE}`;
+    });
+  } else if (info.isEditable) {
+    // For ContentEditable, search for .ss-placeholder spans and update text
+    const placeholders = target.querySelectorAll('.ss-placeholder');
+    placeholders.forEach(p => {
+      p.textContent = p.textContent.replace(/\d+/, (level) => parseInt(level, 10) + offset);
+    });
+  }
+}

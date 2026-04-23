@@ -140,6 +140,15 @@ function restoreOptions() {
       });
     }
 
+    const shiftCursorToggle = document.getElementById('shift-cursor-toggle');
+    if (shiftCursorToggle) {
+      shiftCursorToggle.checked = currentConfig.shiftCursorLevels !== false;
+      shiftCursorToggle.addEventListener('change', () => {
+        currentConfig.shiftCursorLevels = shiftCursorToggle.checked;
+        saveToStorage();
+      });
+    }
+
     const languageSelect = document.getElementById('language-select');
     if (languageSelect) {
       languageSelect.style.display = 'none';

@@ -77,24 +77,24 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
     const content = m.inner.trim();
     const offset = m.index;
     if (content.startsWith('if ')) ifStack.push({ offset, content });
-    else if (content === 'endif') ifStack.length > 0 ? ifStack.pop() : addError(offset, "endif에 매칭되는 if가 없습니다.");
-    else if (content.startsWith('elif ') || content === 'else') { if (ifStack.length === 0) addError(offset, "elif/else는 if 블록 내부에서만 사용할 수 있습니다."); }
+    else if (content === 'endif') ifStack.length > 0 ? ifStack.pop() : addError(offset, chrome.i18n.getMessage("err_endif_no_if"));
+    else if (content.startsWith('elif ') || content === 'else') { if (ifStack.length === 0) addError(offset, chrome.i18n.getMessage("err_elif_else_outside_if")); }
     else if (content.startsWith('for ')) forStack.push({ offset, content });
-    else if (content === 'endfor') forStack.length > 0 ? forStack.pop() : addError(offset, "endfor에 매칭되는 for가 없습니다.");
+    else if (content === 'endfor') forStack.length > 0 ? forStack.pop() : addError(offset, chrome.i18n.getMessage("err_endfor_no_for"));
     else if (content.startsWith('switch ')) switchStack.push({ offset, content });
-    else if (content === 'endswitch') switchStack.length > 0 ? switchStack.pop() : addError(offset, "endswitch에 매칭되는 switch가 없습니다.");
+    else if (content === 'endswitch') switchStack.length > 0 ? switchStack.pop() : addError(offset, chrome.i18n.getMessage("err_endswitch_no_switch"));
     else if (content.startsWith('case ')) caseStack.push({ offset, content });
-    else if (content === 'endcase') caseStack.length > 0 ? caseStack.pop() : addError(offset, "endcase에 매칭되는 case가 없습니다.");
+    else if (content === 'endcase') caseStack.length > 0 ? caseStack.pop() : addError(offset, chrome.i18n.getMessage("err_endcase_no_case"));
     else if (content === 'default') caseStack.push({ offset, content });
-    else if (content === 'enddefault') caseStack.length > 0 ? caseStack.pop() : addError(offset, "enddefault에 매칭되는 default가 없습니다.");
+    else if (content === 'enddefault') caseStack.length > 0 ? caseStack.pop() : addError(offset, chrome.i18n.getMessage("err_enddefault_no_default"));
   });
 
-  ifStack.forEach(item => addError(item.offset, "if 블록이 닫히지 않았습니다 (endif 누락)."));
-  forStack.forEach(item => addError(item.offset, "for 루프가 닫히지 않았습니다 (endfor 누락)."));
-  switchStack.forEach(item => addError(item.offset, "switch 블록이 닫히지 않았습니다 (endswitch 누락)."));
+  ifStack.forEach(item => addError(item.offset, chrome.i18n.getMessage("err_if_unclosed")));
+  forStack.forEach(item => addError(item.offset, chrome.i18n.getMessage("err_for_unclosed")));
+  switchStack.forEach(item => addError(item.offset, chrome.i18n.getMessage("err_switch_unclosed")));
   caseStack.forEach(item => {
     const isDef = item.content === 'default';
-    addError(item.offset, `${isDef ? 'default' : 'case'} 블록이 닫히지 않았습니다 (${isDef ? 'enddefault' : 'endcase'} 누락).`);
+    addError(item.offset, chrome.i18n.getMessage(isDef ? "err_default_unclosed" : "err_case_unclosed"));
   });
 
   // --- Single-pass Highlight + Inline Validation ---
@@ -113,18 +113,18 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
     // Strip strings before checking for operator errors to avoid false positives inside quotes
     const strippedForOps = cond.replace(/(['"])(?:(?!\1).|\\\1)*\1/g, '""');
 
-    if (!isAssignment && /(?<![=!><])=(?![=])/.test(strippedForOps)) return "조건문에서 '=' 대신 '=='를 사용해야 합니다.";
-    if (/(?<!&)&(?!&)/.test(strippedForOps) || /(?<!\|)\|(?!\|)/.test(strippedForOps)) return "논리 연산자 '&', '|' 대신 '&&', '||'를 사용해야 합니다.";
+    if (!isAssignment && /(?<![=!><])=(?![=])/.test(strippedForOps)) return chrome.i18n.getMessage("err_assignment_instead_of_comparison");
+    if (/(?<!&)&(?!&)/.test(strippedForOps) || /(?<!\|)\|(?!\|)/.test(strippedForOps)) return chrome.i18n.getMessage("err_logical_operator_single");
 
     const pStack = [];
     for (let i = 0; i < cond.length; i++) {
       if (cond[i] === '(') pStack.push(i);
       else if (cond[i] === ')') {
-        if (pStack.length === 0) return "닫는 괄호 ')'에 매칭되는 여는 괄호가 없습니다.";
+        if (pStack.length === 0) return chrome.i18n.getMessage("err_unmatched_close_paren");
         pStack.pop();
       }
     }
-    if (pStack.length > 0) return "여는 괄호 '('에 매칭되는 닫는 괄호가 없습니다.";
+    if (pStack.length > 0) return chrome.i18n.getMessage("err_unmatched_open_paren");
 
     const parts = cond.split(/&&|\|\|/);
     for (let part of parts) {
@@ -133,11 +133,11 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
       const compOpRegex = /==|!=|>=|<=|>|</;
       if (compOpRegex.test(part)) {
         const ops = part.split(compOpRegex);
-        if (ops.some(op => !op.trim())) return `비교 연산의 피연산자가 누락되었습니다: "${part}"`;
+        if (ops.some(op => !op.trim())) return chrome.i18n.getMessage("err_missing_operand", [part]);
       }
     }
 
-    if (/\bindex\b/.test(cond) && activeForDepth === 0) return "index는 for 루프 내부에서만 사용할 수 있습니다.";
+    if (/\bindex\b/.test(cond) && activeForDepth === 0) return chrome.i18n.getMessage("err_index_outside_for");
 
     // Check Ternary Balance (? and :)
     let ternaryDepth = 0;
@@ -154,12 +154,12 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
                 if (c === '?') ternaryDepth++;
                 else if (c === ':') {
                     ternaryDepth--;
-                    if (ternaryDepth < 0) return "':'에 매칭되는 '?'가 없습니다.";
+                    if (ternaryDepth < 0) return chrome.i18n.getMessage("err_ternary_no_matching_question");
                 }
             }
         }
     }
-    if (ternaryDepth > 0) return "'?'에 매칭되는 ':'가 없습니다.";
+    if (ternaryDepth > 0) return chrome.i18n.getMessage("err_ternary_no_matching_colon");
 
     const stripped = cond.replace(/(['"])(?:(?!\1).|\\\1)*\1/g, '""');
     const tokens = stripped.match(/[\p{L}_][\p{L}\p{N}_]*/gu) || [];
@@ -170,11 +170,11 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
       if (/^\d+$/.test(token)) continue;
       const idx = stripped.indexOf(token);
       if (idx === 0 || stripped[idx - 1] !== '$') {
-        return `변수는 '$'로 시작해야 합니다: ${token}`;
+        return chrome.i18n.getMessage("err_var_start_with_dollar", [token]);
       }
     }
 
-    if (/\$(?![\p{L}\p{N}_])/u.test(cond)) return "'$' 뒤에 인자 이름이 필요합니다.";
+    if (/\$(?![\p{L}\p{N}_])/u.test(cond)) return chrome.i18n.getMessage("err_var_name_required");
 
     const vars = cond.match(/\$[\p{L}\p{N}_]+/gu);
     if (vars) {
@@ -185,7 +185,7 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
           if (assignmentMatch && assignmentMatch[1] === name) continue;
         }
         // Check both trigger args and scoped set variables
-        if (!definedArgs.has(name) && !scopedVars.has(name)) return `정의되지 않은 변수입니다: ${v}`;
+        if (!definedArgs.has(name) && !scopedVars.has(name)) return chrome.i18n.getMessage("err_undefined_variable", [v]);
       }
     }
     return null;
@@ -200,27 +200,27 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
     const isTypeFn = (n) => BUILTIN_FUNCS_TYPE_CAST.includes(n);
     
     const getError = (n, a) => {
-      if (BUILTIN_FUNCS_NO_ARGS.includes(n) && a.trim() !== "") return `"${n}()" 함수는 인자를 가질 수 없습니다.`;
+      if (BUILTIN_FUNCS_NO_ARGS.includes(n) && a.trim() !== "") return chrome.i18n.getMessage("err_fn_no_args_allowed", [n]);
       
       const parts = a.split(',').map(p => p.trim()).filter(p => p.length > 0);
-      if (BUILTIN_FUNCS_HAS_ARGS.includes(n) && parts.length === 0) return `"${n}()" 함수는 인자가 필요합니다.`;
+      if (BUILTIN_FUNCS_HAS_ARGS.includes(n) && parts.length === 0) return chrome.i18n.getMessage("err_fn_args_required", [n]);
       // Optional args fns like prompt() are allowed to be empty
-      if (BUILTIN_FUNCS_TYPE_CAST.includes(n) && parts.length !== 1) return `"${n}()" 함수는 정확히 1개의 인자가 필요합니다.`;
+      if (BUILTIN_FUNCS_TYPE_CAST.includes(n) && parts.length !== 1) return chrome.i18n.getMessage("err_fn_one_arg_exact", [n]);
 
       // Strict count checks
       const oneArgFns = ['upper', 'lower', 'trim', 'capitalize', 'len', 'prompt', 'round', 'ceil', 'floor', 'date', 'time', 'datetime'];
-      if (oneArgFns.includes(n) && parts.length > 1) return `"${n}()" 함수는 1개의 인자만 허용합니다.`;
-      if ((n === 'min' || n === 'max') && parts.length === 0) return `"${n}()" 함수는 최소 1개의 인자가 필요합니다.`;
-      if (n === 'substr' && (parts.length < 2 || parts.length > 3)) return `"substr()" 함수는 2개 또는 3개의 인자가 필요합니다.`;
-      if (n === 'replace' && parts.length !== 3) return `"replace()" 함수는 3개의 인자가 필요합니다.`;
+      if (oneArgFns.includes(n) && parts.length > 1) return chrome.i18n.getMessage("err_fn_one_arg_max", [n]);
+      if ((n === 'min' || n === 'max') && parts.length === 0) return chrome.i18n.getMessage("err_fn_min_one_arg", [n]);
+      if (n === 'substr' && (parts.length < 2 || parts.length > 3)) return chrome.i18n.getMessage("err_substr_args");
+      if (n === 'replace' && parts.length !== 3) return chrome.i18n.getMessage("err_replace_args");
 
       if (n === 'random') {
-        if (parts.length === 0) return `"random()" 함수는 인자가 필요합니다.`;
+        if (parts.length === 0) return chrome.i18n.getMessage("err_random_args");
         for (const p of parts) {
           if (p.includes('~')) {
             const rangeParts = p.split('~').map(s => s.trim());
             if (rangeParts.length !== 2 || !rangeParts[0] || !rangeParts[1]) {
-              return `범위 지정(~)은 양쪽 값이 모두 필요합니다: "${p}"`;
+              return chrome.i18n.getMessage("err_range_both_values_required", [p]);
             }
           }
         }
@@ -345,7 +345,7 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
         const trimmedExpr = exprPart.trim();
         
         if (!trimmedExpr) {
-          addError(offset, "커서 번호나 수식이 필요합니다 (예: {{#1}}, {{#$index}}).");
+          addError(offset, chrome.i18n.getMessage("err_cursor_number_required"));
           return `<span class="error-badge">${match}</span>`;
         }
 
@@ -389,7 +389,7 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
       if (content.startsWith('set ')) {
         const assignment = content.substring(4);
         if (!assignment.includes('=')) {
-          addError(offset, "set 구문에는 '=' 또는 복합 할당 연산자(+=, -= 등)가 필요합니다.");
+          addError(offset, chrome.i18n.getMessage("err_set_operator_required"));
           return `<span class="error-badge">${match}</span>`;
         }
         const err = validateExpr(assignment, offset, true);
@@ -420,7 +420,7 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
       }
 
       if (content === 'index' && activeForDepth === 0) {
-        addError(offset, "index는 for 루프 내부에서만 사용할 수 있습니다.");
+        addError(offset, chrome.i18n.getMessage("err_index_outside_for"));
         return `<span class="error-badge">${match}</span>`;
       }
 
@@ -443,7 +443,7 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
       return `<span class="syntax-badge">{{</span><span class="expr-badge">${highlightInnerExpr(inner, offset, addError)}</span><span class="syntax-badge">}}</span>`;
     }
 
-    addError(offset, `알 수 없는 태그입니다: {{${content}}}`);
+    addError(offset, chrome.i18n.getMessage("err_unknown_tag", [content]));
       return `<span class="error-badge">${match}</span>`;
     })();
     output += highlighted;
@@ -468,7 +468,7 @@ function updateTriggerHighlight(input, highlightDiv) {
   
   text = text.replace(ARG_REGEX, (match, name, inner) => {
     if (!inner) {
-      const msg = "트리거 인자 정의에는 정규식이 필요합니다 (예: ${id:\\d+})";
+      const msg = chrome.i18n.getMessage("err_trigger_arg_regex_required");
       if (!firstError) firstError = msg;
       return `<span class="error-badge">${match}</span>`;
     }

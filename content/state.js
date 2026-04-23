@@ -1,6 +1,9 @@
 // --- Constants & Global State ---
 
-const defaultConfig = { nextCursor: "Ctrl+Space" };
+const defaultConfig = { 
+  nextCursor: "Ctrl+Space",
+  shiftCursorLevels: true 
+};
 const defaultSnippetGroups = [{
   name: chrome.i18n.getMessage('default_group_name') || "General",
   snippets: [{
