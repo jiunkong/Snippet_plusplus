@@ -183,15 +183,22 @@ function shiftVisualPlaceholders(target, offset) {
   // If target is an Element, we must update its content/value
   const info = getTargetInfo(target);
   if (info.isInput) {
+    const start = target.selectionStart;
+    const end = target.selectionEnd;
     target.value = target.value.replace(VISUAL_CURSOR_REGEX, (match, level) => {
       const newLevel = parseInt(level, 10) + offset;
       return `${VISUAL_OPEN}${newLevel}${VISUAL_CLOSE}`;
     });
+    // Restore selection
+    target.setSelectionRange(start, end);
   } else if (info.isEditable) {
-    // For ContentEditable, search for .ss-placeholder spans and update text
+    // For ContentEditable, search for .ss-placeholder spans and update text and data-val
     const placeholders = target.querySelectorAll('.ss-placeholder');
-    placeholders.forEach(p => {
-      p.textContent = p.textContent.replace(/\d+/, (level) => parseInt(level, 10) + offset);
+    placeholders.forEach(ph => {
+      const level = parseInt(ph.dataset.val.substring(1), 10) || 0;
+      const newLevel = level + offset;
+      ph.textContent = `${VISUAL_OPEN}${newLevel}${VISUAL_CLOSE}`;
+      ph.dataset.val = `#${newLevel}`;
     });
   }
 }

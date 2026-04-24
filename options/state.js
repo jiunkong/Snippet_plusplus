@@ -20,6 +20,7 @@ let currentConfig = {
   toggleFold: "Alt+L",
   showParticles: true,
   shiftCursorLevels: true,
+  visualizeNewlines: true,
   language: "ko"
 };
 let snippetGroups = [];

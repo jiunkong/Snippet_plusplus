@@ -77,6 +77,12 @@
   "settings_shift_cursor_desc": {
     "message": "스니펫 삽입 시 문서의 기존 커서 위치를 뒤로 밀어 항상 새 스니펫을 먼저 입력하도록 합니다."
   },
+  "settings_visualize_newlines": {
+    "message": "개행 시각화"
+  },
+  "settings_visualize_newlines_desc": {
+    "message": "스니펫 에디터에서 줄 바꿈(Enter) 위치에 시각적 기호(↵)를 표시합니다."
+  },
   "settings_language": {
     "message": "언어 (Language)"
   },

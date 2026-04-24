@@ -147,3 +147,12 @@
   margin-right: 8px;
   font-size: 14px;
 }
+
+/* ── Newline Visualization ── */
+.hl-newline {
+  color: var(--text-secondary);
+  opacity: 0.5;
+  user-select: none;
+  pointer-events: none;
+  margin-right: 4px; /* Give some space before the real break */
+}

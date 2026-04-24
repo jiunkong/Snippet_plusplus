@@ -49,3 +49,10 @@ function loadSettings() {
     snippets.sort((a, b) => b.trigger.length - a.trigger.length);
   });
 }
+
+// Watch for settings changes and hot-reload
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'sync' && (changes.config || changes.snippetGroups)) {
+    loadSettings();
+  }
+});

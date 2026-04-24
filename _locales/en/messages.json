@@ -77,6 +77,12 @@
   "settings_shift_cursor_desc": {
     "message": "Automatically shifts existing placeholders backward to prioritize the newly inserted snippet's flow."
   },
+  "settings_visualize_newlines": {
+    "message": "Visualize Newlines"
+  },
+  "settings_visualize_newlines_desc": {
+    "message": "Display a visual marker (↵) at the end of each line in the snippet editor."
+  },
   "settings_language": {
     "message": "Language"
   },

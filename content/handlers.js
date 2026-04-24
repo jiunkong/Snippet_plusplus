@@ -209,7 +209,7 @@ async function selectAndReplace(el, info, context, triggerLength, replacement, a
   // --- Shift existing placeholders if enabled ---
   if (config.shiftCursorLevels) {
     const newMaxLevel = getMaxCursorLevel(processedReplacement);
-    if (newMaxLevel > 0) {
+    if (newMaxLevel >= 1) {
       shiftVisualPlaceholders(el, newMaxLevel);
     }
   }
@@ -260,6 +260,18 @@ async function selectAndReplace(el, info, context, triggerLength, replacement, a
     });
     const beforeInsert = el.selectionStart;
     insertWithBackspaces(visualReplacement, false);
+    
+    if (!hasPlaceholders) {
+      // Calculate real inserted length (accounting for \u0008 backspaces)
+      const parts = visualReplacement.split('\u0008');
+      let netLength = parts[0].length;
+      for (let i = 1; i < parts.length; i++) {
+        netLength = Math.max(0, netLength - 1) + parts[i].length;
+      }
+      const newPos = beforeInsert + netLength;
+      el.setSelectionRange(newPos, newPos);
+    }
+    
     return { start: beforeInsert, hasPlaceholders }; 
   }
 
@@ -269,7 +281,8 @@ async function selectAndReplace(el, info, context, triggerLength, replacement, a
       .replace(/&/g, "&amp;").replace(/</g, "&lt;")
       .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-    const htmlReplacement = escaped
+    const markerId = `spp-cursor-${Date.now()}`;
+    let htmlReplacement = escaped
       .replace(CURSOR_REGEX, (_, p1) => {
         hasPlaceholders = true;
         const displayVal = getDisplay(p1);
@@ -278,7 +291,30 @@ async function selectAndReplace(el, info, context, triggerLength, replacement, a
       })
       .replace(/\n/g, '<br>');
 
+    // If no placeholders, add a temporary marker to track the end position
+    if (!hasPlaceholders) {
+      htmlReplacement += `<span id="${markerId}" style="display:none; line-height:0;">\u200b</span>`;
+    }
+
     insertWithBackspaces(htmlReplacement, true);
+
+    if (!hasPlaceholders) {
+      // Find the marker and move the cursor there
+      const marker = document.getElementById(markerId);
+      if (marker) {
+        const range = document.createRange();
+        range.setStartAfter(marker);
+        range.collapse(true);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        marker.remove();
+        
+        // Notion fix: ensure focus is maintained
+        if (el && typeof el.focus === 'function') el.focus();
+      }
+    }
+
     return { start: 0, hasPlaceholders };
   }
 }

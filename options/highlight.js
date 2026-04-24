@@ -451,6 +451,11 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
   output += text.slice(lastIndex);
   text = output;
 
+  if (typeof currentConfig !== 'undefined' && currentConfig.visualizeNewlines !== false) {
+    // Standardize to \n and prepend the visual marker
+    text = text.replace(/\r?\n/g, '<span class="hl-newline">↵</span>\n');
+  }
+
   highlightDiv.innerHTML = text + (text.endsWith('\n') ? ' ' : '');
   return firstErrorMessage;
 }

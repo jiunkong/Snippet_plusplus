@@ -122,7 +122,8 @@ function restoreOptions() {
     snippetGroups: defaultSnippetGroups
   }, (items) => {
     try {
-      currentConfig = JSON.parse(items.config);
+      const loadedConfig = JSON.parse(items.config);
+      currentConfig = { ...currentConfig, ...loadedConfig };
     } catch (e) {
       console.error("Invalid config JSON", e);
     }
@@ -149,6 +150,17 @@ function restoreOptions() {
       });
     }
 
+    const visualizeNewlinesToggle = document.getElementById('visualize-newlines-toggle');
+    if (visualizeNewlinesToggle) {
+      visualizeNewlinesToggle.checked = currentConfig.visualizeNewlines !== false;
+      visualizeNewlinesToggle.addEventListener('change', () => {
+        currentConfig.visualizeNewlines = visualizeNewlinesToggle.checked;
+        saveToStorage();
+        // Force refresh all highlights to show/hide markers immediately
+        if (typeof updateAllHighlights === 'function') updateAllHighlights();
+      });
+    }
+
     const languageSelect = document.getElementById('language-select');
     if (languageSelect) {
       languageSelect.style.display = 'none';
@@ -161,8 +173,20 @@ function restoreOptions() {
 
     snippetGroups = items.snippetGroups;
     renderGroupsList();
+    if (typeof updateAllHighlights === 'function') updateAllHighlights();
     if (snippetGroups.length > 0) selectGroup(0);
     initHotkeyButtons();
+  });
+}
+
+function updateAllHighlights() {
+  document.querySelectorAll('.snippet-row').forEach(row => {
+    const textarea = row.querySelector('.replacement-input');
+    const highlightDiv = row.querySelector('.replacement-highlight');
+    const triggerInput = row.querySelector('.trigger-input');
+    if (textarea && highlightDiv && triggerInput) {
+      updateHighlight(textarea, highlightDiv, triggerInput.value);
+    }
   });
 }
 
