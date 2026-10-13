@@ -15,8 +15,8 @@ function debouncedSave() {
   }, 1500);
 }
 
-function saveToStorage() {
-  syncActiveGroupData();
+function saveToStorage(syncEditor = true) {
+  if (syncEditor) syncActiveGroupData();
   const savedSnapshot = snapshotSyncedState(currentConfig, snippetGroups);
   return saveSyncedState(currentConfig, snippetGroups).then(() => {
     lastSyncedSnapshot = savedSnapshot;
@@ -71,9 +71,11 @@ function importSettings(e) {
       const data = JSON.parse(event.target.result);
       if (!Array.isArray(data.snippetGroups)) throw new Error();
       if (confirm(t('status_import_confirm'))) {
+        if (saveTimeout) clearTimeout(saveTimeout);
+        saveTimeout = null;
         currentConfig = data.config || currentConfig;
         snippetGroups = data.snippetGroups;
-        saveToStorage().then(saved => { if (saved) window.location.reload(); });
+        saveToStorage(false).then(saved => { if (saved) window.location.reload(); });
       }
     } catch (err) { showStatus(t('status_invalid_file'), true); }
   };
