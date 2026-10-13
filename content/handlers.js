@@ -24,7 +24,7 @@ function showSnippetPrompt(message) {
       <div class="spp-prompt-modal">
         <div class="spp-prompt-header">
           <div class="spp-prompt-title"><span>✨</span> Snippet++ Prompt</div>
-          <div class="spp-prompt-message">${message}</div>
+          <div class="spp-prompt-message"></div>
         </div>
         <div class="spp-prompt-body">
           <input type="text" class="spp-prompt-input" placeholder="Type here...">
@@ -36,6 +36,7 @@ function showSnippetPrompt(message) {
       </div>
     `;
 
+    overlay.querySelector('.spp-prompt-message').textContent = String(message);
     document.body.appendChild(overlay);
 
     const input = overlay.querySelector('.spp-prompt-input');
@@ -106,28 +107,35 @@ function showSnippetChoice(title, options) {
     overlay.className = 'spp-prompt-overlay spp-choice-overlay';
     overlay.style.all = 'initial';
 
-    const optionsHtml = options.map((opt, i) => `
-      <div class="spp-choice-item ${i === 0 ? 'active' : ''}" data-value="${opt}" data-index="${i}">
-        <span class="spp-choice-key">${i + 1}</span>
-        <span class="spp-choice-text">${opt}</span>
-      </div>
-    `).join('');
-
     overlay.innerHTML = `
       <div class="spp-prompt-modal spp-choice-modal">
         <div class="spp-prompt-header">
           <div class="spp-prompt-title"><span>📂</span> Snippet++ Choice</div>
-          <div class="spp-prompt-message">${title}</div>
+          <div class="spp-prompt-message"></div>
         </div>
-        <div class="spp-choice-body">
-          ${optionsHtml}
-        </div>
+        <div class="spp-choice-body"></div>
         <div class="spp-prompt-footer">
           <button class="spp-prompt-btn spp-prompt-btn-cancel">Cancel</button>
         </div>
       </div>
     `;
 
+    overlay.querySelector('.spp-prompt-message').textContent = String(title);
+    const choiceBody = overlay.querySelector('.spp-choice-body');
+    options.forEach((option, index) => {
+      const item = document.createElement('div');
+      item.className = `spp-choice-item ${index === 0 ? 'active' : ''}`;
+      item.dataset.index = String(index);
+      item.dataset.value = String(option);
+      const key = document.createElement('span');
+      key.className = 'spp-choice-key';
+      key.textContent = String(index + 1);
+      const label = document.createElement('span');
+      label.className = 'spp-choice-text';
+      label.textContent = String(option);
+      item.append(key, label);
+      choiceBody.appendChild(item);
+    });
     document.body.appendChild(overlay);
 
     let activeIdx = 0;
@@ -148,6 +156,7 @@ function showSnippetChoice(title, options) {
     };
 
     const updateActive = (newIdx) => {
+      if (!items.length) return;
       items[activeIdx].classList.remove('active');
       activeIdx = (newIdx + items.length) % items.length;
       items[activeIdx].classList.add('active');
@@ -158,11 +167,11 @@ function showSnippetChoice(title, options) {
     const handleKey = (e) => {
       if (e.key === 'ArrowDown') { e.preventDefault(); updateActive(activeIdx + 1); }
       else if (e.key === 'ArrowUp') { e.preventDefault(); updateActive(activeIdx - 1); }
-      else if (e.key === 'Enter') { e.preventDefault(); finish(items[activeIdx].dataset.value); }
-      else if (e.key === 'Escape') { e.preventDefault(); finish(""); }
+      else if (e.key === 'Enter' && items.length) { e.preventDefault(); finishWithCleanup(items[activeIdx].dataset.value); }
+      else if (e.key === 'Escape') { e.preventDefault(); finishWithCleanup(""); }
       else if (/^[1-9]$/.test(e.key)) {
         const idx = parseInt(e.key) - 1;
-        if (items[idx]) { e.preventDefault(); finish(items[idx].dataset.value); }
+        if (items[idx]) { e.preventDefault(); finishWithCleanup(items[idx].dataset.value); }
       }
       e.stopPropagation();
     };
@@ -189,11 +198,13 @@ function showSnippetChoice(title, options) {
 async function selectAndReplace(el, info, context, triggerLength, replacement, args = {}) {
   const selection = window.getSelection();
   const triggerText = context.textBefore.slice(-triggerLength);
+  const triggerStart = context.textBefore.length - triggerLength;
+  let insertionStart = triggerStart;
+  const before = getEditorSnapshot(el, info);
 
   // 1. DELETE TRIGGER SYNCHRONOUSLY (before async boundary)
   if (info.isInput) {
-    const startPos = el.selectionEnd - triggerLength;
-    el.setSelectionRange(startPos, el.selectionEnd);
+    el.setSelectionRange(triggerStart, el.selectionEnd);
   } else if (info.isEditable) {
     selection.removeAllRanges();
     selection.addRange(context.range);
@@ -201,22 +212,38 @@ async function selectAndReplace(el, info, context, triggerLength, replacement, a
       selection.modify("extend", "backward", "character");
     }
   }
-  document.execCommand('delete', false, null);
+  withInternalEdit(() => document.execCommand('delete', false, null));
 
   // 2. PROCESS TEMPLATE (may show prompt modal)
-  const processedReplacement = await processTemplate(replacement, args);
-  
-  // --- Shift existing placeholders if enabled ---
-  if (config.shiftCursorLevels) {
-    const newMaxLevel = getMaxCursorLevel(processedReplacement);
-    if (newMaxLevel >= 1) {
-      shiftVisualPlaceholders(el, newMaxLevel);
-    }
-  }
+  let processedReplacement = await processTemplate(replacement, args);
   
   // 3. IF CANCELLED, JUST STOP
   if (processedReplacement === null || (processedReplacement === "" && replacement.includes('prompt('))) {
-    return { start: 0 };
+    insertRestoredText(triggerText);
+    return { cancelled: true };
+  }
+
+  // --- Shift existing placeholders if enabled ---
+  if (config.shiftCursorLevels) {
+    const newMaxLevel = getMaxCursorLevel(processedReplacement);
+    if (newMaxLevel >= 0) {
+      // Reserve every level used by the new snippet. Adding only the maximum
+      // level causes collisions (and level 0 previously was not shifted at all).
+      shiftVisualPlaceholders(el, newMaxLevel + 1);
+      const shiftedContext = getCaretContext(el, info);
+      if (shiftedContext) insertionStart = shiftedContext.textBefore.length;
+    }
+  }
+
+  // --- Auto-append cursor if missing (Notion fix) ---
+  // If no cursor position is specified, we want the cursor to end up at the very end.
+  // We achieve this by automatically appending a hidden {{#cursor}} tag.
+  let isAutoCursor = false;
+  let autoCursorId = null;
+  if (info.isEditable && !processedReplacement.match(CURSOR_REGEX) && !processedReplacement.match(VISUAL_CURSOR_REGEX)) {
+    processedReplacement += '{{#cursor}}';
+    isAutoCursor = true;
+    autoCursorId = `spp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   }
 
   const getDisplay = (tag) => {
@@ -258,8 +285,8 @@ async function selectAndReplace(el, info, context, triggerLength, replacement, a
       hasPlaceholders = true;
       return `${VISUAL_OPEN}${getDisplay(p1)}${VISUAL_CLOSE}`;
     });
-    const beforeInsert = el.selectionStart;
-    insertWithBackspaces(visualReplacement, false);
+
+    withInternalEdit(() => insertWithBackspaces(visualReplacement, false));
     
     if (!hasPlaceholders) {
       // Calculate real inserted length (accounting for \u0008 backspaces)
@@ -268,59 +295,38 @@ async function selectAndReplace(el, info, context, triggerLength, replacement, a
       for (let i = 1; i < parts.length; i++) {
         netLength = Math.max(0, netLength - 1) + parts[i].length;
       }
-      const newPos = beforeInsert + netLength;
+      const newPos = insertionStart + netLength;
       el.setSelectionRange(newPos, newPos);
     }
-    
-    return { start: beforeInsert, hasPlaceholders }; 
-  }
 
+    return { start: insertionStart, hasPlaceholders, before, afterInsert: getEditorSnapshot(el, info) };
+  }
   if (info.isEditable) {
     let hasPlaceholders = false;
     const escaped = processedReplacement
       .replace(/&/g, "&amp;").replace(/</g, "&lt;")
       .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-    const markerId = `spp-cursor-${Date.now()}`;
-    let htmlReplacement = escaped
+    const htmlReplacement = escaped
       .replace(CURSOR_REGEX, (_, p1) => {
         hasPlaceholders = true;
         const displayVal = getDisplay(p1);
-        const display    = `${VISUAL_OPEN}${displayVal}${VISUAL_CLOSE}`;
-        return `<span class="ss-placeholder" contenteditable="false" data-val="${p1}">${display}</span>`;
+        const isAuto     = (isAutoCursor && p1 === '#cursor');
+        const display    = isAuto ? '' : `${VISUAL_OPEN}${displayVal}${VISUAL_CLOSE}`;
+        const extraStyle = isAuto ? `style="display:none;" data-spp-auto-cursor="${autoCursorId}"` : '';
+        return `<span class="ss-placeholder" ${extraStyle} contenteditable="false" data-val="${p1}">${display}</span>`;
       })
       .replace(/\n/g, '<br>');
 
-    // If no placeholders, add a temporary marker to track the end position
-    if (!hasPlaceholders) {
-      htmlReplacement += `<span id="${markerId}" style="display:none; line-height:0;">\u200b</span>`;
-    }
+    withInternalEdit(() => insertWithBackspaces(htmlReplacement, true));
 
-    insertWithBackspaces(htmlReplacement, true);
-
-    if (!hasPlaceholders) {
-      // Find the marker and move the cursor there
-      const marker = document.getElementById(markerId);
-      if (marker) {
-        const range = document.createRange();
-        range.setStartAfter(marker);
-        range.collapse(true);
-        const sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(range);
-        marker.remove();
-        
-        // Notion fix: ensure focus is maintained
-        if (el && typeof el.focus === 'function') el.focus();
-      }
-    }
-
-    return { start: 0, hasPlaceholders };
+    return { start: insertionStart, hasPlaceholders, before, afterInsert: getEditorSnapshot(el, info), autoCursorId };
   }
 }
 
 // --- Input Handler ---
 async function handleInput(event) {
+  if (isInternalEdit) return;
   // Support for IME (Korean) and prevent aggressive reset
   if (event.inputType === 'insertText' || event.inputType === 'insertCompositionText') {
     if (event.data) {
@@ -347,6 +353,9 @@ async function handleInput(event) {
   const context = getCaretContext(el, info);
   if (!context) return;
 
+  // Any later edit invalidates the saved transaction.
+  if (lastExpansion && lastExpansion.el === el) lastExpansion = null;
+
   for (const snippet of snippets) {
     let match         = null;
     let triggerLength = 0;
@@ -364,24 +373,23 @@ async function handleInput(event) {
     if (match && typingSeqLength >= triggerLength) {
       typingSeqLength = 0;
       const result = await selectAndReplace(el, info, context, triggerLength, snippet.replacement, match.groups || {});
+      if (result.cancelled) break;
+      let fullText = '';
+      if (info.isInput) {
+        fullText = el.value;
+      } else {
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
+        let node;
+        while (node = walker.nextNode()) fullText += node.textContent;
+      }
 
-      setTimeout(() => {
-        let fullText = '';
-        if (info.isInput) {
-          fullText = el.value;
-        } else {
-          const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
-          let node;
-          while (node = walker.nextNode()) fullText += node.textContent;
-        }
+      // Place the caret before the host editor can normalize the inserted DOM or
+      // emit another input event. Deferring this used to make cursor placement
+      // depend on a 50 ms race with editors such as Notion.
+      placeExpansionCursor(el, info, result, fullText);
 
-        const nextMatch       = result.hasPlaceholders ? findNextPlaceholder(fullText, result.start, result.start) : null;
-        const placeholderFound = nextMatch && selectPlaceholder(el, info, nextMatch);
-
-        triggerEffect(el, info);
-
-        if (placeholderFound) document.execCommand('delete', false, null);
-      }, 50);
+      triggerEffect(el, info);
+      recordExpansion(el, info, result.before, result.autoCursorId);
 
       break;
     }
@@ -390,40 +398,50 @@ async function handleInput(event) {
 
 // --- Keydown Handler (Hotkey Navigation) ---
 function handleKeyDown(event) {
-  if (!isHotkeyPressed(event, config.nextCursor)) return;
-
   const el   = event.target;
   const info = getTargetInfo(el);
   if (!info.isInput && !info.isEditable) return;
 
-  let foundPlaceholder = null;
+  if (isHotkeyPressed(event, config.nextCursor)) {
+    let foundPlaceholder = null;
 
-  if (info.isInput) {
-    foundPlaceholder = findNextPlaceholder(el.value, el.selectionStart, el.selectionEnd);
-    if (foundPlaceholder) {
-      el.setSelectionRange(foundPlaceholder.index, foundPlaceholder.index + foundPlaceholder.length);
-    }
-  } else {
-    const walker    = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
-    let fullText    = '';
-    let currentOffset = 0;
-    const selection = window.getSelection();
-    const currentRange = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
-    let node;
-    while (node = walker.nextNode()) {
-      if (currentRange && node === currentRange.startContainer) {
-        currentOffset = fullText.length + currentRange.startOffset;
+    if (info.isInput) {
+      foundPlaceholder = findNextPlaceholder(el.value, el.selectionStart, el.selectionEnd);
+      if (foundPlaceholder) {
+        el.setSelectionRange(foundPlaceholder.index, foundPlaceholder.index + foundPlaceholder.length);
       }
-      fullText += node.textContent;
+    } else {
+      const walker    = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
+      let fullText    = '';
+      let currentOffset = 0;
+      const selection = window.getSelection();
+      const currentRange = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+      let node;
+      while (node = walker.nextNode()) {
+        if (currentRange && node === currentRange.startContainer) {
+          currentOffset = fullText.length + currentRange.startOffset;
+        }
+        fullText += node.textContent;
+      }
+
+      foundPlaceholder = findNextPlaceholder(fullText, currentOffset, currentOffset);
+      if (foundPlaceholder) selectPlaceholder(el, info, foundPlaceholder);
     }
 
-    foundPlaceholder = findNextPlaceholder(fullText, currentOffset, currentOffset);
-    if (foundPlaceholder) selectPlaceholder(el, info, foundPlaceholder);
+    if (foundPlaceholder) {
+      event.preventDefault();
+      setTimeout(() => document.execCommand('delete', false, null), 10);
+    }
+    return;
   }
 
-  if (foundPlaceholder) {
-    event.preventDefault();
-    setTimeout(() => document.execCommand('delete', false, null), 10);
+  // Undo Expansion
+  if (isHotkeyPressed(event, config.undoExpansion)) {
+    if (undoLastExpansion()) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    return;
   }
 }
 
@@ -446,12 +464,24 @@ function isHotkeyPressed(event, hotkeyString) {
   return keyPart && event.key.toLowerCase() === keyPart.toLowerCase();
 }
 
+function placeExpansionCursor(el, info, result, fullText) {
+  // An auto cursor means the snippet has no explicit tab stop. Keep the
+  // insertion caret at the hidden end marker instead of navigating to an
+  // unrelated placeholder that was already in the editor.
+  if (result.autoCursorId && info.isEditable) {
+    placeCaretAtAutoCursor(el, result.autoCursorId);
+    return;
+  }
+
+  if (!result.hasPlaceholders) return;
+  const nextMatch = findNextPlaceholder(fullText, result.start, result.start);
+  if (nextMatch && selectPlaceholder(el, info, nextMatch)) {
+    withInternalEdit(() => document.execCommand('delete', false, null));
+  }
+}
+
 // --- Initialization ---
 loadSettings();
-
-chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'sync') loadSettings();
-});
 
 // Interruption detection: reset typing sequence on mouse click or arrow keys
 document.addEventListener('mousedown', () => { typingSeqLength = 0; });

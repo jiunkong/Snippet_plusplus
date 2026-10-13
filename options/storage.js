@@ -1,12 +1,32 @@
 // --- Storage: Save / Load / Import / Export ---
 
+let lastSyncedSnapshot = null;
+let conflictResolutionPending = false;
+
+function snapshotSyncedState(config, groups) {
+  return JSON.stringify({ config, snippetGroups: groups });
+}
+
 function debouncedSave() {
   if (saveTimeout) clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(() => saveToStorage(), 500);
+  saveTimeout = setTimeout(() => {
+    saveTimeout = null;
+    saveToStorage();
+  }, 1500);
 }
 
 function saveToStorage() {
-  chrome.storage.sync.set({ config: JSON.stringify(currentConfig), snippetGroups }, () => showStatus(t('status_saved')));
+  syncActiveGroupData();
+  const savedSnapshot = snapshotSyncedState(currentConfig, snippetGroups);
+  return saveSyncedState(currentConfig, snippetGroups).then(() => {
+    lastSyncedSnapshot = savedSnapshot;
+    showStatus(t('status_saved'));
+    return true;
+  }, error => {
+    console.error('Snippet++: Sync save failed', error);
+    showStatus(`${t('status_sync_failed')} ${error.message}`, true);
+    return false;
+  });
 }
 
 function saveOptions() {
@@ -49,12 +69,11 @@ function importSettings(e) {
   reader.onload = (event) => {
     try {
       const data = JSON.parse(event.target.result);
-      if (!data.snippetGroups) throw new Error();
+      if (!Array.isArray(data.snippetGroups)) throw new Error();
       if (confirm(t('status_import_confirm'))) {
         currentConfig = data.config || currentConfig;
         snippetGroups = data.snippetGroups;
-        saveToStorage();
-        setTimeout(() => window.location.reload(), 500);
+        saveToStorage().then(saved => { if (saved) window.location.reload(); });
       }
     } catch (err) { showStatus(t('status_invalid_file'), true); }
   };
@@ -102,10 +121,9 @@ function importGroup(e) {
           snippets: groupData.snippets || [],
           disabledSites: groupData.disabledSites || []
         });
-        saveToStorage();
+        saveToStorage().then(saved => { if (saved) showStatus(t('status_group_imported')); });
         renderGroupsList();
         selectGroup(snippetGroups.length - 1);
-        showStatus(t('status_group_imported'));
       }
     } catch (err) { 
       console.error(err);
@@ -117,20 +135,15 @@ function importGroup(e) {
 }
 
 function restoreOptions() {
-  chrome.storage.sync.get({
-    config: JSON.stringify(currentConfig),
-    snippetGroups: defaultSnippetGroups
-  }, (items) => {
-    try {
-      const loadedConfig = JSON.parse(items.config);
-      currentConfig = { ...currentConfig, ...loadedConfig };
-    } catch (e) {
-      console.error("Invalid config JSON", e);
-    }
+  loadSyncedState(DEFAULT_CONFIG, defaultSnippetGroups).then(async items => {
+    currentConfig = items.config;
+    snippetGroups = items.snippetGroups;
+    lastSyncedSnapshot = snapshotSyncedState(currentConfig, snippetGroups);
+    await loadLocale(currentConfig.uiLocale, false);
 
-    document.getElementById('hotkey-display-nextCursor').textContent = currentConfig.nextCursor || "Ctrl+Space";
-    document.getElementById('hotkey-display-addSnippet').textContent = currentConfig.addSnippet || "Alt+N";
-    document.getElementById('hotkey-display-toggleFold').textContent = currentConfig.toggleFold || "Alt+L";
+    for (const key of ['nextCursor', 'undoExpansion', 'addSnippet', 'toggleFold']) {
+      document.getElementById(`hotkey-display-${key}`).textContent = currentConfig[key] || DEFAULT_CONFIG[key];
+    }
 
     const particlesToggle = document.getElementById('particles-toggle');
     if (particlesToggle) {
@@ -162,22 +175,48 @@ function restoreOptions() {
     }
 
     const languageSelect = document.getElementById('language-select');
-    if (languageSelect) {
-      languageSelect.style.display = 'none';
-      // Manual language selection is not supported with chrome.i18n
-      const card = languageSelect.closest('.setting-card');
-      if (card) card.style.display = 'none';
-    }
+    languageSelect.value = currentConfig.uiLocale || 'system';
+    languageSelect.addEventListener('change', async () => {
+      currentConfig.uiLocale = languageSelect.value;
+      await loadLocale(currentConfig.uiLocale);
+      saveToStorage();
+    });
 
-    applyTranslations();
-
-    snippetGroups = items.snippetGroups;
     renderGroupsList();
     if (typeof updateAllHighlights === 'function') updateAllHighlights();
     if (snippetGroups.length > 0) selectGroup(0);
     initHotkeyButtons();
+  }).catch(async error => {
+    console.error('Snippet++: Sync load failed', error);
+    await loadLocale('system', false);
+    showStatus(`${t('status_sync_failed')} ${error.message}`, true);
   });
 }
+
+// A committed manifest marks a complete remote save. If this page also has
+// edits based on the previous version, ask which copy should win.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'sync' || !changes[SNIPPET_META_KEY] || conflictResolutionPending) return;
+  loadSyncedState(DEFAULT_CONFIG, defaultSnippetGroups).then(async remote => {
+    if (!lastSyncedSnapshot) return;
+    syncActiveGroupData();
+    const localSnapshot = snapshotSyncedState(currentConfig, snippetGroups);
+    const remoteSnapshot = snapshotSyncedState(remote.config, remote.snippetGroups);
+    if (remoteSnapshot === lastSyncedSnapshot || remoteSnapshot === localSnapshot) return;
+
+    conflictResolutionPending = true;
+    const hasLocalEdits = localSnapshot !== lastSyncedSnapshot;
+    const keepRemote = !hasLocalEdits || confirm(t('status_sync_conflict_confirm'));
+    if (keepRemote) {
+      window.location.reload();
+    } else {
+      // Saving the local copy publishes it as the new synced version.
+      lastSyncedSnapshot = remoteSnapshot;
+      await saveToStorage();
+      conflictResolutionPending = false;
+    }
+  }).catch(error => console.error('Snippet++: Unable to check synced changes', error));
+});
 
 function updateAllHighlights() {
   document.querySelectorAll('.snippet-row').forEach(row => {

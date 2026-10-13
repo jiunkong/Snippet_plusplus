@@ -53,6 +53,12 @@
   "settings_next_cursor_desc": {
     "message": "Set the hotkey to jump to the next placeholder after replacement."
   },
+  "settings_undo_expansion": {
+    "message": "Undo Expansion"
+  },
+  "settings_undo_expansion_desc": {
+    "message": "Set the hotkey to revert a snippet expansion back to its trigger text."
+  },
   "settings_add_snippet": {
     "message": "Add Snippet"
   },
@@ -88,6 +94,9 @@
   },
   "settings_language_desc": {
     "message": "Select the interface language."
+  },
+  "settings_language_system": {
+    "message": "Browser language"
   },
   "settings_change": {
     "message": "Change"
@@ -221,6 +230,9 @@
   "guide_items_substr_desc": {
     "message": "Cuts the string to the desired length from a specified position."
   },
+  "guide_items_string_match_desc": {
+    "message": "Checks whether a string starts or ends with the given text."
+  },
   "guide_items_str_desc": {
     "message": "Forcefully converts a value to a string."
   },
@@ -295,6 +307,9 @@
   },
   "status_saved": {
     "message": "Saved ✨"
+  },
+  "status_sync_failed": {
+    "message": "Sync failed:"
   },
   "status_export_started": {
     "message": "Export Started 📤"
@@ -407,6 +422,9 @@
   "err_fn_one_arg_max": {
     "message": "Function \"$1()\" allows only 1 argument."
   },
+  "err_fn_two_args_exact": {
+    "message": "Function \"$1()\" requires exactly 2 arguments."
+  },
   "err_fn_min_one_arg": {
     "message": "Function \"$1()\" requires at least 1 argument."
   },
@@ -433,5 +451,8 @@
   },
   "err_trigger_arg_regex_required": {
     "message": "Trigger argument definition requires regex (e.g. ${id:\\d+})"
+  },
+  "status_sync_conflict_confirm": {
+    "message": "Synced settings changed on another device while you were editing. Press OK to use the remote settings, or Cancel to keep this device's settings."
   }
 }

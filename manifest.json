@@ -23,12 +23,15 @@
       ],
       "js": [
         "utils/constants.js",
+        "utils/config.js",
+        "utils/sync.js",
         "utils/triggers.js",
         "content/evaluator.js",
         "content/state.js",
         "content/settings.js",
         "content/template.js",
         "content/dom.js",
+        "content/expansion.js",
         "content/effects.js",
         "content/handlers.js"
       ],
@@ -47,5 +50,6 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
-  }
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwYAVU58dKeDP8FAfgLRnEc6VVRoVuF//ekYVmSPZ2/wszC/GLufz3IdAiu1GOal6xAvgU2noJBKlms/L4JHzjELlaz72wpA2AqDJb7nqOkX9Tqrop5piWJq3oQ9b80HcbJnbgg10iz9zyfgScpuAwjqGrypoFe4yQphRL298yAznRkPzte9oiRI86qYrRnDgMUQhBEEh+v6ZjDEd9MM0QjDZNkEiS9jYQSGF6wYeKPFkiznNsx1IMrlHp2a4Oe/QO12W6x2xL5VtEe7ykrxpAASFxQvxZj2VKRHAyFn47HC5QlD0fou+XCp+bl87TChhnIFOgkyDKNWY/e+Me+ovSwIDAQAB"
 }

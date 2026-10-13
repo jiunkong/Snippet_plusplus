@@ -1,20 +1,16 @@
 // --- Settings: Storage Loading ---
 
+let settingsLoadVersion = 0;
+
 function loadSettings() {
-  chrome.storage.sync.get({
-    config: JSON.stringify(defaultConfig),
-    snippetGroups: defaultSnippetGroups
-  }, (items) => {
-    try {
-      config = JSON.parse(items.config);
-    } catch (e) {
-      console.error("Snippet++: Invalid config JSON", e);
-      config = defaultConfig;
-    }
+  const version = ++settingsLoadVersion;
+  loadSyncedState(defaultConfig, defaultSnippetGroups).then(items => {
+    if (version !== settingsLoadVersion) return;
+    config = items.config;
 
     const currentUrl = window.location.href;
     snippets = [];
-    if (items.snippetGroups) {
+    if (Array.isArray(items.snippetGroups)) {
       items.snippetGroups.forEach(group => {
         if (!group || !Array.isArray(group.snippets)) return;
 
@@ -34,6 +30,7 @@ function loadSettings() {
         if (siteMode === 'whitelist' && !onList) return;
 
         group.snippets.forEach(s => {
+          if (!s || typeof s.trigger !== 'string' || !s.trigger) return;
           const compiled = compileTrigger(s.trigger);
           snippets.push({
             ...s,
@@ -47,12 +44,14 @@ function loadSettings() {
 
     // Longer triggers take priority so they match before their prefixes
     snippets.sort((a, b) => b.trigger.length - a.trigger.length);
-  });
+  }).catch(error => console.error('Snippet++: Sync load failed', error));
 }
 
 // Watch for settings changes and hot-reload
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'sync' && (changes.config || changes.snippetGroups)) {
+  if (area === 'sync' && Object.keys(changes).some(key =>
+    key === 'config' || key === 'snippetGroups' || key === SNIPPET_META_KEY || key.startsWith(SNIPPET_CHUNK_PREFIX)
+  )) {
     loadSettings();
   }
 });

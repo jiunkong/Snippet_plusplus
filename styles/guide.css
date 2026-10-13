@@ -4,7 +4,7 @@
 
 .guide-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, min-min(400px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr));
   gap: 24px;
   padding-bottom: 40px;
 }
@@ -46,9 +46,12 @@
 }
 
 .guide-syntax {
-  font-family: 'JetBrains Mono', 'Fira Code', 'Menlo', 'Monaco', 'Consolas', 'Cascadia Code', 'Courier New', monospace;
-  font-size: 13px;
+  font-family: ui-monospace, 'Cascadia Code', Consolas, 'Liberation Mono', monospace;
+  font-size: 14px;
   font-weight: 700;
+  line-height: 1.5;
+  font-variant-ligatures: none;
+  overflow-wrap: anywhere;
   color: #f5d0fe; /* condition-badge color for consistency */
 }
 
@@ -64,10 +67,13 @@
   background: rgba(0, 0, 0, 0.2);
   border-left: 2px solid var(--accent-color);
   border-radius: 4px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
+  font-family: ui-monospace, 'Cascadia Code', Consolas, 'Liberation Mono', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  font-variant-ligatures: none;
   color: var(--text-primary);
   white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .guide-tag {

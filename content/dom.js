@@ -93,6 +93,16 @@ function selectPlaceholder(el, info, targetMatch) {
   while (node = walker.nextNode()) {
     const len = node.textContent.length;
     if (charCount + len > targetMatch.index) {
+      const placeholder = node.parentElement?.closest?.('.ss-placeholder');
+      if (placeholder && el.contains(placeholder)) {
+        const range = document.createRange();
+        range.selectNode(placeholder);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        return true;
+      }
+
       const offsetInNode = targetMatch.index - charCount;
       const range = document.createRange();
       try {
@@ -110,6 +120,19 @@ function selectPlaceholder(el, info, targetMatch) {
   }
 
   return false;
+}
+
+function placeCaretAtAutoCursor(el, autoCursorId) {
+  const marker = el.querySelector(`[data-spp-auto-cursor="${autoCursorId}"]`);
+  if (!marker) return false;
+
+  const range = document.createRange();
+  range.setStartAfter(marker);
+  range.collapse(true);
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+  return true;
 }
 
 /**
@@ -167,6 +190,53 @@ function getMaxCursorLevel(text) {
   return max;
 }
 
+function getSelectionOffsets(el) {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return null;
+  const range = selection.getRangeAt(0);
+  if (!el.contains(range.startContainer) || !el.contains(range.endContainer)) return null;
+
+  try {
+    const beforeStart = range.cloneRange();
+    beforeStart.selectNodeContents(el);
+    beforeStart.setEnd(range.startContainer, range.startOffset);
+    const beforeEnd = range.cloneRange();
+    beforeEnd.selectNodeContents(el);
+    beforeEnd.setEnd(range.endContainer, range.endOffset);
+    return { start: beforeStart.toString().length, end: beforeEnd.toString().length };
+  } catch (_error) {
+    return null;
+  }
+}
+
+function restoreSelectionOffsets(el, start, end) {
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
+  let total = 0;
+  let lastNode = null;
+  let startPoint = null;
+  let endPoint = null;
+  let node;
+
+  while (node = walker.nextNode()) {
+    lastNode = node;
+    const nextTotal = total + node.textContent.length;
+    if (!startPoint && start <= nextTotal) startPoint = [node, Math.max(0, start - total)];
+    if (!endPoint && end <= nextTotal) endPoint = [node, Math.max(0, end - total)];
+    total = nextTotal;
+  }
+
+  if (!lastNode) return;
+  if (!startPoint) startPoint = [lastNode, lastNode.textContent.length];
+  if (!endPoint) endPoint = [lastNode, lastNode.textContent.length];
+
+  const range = document.createRange();
+  range.setStart(startPoint[0], Math.min(startPoint[1], startPoint[0].textContent.length));
+  range.setEnd(endPoint[0], Math.min(endPoint[1], endPoint[0].textContent.length));
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
 /**
  * Increments existing placeholder levels by the given offset.
  */
@@ -185,20 +255,62 @@ function shiftVisualPlaceholders(target, offset) {
   if (info.isInput) {
     const start = target.selectionStart;
     const end = target.selectionEnd;
-    target.value = target.value.replace(VISUAL_CURSOR_REGEX, (match, level) => {
+    let startDelta = 0;
+    let endDelta = 0;
+    target.value = target.value.replace(VISUAL_CURSOR_REGEX, (match, level, index) => {
       const newLevel = parseInt(level, 10) + offset;
-      return `${VISUAL_OPEN}${newLevel}${VISUAL_CLOSE}`;
+      const shifted = `${VISUAL_OPEN}${newLevel}${VISUAL_CLOSE}`;
+      const delta = shifted.length - match.length;
+      if (index + match.length <= start) startDelta += delta;
+      if (index + match.length <= end) endDelta += delta;
+      return shifted;
     });
-    // Restore selection
-    target.setSelectionRange(start, end);
+    target.setSelectionRange(start + startDelta, end + endDelta);
   } else if (info.isEditable) {
-    // For ContentEditable, search for .ss-placeholder spans and update text and data-val
+    // Rich-text editors such as Notion may normalize our spans into plain text.
+    // Update every visual marker in text nodes, then restore the caret because
+    // assigning textContent can otherwise collapse it to the start of the block.
     const placeholders = target.querySelectorAll('.ss-placeholder');
     placeholders.forEach(ph => {
       const level = parseInt(ph.dataset.val.substring(1), 10) || 0;
       const newLevel = level + offset;
-      ph.textContent = `${VISUAL_OPEN}${newLevel}${VISUAL_CLOSE}`;
       ph.dataset.val = `#${newLevel}`;
     });
+
+    if (typeof document === 'undefined' || typeof document.createTreeWalker !== 'function') {
+      placeholders.forEach(ph => {
+        const level = parseInt(ph.dataset.val.substring(1), 10) || 0;
+        ph.textContent = `${VISUAL_OPEN}${level}${VISUAL_CLOSE}`;
+      });
+      return;
+    }
+
+    const selectionOffsets = getSelectionOffsets(target);
+    let textOffset = 0;
+    let startDelta = 0;
+    let endDelta = 0;
+    const walker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT, null, false);
+    let node;
+    while (node = walker.nextNode()) {
+      const original = node.textContent;
+      const shifted = original.replace(VISUAL_CURSOR_REGEX, (match, level, index) => {
+        const replacement = `${VISUAL_OPEN}${parseInt(level, 10) + offset}${VISUAL_CLOSE}`;
+        const delta = replacement.length - match.length;
+        const absoluteEnd = textOffset + index + match.length;
+        if (selectionOffsets && absoluteEnd <= selectionOffsets.start) startDelta += delta;
+        if (selectionOffsets && absoluteEnd <= selectionOffsets.end) endDelta += delta;
+        return replacement;
+      });
+      if (shifted !== original) node.textContent = shifted;
+      textOffset += original.length;
+    }
+
+    if (selectionOffsets) {
+      restoreSelectionOffsets(
+        target,
+        selectionOffsets.start + startDelta,
+        selectionOffsets.end + endDelta
+      );
+    }
   }
 }

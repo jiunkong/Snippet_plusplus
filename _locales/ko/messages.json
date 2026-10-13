@@ -53,6 +53,12 @@
   "settings_next_cursor_desc": {
     "message": "텍스트 치환 후 다음 플레이스홀더로 점프할 단축키를 지정하세요."
   },
+  "settings_undo_expansion": {
+    "message": "치환 취소"
+  },
+  "settings_undo_expansion_desc": {
+    "message": "스니펫 치환 직후 원래 트리거 텍스트로 되돌릴 단축키를 지정하세요."
+  },
   "settings_add_snippet": {
     "message": "스니펫 추가"
   },
@@ -88,6 +94,9 @@
   },
   "settings_language_desc": {
     "message": "인터페이스 언어를 선택하세요."
+  },
+  "settings_language_system": {
+    "message": "브라우저 설정"
   },
   "settings_change": {
     "message": "변경"
@@ -221,6 +230,9 @@
   "guide_items_substr_desc": {
     "message": "지정한 위치부터 원하는 길이만큼 문자열을 자릅니다."
   },
+  "guide_items_string_match_desc": {
+    "message": "문자열이 지정한 텍스트로 시작하거나 끝나는지 확인합니다."
+  },
   "guide_items_str_desc": {
     "message": "값을 문자열로 강제 변환합니다."
   },
@@ -295,6 +307,9 @@
   },
   "status_saved": {
     "message": "저장됨 ✨"
+  },
+  "status_sync_failed": {
+    "message": "동기화 실패:"
   },
   "status_export_started": {
     "message": "내보내기 시작 📤"
@@ -407,6 +422,9 @@
   "err_fn_one_arg_max": {
     "message": "\"$1()\" 함수는 1개의 인자만 허용합니다."
   },
+  "err_fn_two_args_exact": {
+    "message": "\"$1()\" 함수는 정확히 2개의 인자가 필요합니다."
+  },
   "err_fn_min_one_arg": {
     "message": "\"$1()\" 함수는 최소 1개의 인자가 필요합니다."
   },
@@ -433,5 +451,8 @@
   },
   "err_trigger_arg_regex_required": {
     "message": "트리거 인자 정의에는 정규식이 필요합니다 (예: ${id:\\d+})"
+  },
+  "status_sync_conflict_confirm": {
+    "message": "편집 중 다른 기기에서 동기화 설정이 변경되었습니다. 확인을 누르면 원격 설정을 적용하고, 취소를 누르면 이 기기의 설정을 유지합니다."
   }
 }

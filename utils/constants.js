@@ -7,7 +7,8 @@ const BUILTIN_FUNCS_NO_ARGS = [
 ];
 
 const BUILTIN_FUNCS_HAS_ARGS = [
-  'random', 'upper', 'lower', 'trim', 'capitalize', 'substr', 'replace', 'len'
+  'random', 'upper', 'lower', 'trim', 'capitalize', 'substr', 'replace', 'len',
+  'startswith', 'endswith'
 ];
 
 const BUILTIN_FUNCS_OPT_ARGS = [

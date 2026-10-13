@@ -14,15 +14,7 @@ const defaultSnippetGroups = [
   }
 ];
 
-let currentConfig = {
-  nextCursor: "Ctrl+Space",
-  addSnippet: "Alt+N",
-  toggleFold: "Alt+L",
-  showParticles: true,
-  shiftCursorLevels: true,
-  visualizeNewlines: true,
-  language: "ko"
-};
+let currentConfig = { ...DEFAULT_CONFIG };
 let snippetGroups = [];
 let activeGroupIndex = -1;
 let recordingTarget = null;

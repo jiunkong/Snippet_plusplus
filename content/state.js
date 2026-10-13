@@ -1,9 +1,6 @@
 // --- Constants & Global State ---
 
-const defaultConfig = { 
-  nextCursor: "Ctrl+Space",
-  shiftCursorLevels: true 
-};
+const defaultConfig = DEFAULT_CONFIG;
 const defaultSnippetGroups = [{
   name: chrome.i18n.getMessage('default_group_name') || "General",
   snippets: [{
@@ -18,3 +15,5 @@ const defaultSnippetGroups = [{
 let snippets        = [];
 let config          = defaultConfig;
 let typingSeqLength = 0; // Tracks consecutive characters typed in a single flow
+let lastExpansion   = null; // Snapshot of the most recent completed expansion
+let isInternalEdit = false;

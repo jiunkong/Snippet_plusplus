@@ -107,7 +107,7 @@ async function resolveAsyncCalls(expr, args) {
  */
 async function processTemplate(template, args) {
   let result = "";
-  let remaining = template.replace(/\\\r?\n\s*/g, ''); // Line Continuation with Indent stripping
+  let remaining = template.replace(/\\(?:\r\n|\n|\r)\s*/g, ''); // Line Continuation with Indent stripping
   
   // Track keys that are newly created in this scope level
   const newlyCreated = new Set();

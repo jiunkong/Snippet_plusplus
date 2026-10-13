@@ -77,24 +77,24 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
     const content = m.inner.trim();
     const offset = m.index;
     if (content.startsWith('if ')) ifStack.push({ offset, content });
-    else if (content === 'endif') ifStack.length > 0 ? ifStack.pop() : addError(offset, chrome.i18n.getMessage("err_endif_no_if"));
-    else if (content.startsWith('elif ') || content === 'else') { if (ifStack.length === 0) addError(offset, chrome.i18n.getMessage("err_elif_else_outside_if")); }
+    else if (content === 'endif') ifStack.length > 0 ? ifStack.pop() : addError(offset, t("err_endif_no_if"));
+    else if (content.startsWith('elif ') || content === 'else') { if (ifStack.length === 0) addError(offset, t("err_elif_else_outside_if")); }
     else if (content.startsWith('for ')) forStack.push({ offset, content });
-    else if (content === 'endfor') forStack.length > 0 ? forStack.pop() : addError(offset, chrome.i18n.getMessage("err_endfor_no_for"));
+    else if (content === 'endfor') forStack.length > 0 ? forStack.pop() : addError(offset, t("err_endfor_no_for"));
     else if (content.startsWith('switch ')) switchStack.push({ offset, content });
-    else if (content === 'endswitch') switchStack.length > 0 ? switchStack.pop() : addError(offset, chrome.i18n.getMessage("err_endswitch_no_switch"));
+    else if (content === 'endswitch') switchStack.length > 0 ? switchStack.pop() : addError(offset, t("err_endswitch_no_switch"));
     else if (content.startsWith('case ')) caseStack.push({ offset, content });
-    else if (content === 'endcase') caseStack.length > 0 ? caseStack.pop() : addError(offset, chrome.i18n.getMessage("err_endcase_no_case"));
+    else if (content === 'endcase') caseStack.length > 0 ? caseStack.pop() : addError(offset, t("err_endcase_no_case"));
     else if (content === 'default') caseStack.push({ offset, content });
-    else if (content === 'enddefault') caseStack.length > 0 ? caseStack.pop() : addError(offset, chrome.i18n.getMessage("err_enddefault_no_default"));
+    else if (content === 'enddefault') caseStack.length > 0 ? caseStack.pop() : addError(offset, t("err_enddefault_no_default"));
   });
 
-  ifStack.forEach(item => addError(item.offset, chrome.i18n.getMessage("err_if_unclosed")));
-  forStack.forEach(item => addError(item.offset, chrome.i18n.getMessage("err_for_unclosed")));
-  switchStack.forEach(item => addError(item.offset, chrome.i18n.getMessage("err_switch_unclosed")));
+  ifStack.forEach(item => addError(item.offset, t("err_if_unclosed")));
+  forStack.forEach(item => addError(item.offset, t("err_for_unclosed")));
+  switchStack.forEach(item => addError(item.offset, t("err_switch_unclosed")));
   caseStack.forEach(item => {
     const isDef = item.content === 'default';
-    addError(item.offset, chrome.i18n.getMessage(isDef ? "err_default_unclosed" : "err_case_unclosed"));
+    addError(item.offset, t(isDef ? "err_default_unclosed" : "err_case_unclosed"));
   });
 
   // --- Single-pass Highlight + Inline Validation ---
@@ -113,18 +113,18 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
     // Strip strings before checking for operator errors to avoid false positives inside quotes
     const strippedForOps = cond.replace(/(['"])(?:(?!\1).|\\\1)*\1/g, '""');
 
-    if (!isAssignment && /(?<![=!><])=(?![=])/.test(strippedForOps)) return chrome.i18n.getMessage("err_assignment_instead_of_comparison");
-    if (/(?<!&)&(?!&)/.test(strippedForOps) || /(?<!\|)\|(?!\|)/.test(strippedForOps)) return chrome.i18n.getMessage("err_logical_operator_single");
+    if (!isAssignment && /(?<![=!><])=(?![=])/.test(strippedForOps)) return t("err_assignment_instead_of_comparison");
+    if (/(?<!&)&(?!&)/.test(strippedForOps) || /(?<!\|)\|(?!\|)/.test(strippedForOps)) return t("err_logical_operator_single");
 
     const pStack = [];
     for (let i = 0; i < cond.length; i++) {
       if (cond[i] === '(') pStack.push(i);
       else if (cond[i] === ')') {
-        if (pStack.length === 0) return chrome.i18n.getMessage("err_unmatched_close_paren");
+        if (pStack.length === 0) return t("err_unmatched_close_paren");
         pStack.pop();
       }
     }
-    if (pStack.length > 0) return chrome.i18n.getMessage("err_unmatched_open_paren");
+    if (pStack.length > 0) return t("err_unmatched_open_paren");
 
     const parts = cond.split(/&&|\|\|/);
     for (let part of parts) {
@@ -133,11 +133,11 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
       const compOpRegex = /==|!=|>=|<=|>|</;
       if (compOpRegex.test(part)) {
         const ops = part.split(compOpRegex);
-        if (ops.some(op => !op.trim())) return chrome.i18n.getMessage("err_missing_operand", [part]);
+        if (ops.some(op => !op.trim())) return t("err_missing_operand", [part]);
       }
     }
 
-    if (/\bindex\b/.test(cond) && activeForDepth === 0) return chrome.i18n.getMessage("err_index_outside_for");
+    if (/\bindex\b/.test(cond) && activeForDepth === 0) return t("err_index_outside_for");
 
     // Check Ternary Balance (? and :)
     let ternaryDepth = 0;
@@ -154,27 +154,28 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
                 if (c === '?') ternaryDepth++;
                 else if (c === ':') {
                     ternaryDepth--;
-                    if (ternaryDepth < 0) return chrome.i18n.getMessage("err_ternary_no_matching_question");
+                    if (ternaryDepth < 0) return t("err_ternary_no_matching_question");
                 }
             }
         }
     }
-    if (ternaryDepth > 0) return chrome.i18n.getMessage("err_ternary_no_matching_colon");
+    if (ternaryDepth > 0) return t("err_ternary_no_matching_colon");
 
     const stripped = cond.replace(/(['"])(?:(?!\1).|\\\1)*\1/g, '""');
-    const tokens = stripped.match(/[\p{L}_][\p{L}\p{N}_]*/gu) || [];
+    const tokens = [...stripped.matchAll(/[\p{L}_][\p{L}\p{N}_]*/gu)];
     const validKeywords = ['index', 'true', 'false', 'null', 'undefined', ...BUILTIN_ALL];
     
-    for (const token of tokens) {
+    for (const tokenMatch of tokens) {
+      const token = tokenMatch[0];
       if (validKeywords.includes(token)) continue;
       if (/^\d+$/.test(token)) continue;
-      const idx = stripped.indexOf(token);
+      const idx = tokenMatch.index;
       if (idx === 0 || stripped[idx - 1] !== '$') {
-        return chrome.i18n.getMessage("err_var_start_with_dollar", [token]);
+        return t("err_var_start_with_dollar", [token]);
       }
     }
 
-    if (/\$(?![\p{L}\p{N}_])/u.test(cond)) return chrome.i18n.getMessage("err_var_name_required");
+    if (/\$(?![\p{L}\p{N}_])/u.test(cond)) return t("err_var_name_required");
 
     const vars = cond.match(/\$[\p{L}\p{N}_]+/gu);
     if (vars) {
@@ -185,7 +186,7 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
           if (assignmentMatch && assignmentMatch[1] === name) continue;
         }
         // Check both trigger args and scoped set variables
-        if (!definedArgs.has(name) && !scopedVars.has(name)) return chrome.i18n.getMessage("err_undefined_variable", [v]);
+        if (!definedArgs.has(name) && !scopedVars.has(name)) return t("err_undefined_variable", [v]);
       }
     }
     return null;
@@ -198,29 +199,61 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
   const highlightInnerExpr = (expr, tagOffset, addError) => {
     const isRandomFn = (n) => n === 'uuid' || n === 'random';
     const isTypeFn = (n) => BUILTIN_FUNCS_TYPE_CAST.includes(n);
+
+    const splitFunctionArgs = (text) => {
+      const parts = [];
+      let current = '';
+      let depth = 0;
+      let quote = null;
+      for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        if (quote) {
+          current += char;
+          if (char === '\\' && i + 1 < text.length) current += text[++i];
+          else if (char === quote) quote = null;
+        } else if (char === '\'' || char === '"') {
+          quote = char;
+          current += char;
+        } else if (char === '(') {
+          depth++;
+          current += char;
+        } else if (char === ')') {
+          depth--;
+          current += char;
+        } else if (char === ',' && depth === 0) {
+          parts.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      if (current.trim() || text.trim()) parts.push(current.trim());
+      return parts;
+    };
     
     const getError = (n, a) => {
-      if (BUILTIN_FUNCS_NO_ARGS.includes(n) && a.trim() !== "") return chrome.i18n.getMessage("err_fn_no_args_allowed", [n]);
+      if (BUILTIN_FUNCS_NO_ARGS.includes(n) && a.trim() !== "") return t("err_fn_no_args_allowed", [n]);
       
-      const parts = a.split(',').map(p => p.trim()).filter(p => p.length > 0);
-      if (BUILTIN_FUNCS_HAS_ARGS.includes(n) && parts.length === 0) return chrome.i18n.getMessage("err_fn_args_required", [n]);
+      const parts = splitFunctionArgs(a).filter(p => p.length > 0);
+      if (BUILTIN_FUNCS_HAS_ARGS.includes(n) && parts.length === 0) return t("err_fn_args_required", [n]);
       // Optional args fns like prompt() are allowed to be empty
-      if (BUILTIN_FUNCS_TYPE_CAST.includes(n) && parts.length !== 1) return chrome.i18n.getMessage("err_fn_one_arg_exact", [n]);
+      if (BUILTIN_FUNCS_TYPE_CAST.includes(n) && parts.length !== 1) return t("err_fn_one_arg_exact", [n]);
 
       // Strict count checks
       const oneArgFns = ['upper', 'lower', 'trim', 'capitalize', 'len', 'prompt', 'round', 'ceil', 'floor', 'date', 'time', 'datetime'];
-      if (oneArgFns.includes(n) && parts.length > 1) return chrome.i18n.getMessage("err_fn_one_arg_max", [n]);
-      if ((n === 'min' || n === 'max') && parts.length === 0) return chrome.i18n.getMessage("err_fn_min_one_arg", [n]);
-      if (n === 'substr' && (parts.length < 2 || parts.length > 3)) return chrome.i18n.getMessage("err_substr_args");
-      if (n === 'replace' && parts.length !== 3) return chrome.i18n.getMessage("err_replace_args");
+      if (oneArgFns.includes(n) && parts.length > 1) return t("err_fn_one_arg_max", [n]);
+      if ((n === 'min' || n === 'max') && parts.length === 0) return t("err_fn_min_one_arg", [n]);
+      if (n === 'substr' && (parts.length < 2 || parts.length > 3)) return t("err_substr_args");
+      if ((n === 'startswith' || n === 'endswith') && parts.length !== 2) return t("err_fn_two_args_exact", [n]);
+      if (n === 'replace' && parts.length !== 3) return t("err_replace_args");
 
       if (n === 'random') {
-        if (parts.length === 0) return chrome.i18n.getMessage("err_random_args");
+        if (parts.length === 0) return t("err_random_args");
         for (const p of parts) {
           if (p.includes('~')) {
             const rangeParts = p.split('~').map(s => s.trim());
             if (rangeParts.length !== 2 || !rangeParts[0] || !rangeParts[1]) {
-              return chrome.i18n.getMessage("err_range_both_values_required", [p]);
+              return t("err_range_both_values_required", [p]);
             }
           }
         }
@@ -345,7 +378,7 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
         const trimmedExpr = exprPart.trim();
         
         if (!trimmedExpr) {
-          addError(offset, chrome.i18n.getMessage("err_cursor_number_required"));
+          addError(offset, t("err_cursor_number_required"));
           return `<span class="error-badge">${match}</span>`;
         }
 
@@ -389,7 +422,7 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
       if (content.startsWith('set ')) {
         const assignment = content.substring(4);
         if (!assignment.includes('=')) {
-          addError(offset, chrome.i18n.getMessage("err_set_operator_required"));
+          addError(offset, t("err_set_operator_required"));
           return `<span class="error-badge">${match}</span>`;
         }
         const err = validateExpr(assignment, offset, true);
@@ -420,7 +453,7 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
       }
 
       if (content === 'index' && activeForDepth === 0) {
-        addError(offset, chrome.i18n.getMessage("err_index_outside_for"));
+        addError(offset, t("err_index_outside_for"));
         return `<span class="error-badge">${match}</span>`;
       }
 
@@ -443,7 +476,7 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
       return `<span class="syntax-badge">{{</span><span class="expr-badge">${highlightInnerExpr(inner, offset, addError)}</span><span class="syntax-badge">}}</span>`;
     }
 
-    addError(offset, chrome.i18n.getMessage("err_unknown_tag", [content]));
+    addError(offset, t("err_unknown_tag", [content]));
       return `<span class="error-badge">${match}</span>`;
     })();
     output += highlighted;
@@ -473,7 +506,7 @@ function updateTriggerHighlight(input, highlightDiv) {
   
   text = text.replace(ARG_REGEX, (match, name, inner) => {
     if (!inner) {
-      const msg = chrome.i18n.getMessage("err_trigger_arg_regex_required");
+      const msg = t("err_trigger_arg_regex_required");
       if (!firstError) firstError = msg;
       return `<span class="error-badge">${match}</span>`;
     }

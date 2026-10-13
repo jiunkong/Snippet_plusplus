@@ -121,6 +121,13 @@ function callBuiltinFunction(name, argsStr, args) {
       const items = splitArgs(argsStr).map(p => evaluateExpression(p, args));
       return String(items[0] || '').substr(items[1] || 0, items[2]);
     }
+    case 'startswith':
+    case 'endswith': {
+      const items = splitArgs(argsStr).map(p => evaluateExpression(p, args));
+      const value = String(items[0] ?? '');
+      const search = String(items[1] ?? '');
+      return name === 'startswith' ? value.startsWith(search) : value.endsWith(search);
+    }
     case 'replace': {
       const items = splitArgs(argsStr).map(p => evaluateExpression(p, args));
       return String(items[0] || '').replace(items[1] || '', items[2] || '');

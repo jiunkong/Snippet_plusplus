@@ -61,6 +61,19 @@
 
           <div class="setting-card">
             <div class="card-info">
+              <h3 data-i18n="settings_undo_expansion">치환 취소</h3>
+              <p data-i18n="settings_undo_expansion_desc">스니펫 치환 직후 원래 트리거 텍스트로 되돌릴 단축키를 지정하세요.</p>
+            </div>
+            <div class="card-action">
+              <div class="hotkey-input">
+                <span id="hotkey-display-undoExpansion">Alt + Z</span>
+                <button class="record-btn" data-key="undoExpansion" data-i18n="settings_change">Change</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <div class="card-info">
               <h3 data-i18n="settings_add_snippet">스니펫 추가</h3>
               <p data-i18n="settings_add_snippet_desc">에디터에서 새로운 스니펫을 빠르게 추가할 단축키를 지정하세요.</p>
             </div>
@@ -121,6 +134,20 @@
                 <input type="checkbox" id="visualize-newlines-toggle" checked>
                 <span class="slider round"></span>
               </label>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <div class="card-info">
+              <h3 data-i18n="settings_language">언어</h3>
+              <p data-i18n="settings_language_desc">인터페이스 언어를 선택하세요.</p>
+            </div>
+            <div class="card-action">
+              <select id="language-select" class="theme-select" aria-label="Language">
+                <option value="system" data-i18n="settings_language_system">브라우저 설정</option>
+                <option value="ko">한국어</option>
+                <option value="en">English</option>
+              </select>
             </div>
           </div>
 
@@ -305,6 +332,10 @@
                 <span class="guide-desc" data-i18n="guide_items_replace_desc">문자열 내의 특정 텍스트를 다른 텍스트로 치환합니다.</span>
               </div>
               <div class="guide-item">
+                <span class="guide-syntax">{{startswith(s, prefix)}}, {{endswith(s, suffix)}}</span>
+                <span class="guide-desc" data-i18n="guide_items_string_match_desc">Checks whether a string starts or ends with the given text.</span>
+              </div>
+              <div class="guide-item">
                 <span class="guide-syntax">{{trim(s)}}</span>
                 <span class="guide-desc" data-i18n="guide_items_trim_desc">문자열 앞뒤의 모든 공백을 제거합니다.</span>
               </div>
@@ -471,6 +502,8 @@
 
   <!-- Options modules (load order matters: state first, main last) -->
   <script src="utils/constants.js"></script>
+  <script src="utils/config.js"></script>
+  <script src="utils/sync.js"></script>
   <script src="options/i18n.js"></script>
   <script src="utils/triggers.js"></script>
   <script src="options/state.js"></script>

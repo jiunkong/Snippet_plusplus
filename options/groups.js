@@ -103,11 +103,12 @@ function addDisabledSiteRow(url) {
   const row = document.createElement('div');
   row.className = 'site-row';
   row.innerHTML = `
-    <input type="text" class="site-input" placeholder="google.com" value="${url}">
+    <input type="text" class="site-input" placeholder="google.com">
     <button class="delete-site-btn" title="삭제">&times;</button>
   `;
 
   const input = row.querySelector('.site-input');
+  input.value = url;
   input.oninput = () => { syncActiveGroupData(); debouncedSave(); };
 
   row.querySelector('.delete-site-btn').onclick = () => {
