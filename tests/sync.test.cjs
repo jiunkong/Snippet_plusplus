@@ -17,7 +17,11 @@ function syncHarness(data = {}) {
       callback(result);
     },
     set(items, callback) {
-      const bytes = value => new TextEncoder().encode(JSON.stringify(value)).length;
+      // Model base::EscapeJSONString, including escapes absent from JS JSON.
+      const bytes = value => new TextEncoder().encode(JSON.stringify(value)
+        .replace(/</g, '\\u003C')
+        .replace(/\u2028/g, '\\u2028')
+        .replace(/\u2029/g, '\\u2029')).length;
       const next = { ...data, ...items };
       const oversized = Object.entries(items).some(([key, value]) => bytes(value) + key.length > this.QUOTA_BYTES_PER_ITEM);
       const total = Object.entries(next).reduce((sum, [key, value]) => sum + bytes(value) + key.length, 0);
@@ -71,4 +75,29 @@ test('a failed sync write keeps the previously committed list', async () => {
   assert.equal(data.snippetGroupsSync.revision, oldRevision);
   const loaded = await context.loadSyncedState({}, []);
   assert.equal(JSON.stringify(loaded.snippetGroups), JSON.stringify(original));
+});
+
+for (const [name, replacement] of [
+  ['HTML', '<div class="snippet">한글</div>'.repeat(400)],
+  ['line and paragraph separators', '\u2028\u2029'.repeat(2000)],
+  ['emoji and escaped characters', '😀\\\n\t"<'.repeat(600)]
+]) {
+  test(`${name} snippets respect Chromium item quotas and round-trip`, async () => {
+    const { context, data } = syncHarness();
+    const groups = [{ name, snippets: [{ trigger: '/test', replacement }] }];
+    await context.saveSyncedState({}, groups);
+    assert.ok(data.snippetGroupsSync.count > 1);
+    const loaded = await syncHarness(data).context.loadSyncedState({}, []);
+    assert.equal(JSON.stringify(loaded.snippetGroups), JSON.stringify(groups));
+  });
+}
+
+test('settings exceeding Chromium item size fail before publishing any chunks', async () => {
+  const { context, data } = syncHarness();
+  const groups = [{ name: 'Safe', snippets: [] }];
+  await context.saveSyncedState({}, groups);
+  const before = JSON.stringify(data);
+  await assert.rejects(context.saveSyncedState({ custom: '<'.repeat(1500) }, groups),
+    /Settings exceed Chrome Sync item capacity/);
+  assert.equal(JSON.stringify(data), before);
 });

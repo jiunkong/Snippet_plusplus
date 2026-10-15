@@ -32,7 +32,12 @@ function syncRemove(keys) {
 }
 
 function syncItemBytes(key, value) {
-  return new TextEncoder().encode(key + JSON.stringify(value)).length;
+  // Chromium's JSON writer escapes these characters even though JavaScript's
+  // JSON.stringify leaves them literal. Quotas use Chromium's serialized size.
+  const serialized = JSON.stringify(value).replace(/[<\u2028\u2029]/g, character => {
+    return `\\u${character.charCodeAt(0).toString(16).padStart(4, '0')}`;
+  });
+  return new TextEncoder().encode(key + serialized).length;
 }
 
 function chunkSnippetData(serialized, revision) {
