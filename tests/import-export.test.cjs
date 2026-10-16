@@ -7,12 +7,12 @@ const vm = require('node:vm');
 const root = path.join(__dirname, '..');
 const source = fs.readFileSync(path.join(root, 'options/storage.js'), 'utf8');
 const group = () => ({ name: 'Tools', snippets: [{ name: 'hello', replacement: 'Hello', subgroupId: 'one', disabled: true }],
-  subgroups: [{ id: 'one', name: 'Shared', collapsed: true }] });
-function harness({ locale = 'ko', version = '2.10.0', accept = true } = {}) {
+  subgroups: [{ id: 'one', name: 'Shared', collapsed: true }], siteMode: 'whitelist', disabledSites: ['example.com'] });
+function harness({ locale = 'ko', version = '2.10.0', accept = true, format = 'json' } = {}) {
   const catalog = JSON.parse(fs.readFileSync(path.join(root, `_locales/${locale}/messages.json`), 'utf8'));
   const calls = { prompts: [], saves: [], downloads: [], blobs: [], statuses: [], modals: [], syncs: 0, reloads: 0, selected: [] };
   const context = vm.createContext({
-    Blob, Date,
+    Blob, Date, CompressionStream, DecompressionStream, Response, TextDecoder,
     currentConfig: { addSubgroup: 'Alt+G' }, snippetGroups: [group()], activeGroupIndex: 0, saveTimeout: null,
     chrome: {
       runtime: { getManifest: () => ({ version }) },
@@ -20,7 +20,7 @@ function harness({ locale = 'ko', version = '2.10.0', accept = true } = {}) {
       downloads: { download(options, callback) { calls.downloads.push(options); callback(); } }
     },
     URL: { createObjectURL(blob) { calls.blobs.push(blob); return 'blob:test'; }, revokeObjectURL() {} },
-    FileReader: class { readAsText(file) { calls.read = this.onload({ target: { result: file.text } }); } },
+    showExportFormat: async () => format,
     t(key, values = {}) {
       return Object.entries(values).reduce((text, [key, value]) => text.replaceAll(`{${key}}`, value), catalog[key]?.message || key);
     },
@@ -37,12 +37,13 @@ function harness({ locale = 'ko', version = '2.10.0', accept = true } = {}) {
     window: { location: { reload() { calls.reloads++; } } },
     clearTimeout() {}, console: { error() {} }
   });
+  vm.runInContext(fs.readFileSync(path.join(root, 'options/file-format.js'), 'utf8'), context);
   vm.runInContext(source, context);
   context.showStatus = (...args) => calls.statuses.push(args);
-  const importFile = async (type, data) => {
-    const target = { files: [{ text: JSON.stringify(data) }], value: 'selected-file' };
-    context[type === 'settings' ? 'importSettings' : 'importGroup']({ target });
-    await calls.read;
+  const importFile = async (type, data, fileFormat = 'json') => {
+    const file = fileFormat === 'json' ? new Blob([JSON.stringify(data)]) : await context.encodeSnippetExport(data, type, fileFormat);
+    const target = { files: [file], value: 'selected-file' };
+    await context[type === 'settings' ? 'importSettings' : 'importGroup']({ target });
     await Promise.resolve();
     return target;
   };
@@ -52,8 +53,8 @@ function harness({ locale = 'ko', version = '2.10.0', accept = true } = {}) {
 test('exports use the running extension version for settings and groups and include current edits', async () => {
   const { context, calls } = harness({ version: '3.4.5.6' });
   context.syncActiveGroupData = () => { calls.syncs++; context.snippetGroups[0].snippets[0].replacement = 'Unsaved body'; };
-  context.exportSettings();
-  context.exportActiveGroup();
+  await context.exportSettings();
+  await context.exportActiveGroup();
   const all = JSON.parse(await calls.blobs[0].text());
   const single = JSON.parse(await calls.blobs[1].text());
   assert.equal(all.version, '3.4.5.6');
@@ -80,14 +81,81 @@ test('extension versions compare numeric components and treat omitted trailing z
   }
 });
 
+test('both export choices round-trip settings and groups with the current version', async () => {
+  for (const format of ['binary', 'json']) {
+    const { context, calls } = harness({ format, version: '1.2.0' });
+    context.snippetGroups[0].name = 'My / Group';
+    await context.exportSettings();
+    await context.exportActiveGroup();
+    assert.equal(calls.downloads.length, 2);
+    assert.match(calls.downloads[1].filename, /snippetpp_group_My___Group_/);
+    for (const [index, kind] of ['settings', 'group'].entries()) {
+      const blob = calls.blobs[index];
+      const restored = await context.decodeSnippetExport(await blob.arrayBuffer(), kind);
+      assert.equal(restored.version, '1.2.0');
+      const target = { files: [blob], value: 'selected' };
+      await context[kind === 'settings' ? 'importSettings' : 'importGroup']({ target });
+      assert.equal(target.value, '');
+      const imported = context.snippetGroups.at(-1);
+      assert.equal(imported.snippets[0].disabled, true);
+      assert.equal(imported.subgroups[0].collapsed, true);
+      assert.equal(imported.siteMode, 'whitelist');
+      assert.deepEqual(Array.from(imported.disabledSites), ['example.com']);
+    }
+  }
+});
+
+test('cancelling format selection does not sync edits, mutate data or start downloads', async () => {
+  const { context, calls } = harness({ format: false });
+  const before = JSON.stringify({ config: context.currentConfig, groups: context.snippetGroups });
+  await context.exportSettings();
+  await context.exportActiveGroup();
+  assert.equal(calls.downloads.length, 0);
+  assert.equal(calls.blobs.length, 0);
+  assert.equal(calls.syncs, 0);
+  assert.equal(calls.saves.length, 0);
+  assert.equal(JSON.stringify({ config: context.currentConfig, groups: context.snippetGroups }), before);
+});
+
+test('invalid imports and read failures report an error without confirmation, mutation or saving', async () => {
+  for (const kind of ['settings', 'group']) {
+    const { context, calls } = harness();
+    const before = JSON.stringify({ config: context.currentConfig, groups: context.snippetGroups });
+    const wrongKind = kind === 'settings' ? 'group' : 'settings';
+    const wrong = await context.encodeSnippetExport({ snippetGroups: [], group: group() }, wrongKind, 'binary');
+    const damaged = await context.encodeSnippetExport({ snippetGroups: [], group: group() }, kind, 'binary');
+    const bytes = new Uint8Array(await damaged.arrayBuffer());
+    bytes[4] = 99;
+    for (const file of [new Blob(['not JSON']), new Blob([bytes]), wrong, { arrayBuffer: async () => { throw new Error('Read failed'); } }]) {
+      const target = { files: [file], value: 'selected' };
+      await context[kind === 'settings' ? 'importSettings' : 'importGroup']({ target });
+      assert.equal(target.value, '');
+      assert.equal(calls.statuses.at(-1)[1], true);
+      assert.equal(calls.modals.length, 0);
+      assert.equal(calls.saves.length, 0);
+      assert.equal(JSON.stringify({ config: context.currentConfig, groups: context.snippetGroups }), before);
+    }
+  }
+});
+
+test('export compression and download failures produce localized status messages', async () => {
+  for (const failure of ['encode', 'download']) {
+    const { context, calls } = harness({ format: 'binary' });
+    if (failure === 'encode') context.encodeSnippetExport = async () => { throw new Error('Compression failed'); };
+    else context.chrome.runtime.lastError = { message: 'Download failed' };
+    await context.exportSettings();
+    assert.deepEqual(calls.statuses.at(-1), ['파일 내보내기에 실패했습니다.', true]);
+  }
+});
+
 test('older and newer import warnings are localized, show both versions, and cancel without changes', async () => {
-  for (const locale of ['ko', 'en']) for (const type of ['settings', 'group']) {
+  for (const format of ['json', 'binary']) for (const locale of ['ko', 'en']) for (const type of ['settings', 'group']) {
     for (const [version, word] of [['2.9', locale === 'ko' ? '이전' : 'older'], ['2.11', locale === 'ko' ? '이후' : 'newer']]) {
       const { context, calls, importFile } = harness({ locale, accept: false });
       const before = JSON.stringify({ config: context.currentConfig, groups: context.snippetGroups });
       const data = type === 'settings' ? { version, config: { changed: true }, snippetGroups: [] }
         : { version, type: 'snippetpp_group', group: group() };
-      const target = await importFile(type, data);
+      const target = await importFile(type, data, format);
       assert.equal(calls.prompts.length, 1, 'warning is included in the existing confirmation');
       assert.ok(calls.prompts[0].includes(word));
       assert.ok(calls.prompts[0].includes(version));
@@ -120,11 +188,11 @@ test('matching versions and legacy exports retain normal import confirmation', a
 });
 
 test('accepting a version warning imports the file normally', async () => {
-  for (const type of ['settings', 'group']) {
+  for (const format of ['json', 'binary']) for (const type of ['settings', 'group']) {
     const { context, calls, importFile } = harness();
     const data = type === 'settings' ? { version: '3.0', snippetGroups: [group()] }
       : { version: '1.0', type: 'snippetpp_group', group: group() };
-    await importFile(type, data);
+    await importFile(type, data, format);
     assert.equal(calls.saves.length, 1);
     assert.deepEqual(JSON.parse(JSON.stringify(context.snippetGroups.at(-1).subgroups)), group().subgroups);
   }
@@ -134,11 +202,14 @@ test('imports wait for the asynchronous modal decision before changing or saving
   for (const type of ['settings', 'group']) for (const accept of [true, false]) {
     const { context, calls, importFile } = harness();
     let decide;
-    context.showImportConfirmation = () => new Promise(resolve => { decide = resolve; });
+    let shown;
+    const ready = new Promise(resolve => { shown = resolve; });
+    context.showImportConfirmation = () => new Promise(resolve => { decide = resolve; shown(); });
     const data = type === 'settings' ? { version: '3.0', snippetGroups: [] }
       : { version: '3.0', type: 'snippetpp_group', group: group() };
     const before = JSON.stringify(context.snippetGroups);
     const pending = importFile(type, data);
+    await ready;
     assert.equal(JSON.stringify(context.snippetGroups), before);
     assert.equal(calls.saves.length, 0);
     decide(accept);

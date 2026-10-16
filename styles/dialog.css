@@ -30,3 +30,7 @@
 #import-confirm-accept.danger { background: #dc2626; color: white; }
 #import-confirm-accept.danger:hover { background: #b91c1c; }
 .import-confirm-actions button:focus-visible { outline: 2px solid var(--accent-hover); outline-offset: 3px; }
+.export-format-box { margin-top: 20px; }
+.export-format-box label { display: block; margin-bottom: 8px; color: var(--text-secondary); font-size: 13px; }
+.export-format-box select { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--sidebar-bg); color: var(--text-primary); font: inherit; }
+.export-format-box select:focus-visible { outline: 2px solid var(--accent-hover); outline-offset: 2px; }

@@ -922,5 +922,26 @@
   },
   "error_location_snippet": {
     "message": "$1 · body: line $2, column $3"
+  },
+  "export_dialog_title": {
+    "message": "Choose export format"
+  },
+  "export_dialog_description": {
+    "message": "Compressed binary reduces file size. JSON lets you read or edit the contents as text. Both formats can be imported."
+  },
+  "export_dialog_accept": {
+    "message": "Export"
+  },
+  "export_format_label": {
+    "message": "File format"
+  },
+  "export_format_binary": {
+    "message": "Compressed binary (recommended)"
+  },
+  "export_format_json": {
+    "message": "JSON (text)"
+  },
+  "status_export_failed": {
+    "message": "File export failed."
   }
 }

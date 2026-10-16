@@ -6,7 +6,7 @@ Snippet++ is a Chrome Manifest V3 extension that expands typed triggers into sni
 
 Snippets support regular-expression captures, variables and expressions, integer ranges, conditional blocks, loops, built-in functions, and calls to other snippets in the same group. Cursor placeholders control where typing continues after expansion. Subgroups organize snippets with folding and drag-and-drop ordering. The options page also provides a localized syntax guide and an isolated test tab that runs the real expansion engine against current edits.
 
-Settings sync through Chrome Sync and can be exported as a full configuration (`.sppcfg`) or a single group (`.sppgrp`). Exported files carry the extension version; importing files from older or newer versions displays a compatibility warning before the user decides whether to continue.
+Settings sync through Chrome Sync and can be exported as a full configuration (`.sppcfg`) or a single group (`.sppgrp`), with a choice of gzip-compressed binary or plain JSON. Imports detect the format automatically and retain support for legacy JSON files. Exported files carry the extension version; importing files from older or newer versions displays a compatibility warning before the user decides whether to continue.
 
 ## Repository layout
 
@@ -26,6 +26,7 @@ Settings sync through Chrome Sync and can be exported as a full configuration (`
 - Script order is part of the runtime contract. If adding or moving a shared helper, update both `manifest.json`'s `content_scripts[0].js` and the script list in `options.html` where relevant. Dependencies must load before consumers.
 - Keep snippet expansion and template evaluation safe. Do not introduce `eval` or `new Function`; expressions are handled by `content/evaluator.js`.
 - Treat Chrome Sync persistence in `utils/sync.js` as a versioned chunk-and-manifest protocol. Maintain compatibility with legacy `snippetGroups` data and avoid publishing a manifest until all new chunks are written.
+- Keep the export codec in `options/file-format.js` compatible with existing files. Binary exports use an `SPPB` header with an independent format version and file kind, followed by gzip-compressed UTF-8 JSON. Do not confuse the binary format version with the extension version in the payload. Preserve JSON export/import and detect the format by contents, not filename extensions.
 - Keep user-facing strings localized. Add or update matching keys in both English and Korean catalogs, and use the existing options localization helpers where applicable.
 - Preserve existing editor behavior for inputs and contenteditable hosts, including cursor placeholders, selection/caret placement, undo, and prompt cancellation. Host editors can normalize DOM and emit asynchronous input events, so avoid changing timing assumptions without updating focused tests.
 - Keep tests self-contained with Node's built-in `node:test`; do not add a dependency or build tool for tests without a project-level need.

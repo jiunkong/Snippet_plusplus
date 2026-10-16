@@ -1,5 +1,5 @@
 // Styled HTML dialog keeps focus inside the modal and makes the page inert.
-function showOptionsConfirmation({ title, message, warning = '', acceptLabel = t('import_dialog_accept'), danger = false }) {
+function showOptionsConfirmation({ title, message, warning = '', acceptLabel = t('import_dialog_accept'), danger = false, exportFormat = false }) {
   const dialog = document.getElementById('import-confirm-dialog');
   if (dialog.open) return Promise.resolve(false);
   const cancel = document.getElementById('import-confirm-cancel');
@@ -11,6 +11,10 @@ function showOptionsConfirmation({ title, message, warning = '', acceptLabel = t
   document.getElementById('import-confirm-message').textContent = message;
   document.getElementById('import-confirm-warning').textContent = warning;
   document.getElementById('import-confirm-warning-box').hidden = !warning;
+  const formatBox = document.getElementById('export-format-box');
+  const formatSelect = document.getElementById('export-format-select');
+  formatBox.hidden = !exportFormat;
+  if (exportFormat) formatSelect.value = 'binary';
 
   return new Promise(resolve => {
     let settled = false;
@@ -24,7 +28,7 @@ function showOptionsConfirmation({ title, message, warning = '', acceptLabel = t
       dialog.removeEventListener('click', onBackdrop);
       if (dialog.open) dialog.close();
       if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
-      resolve(accepted);
+      resolve(accepted && exportFormat ? formatSelect.value : accepted);
     };
     const onCancelClick = () => finish(false);
     const onAccept = () => finish(true);
@@ -48,4 +52,11 @@ function showOptionsConfirmation({ title, message, warning = '', acceptLabel = t
 
 function showImportConfirmation(options) {
   return showOptionsConfirmation(options);
+}
+
+function showExportFormat() {
+  return showOptionsConfirmation({
+    title: t('export_dialog_title'), message: t('export_dialog_description'),
+    acceptLabel: t('export_dialog_accept'), exportFormat: true
+  });
 }

@@ -1090,6 +1090,13 @@ Hello, {{$name}}!</code></pre>
   <dialog id="import-confirm-dialog" class="import-confirm-dialog" aria-labelledby="import-confirm-title" aria-describedby="import-confirm-message import-confirm-warning">
     <h2 id="import-confirm-title"></h2>
     <p id="import-confirm-message"></p>
+    <div id="export-format-box" class="export-format-box" hidden>
+      <label for="export-format-select" data-i18n="export_format_label">파일 포맷</label>
+      <select id="export-format-select">
+        <option value="binary" data-i18n="export_format_binary">압축 바이너리 (권장)</option>
+        <option value="json" data-i18n="export_format_json">JSON (텍스트)</option>
+      </select>
+    </div>
     <div id="import-confirm-warning-box" class="import-confirm-warning" hidden>
       <h3 data-i18n="import_dialog_warning_title">버전 호환성 확인</h3>
       <p id="import-confirm-warning"></p>
@@ -1109,6 +1116,7 @@ Hello, {{$name}}!</code></pre>
   <script src="options/state.js"></script>
   <script src="options/dialog.js"></script>
   <script src="options/timeout.js"></script>
+  <script src="options/file-format.js"></script>
   <script src="options/storage.js"></script>
   <script src="options/hotkeys.js"></script>
   <script src="options/groups.js"></script>

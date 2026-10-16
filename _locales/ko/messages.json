@@ -922,5 +922,26 @@
   },
   "error_location_snippet": {
     "message": "$1 · 본문 $2줄 $3열"
+  },
+  "export_dialog_title": {
+    "message": "내보내기 포맷 선택"
+  },
+  "export_dialog_description": {
+    "message": "압축 바이너리는 파일 크기를 줄이고, JSON은 내용을 텍스트로 확인하거나 수정할 수 있습니다. 두 형식 모두 가져오기를 지원합니다."
+  },
+  "export_dialog_accept": {
+    "message": "내보내기"
+  },
+  "export_format_label": {
+    "message": "파일 포맷"
+  },
+  "export_format_binary": {
+    "message": "압축 바이너리 (권장)"
+  },
+  "export_format_json": {
+    "message": "JSON (텍스트)"
+  },
+  "status_export_failed": {
+    "message": "파일 내보내기에 실패했습니다."
   }
 }

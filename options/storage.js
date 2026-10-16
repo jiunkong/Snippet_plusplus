@@ -75,105 +75,106 @@ function importVersionWarning(fileVersion) {
   });
 }
 
-function exportSettings() {
-  syncActiveGroupData();
-  const data = { config: currentConfig, snippetGroups, version: chrome.runtime.getManifest().version, exportedAt: new Date().toISOString() };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/octet-stream' });
+function downloadSnippetExport(blob, filename, successKey) {
   const url = URL.createObjectURL(blob);
-  const fileName = `snippetpp_config_${new Date().toISOString().split('T')[0]}.sppcfg`;
-
-  chrome.downloads.download({
-    url: url,
-    filename: fileName,
-    saveAs: true
-  }, () => {
+  try {
+    chrome.downloads.download({ url, filename, saveAs: true }, () => {
+      URL.revokeObjectURL(url);
+      showStatus(t(chrome.runtime.lastError ? 'status_export_failed' : successKey), !!chrome.runtime.lastError);
+    });
+  } catch (error) {
     URL.revokeObjectURL(url);
-    showStatus(t('status_export_started'));
-  });
+    throw error;
+  }
 }
 
-function importSettings(e) {
-  const file = e.target.files[0];
+async function exportSettings() {
+  try {
+    const format = await showExportFormat();
+    if (!format) return;
+    syncActiveGroupData();
+    const data = { config: currentConfig, snippetGroups, version: chrome.runtime.getManifest().version, exportedAt: new Date().toISOString() };
+    const blob = await encodeSnippetExport(data, 'settings', format);
+    downloadSnippetExport(blob, `snippetpp_config_${new Date().toISOString().split('T')[0]}.sppcfg`, 'status_export_started');
+  } catch (error) {
+    console.error('Snippet++: Export failed', error);
+    showStatus(t('status_export_failed'), true);
+  }
+}
+
+async function importSettings(e) {
+  const target = e.target;
+  const file = target.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = async (event) => {
-    try {
-      const data = JSON.parse(event.target.result);
-      if (!Array.isArray(data.snippetGroups)) throw new Error();
-      if (await showImportConfirmation({
-        title: t('import_dialog_settings_title'),
-        message: t('status_import_confirm'),
-        warning: importVersionWarning(data.version)
-      })) {
-        if (saveTimeout) clearTimeout(saveTimeout);
-        saveTimeout = null;
-        currentConfig = data.config || currentConfig;
-        snippetGroups = data.snippetGroups;
-        saveToStorage(false).then(saved => { if (saved) window.location.reload(); });
-      }
-    } catch (err) { showStatus(t('status_invalid_file'), true); }
-    finally { e.target.value = ''; }
-  };
-  reader.readAsText(file);
-}
-
-function exportActiveGroup() {
-  if (activeGroupIndex === -1) return;
-  syncActiveGroupData();
-  const group = snippetGroups[activeGroupIndex];
-  const data = { 
-    type: "snippetpp_group",
-    version: chrome.runtime.getManifest().version,
-    group: group,
-    exportedAt: new Date().toISOString() 
-  };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/octet-stream' });
-  const url = URL.createObjectURL(blob);
-  const suggestedName = (group.name || 'Untitled').replace(/[\\/:*?"<>|]/g, '_').replace(/\s+/g, '_');
-  const fileName = `snippetpp_group_${suggestedName}_${new Date().toISOString().split('T')[0]}.sppgrp`;
-
-  chrome.downloads.download({
-    url: url,
-    filename: fileName,
-    saveAs: true
-  }, () => {
-    URL.revokeObjectURL(url);
-    showStatus(t('status_group_export_started'));
-  });
-}
-
-function importGroup(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = async (event) => {
-    try {
-      const data = JSON.parse(event.target.result);
-      const groupData = data.type === "snippetpp_group" ? data.group : data;
-      if (!groupData || !Array.isArray(groupData.snippets)) throw new Error("Invalid group file");
-
-      if (await showImportConfirmation({
-        title: t('import_dialog_group_title'),
-        message: t('status_group_import_confirm', { name: groupData.name || 'Untitled' }),
-        warning: importVersionWarning(data.version)
-      })) {
-        snippetGroups.push({
-          name: groupData.name || t('groups_default_name'),
-          snippets: groupData.snippets || [],
-          subgroups: subgroupDefinitions(groupData),
-          disabledSites: groupData.disabledSites || []
-        });
-        saveToStorage().then(saved => { if (saved) showStatus(t('status_group_imported')); });
-        renderGroupsList();
-        selectGroup(snippetGroups.length - 1);
-      }
-    } catch (err) { 
-      console.error(err);
-      showStatus(t('status_invalid_file'), true); 
+  try {
+    const data = await decodeSnippetExport(await file.arrayBuffer(), 'settings');
+    if (!Array.isArray(data.snippetGroups)) throw new Error('Invalid settings file');
+    if (await showImportConfirmation({
+      title: t('import_dialog_settings_title'),
+      message: t('status_import_confirm'),
+      warning: importVersionWarning(data.version)
+    })) {
+      if (saveTimeout) clearTimeout(saveTimeout);
+      saveTimeout = null;
+      currentConfig = data.config || currentConfig;
+      snippetGroups = data.snippetGroups;
+      saveToStorage(false).then(saved => { if (saved) window.location.reload(); });
     }
-    e.target.value = '';
-  };
-  reader.readAsText(file);
+  } catch (err) { showStatus(t('status_invalid_file'), true); }
+  finally { target.value = ''; }
+}
+
+async function exportActiveGroup() {
+  if (activeGroupIndex === -1) return;
+  // Keep the selected group stable while the format dialog is open.
+  const groupIndex = activeGroupIndex;
+  try {
+    const format = await showExportFormat();
+    if (!format) return;
+    syncActiveGroupData();
+    const group = snippetGroups[groupIndex];
+    const data = {
+      type: 'snippetpp_group', version: chrome.runtime.getManifest().version,
+      group, exportedAt: new Date().toISOString()
+    };
+    const suggestedName = (group.name || 'Untitled').replace(/[\\/:*?"<>|]/g, '_').replace(/\s+/g, '_');
+    const filename = `snippetpp_group_${suggestedName}_${new Date().toISOString().split('T')[0]}.sppgrp`;
+    const blob = await encodeSnippetExport(data, 'group', format);
+    downloadSnippetExport(blob, filename, 'status_group_export_started');
+  } catch (error) {
+    console.error('Snippet++: Group export failed', error);
+    showStatus(t('status_export_failed'), true);
+  }
+}
+
+async function importGroup(e) {
+  const target = e.target;
+  const file = target.files[0];
+  if (!file) return;
+  try {
+    const data = await decodeSnippetExport(await file.arrayBuffer(), 'group');
+    const groupData = data.type === 'snippetpp_group' ? data.group : data;
+    if (!groupData || !Array.isArray(groupData.snippets)) throw new Error('Invalid group file');
+    if (await showImportConfirmation({
+      title: t('import_dialog_group_title'),
+      message: t('status_group_import_confirm', { name: groupData.name || 'Untitled' }),
+      warning: importVersionWarning(data.version)
+    })) {
+      snippetGroups.push({
+        name: groupData.name || t('groups_default_name'),
+        snippets: groupData.snippets || [],
+        subgroups: subgroupDefinitions(groupData),
+        disabledSites: groupData.disabledSites || [],
+        siteMode: groupData.siteMode || 'blacklist'
+      });
+      saveToStorage().then(saved => { if (saved) showStatus(t('status_group_imported')); });
+      renderGroupsList();
+      selectGroup(snippetGroups.length - 1);
+    }
+  } catch (err) {
+    console.error(err);
+    showStatus(t('status_invalid_file'), true);
+  } finally { target.value = ''; }
 }
 
 function restoreOptions() {

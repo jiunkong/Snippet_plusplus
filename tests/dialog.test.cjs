@@ -8,7 +8,7 @@ const root = path.join(__dirname, '..');
 function dialogHarness() {
   const elements = {};
   let document;
-  for (const id of ['dialog', 'title', 'message', 'warning', 'warning-box', 'cancel', 'accept']) {
+  for (const id of ['dialog', 'title', 'message', 'warning', 'warning-box', 'cancel', 'accept', 'export-format-box', 'export-format-select']) {
     elements[id] = {
       textContent: '', hidden: false, isConnected: true, listeners: new Map(),
       classList: { toggle(name, enabled) { this[name] = enabled; } },
@@ -32,6 +32,27 @@ function dialogHarness() {
   vm.runInContext(fs.readFileSync(path.join(root, 'options/dialog.js'), 'utf8'), context);
   return { context, document, elements, opener };
 }
+
+test('export format dialog defaults to binary, returns JSON choice, and resets for imports', async () => {
+  const { context, elements, document, opener } = dialogHarness();
+  const pending = context.showExportFormat();
+  assert.equal(elements['export-format-box'].hidden, false);
+  assert.equal(elements['export-format-select'].value, 'binary');
+  assert.equal(elements.accept.textContent, 'export_dialog_accept');
+  elements['export-format-select'].value = 'json';
+  elements.accept.dispatch('click');
+  assert.equal(await pending, 'json');
+  assert.equal(document.activeElement, opener);
+  const next = context.showImportConfirmation({ title: 'Import', message: 'Continue?' });
+  assert.equal(elements['export-format-box'].hidden, true);
+  assert.equal(elements.accept.textContent, 'import_dialog_accept');
+  elements.cancel.dispatch('click');
+  assert.equal(await next, false);
+  const cancelled = context.showExportFormat();
+  assert.equal(elements['export-format-select'].value, 'binary');
+  elements.dialog.dispatch('cancel', { preventDefault() {} });
+  assert.equal(await cancelled, false);
+});
 
 test('custom import dialog renders text safely, focuses cancel, and resolves only on a decision', async () => {
   const { context, document, elements, opener } = dialogHarness();

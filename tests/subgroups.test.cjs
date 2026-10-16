@@ -328,15 +328,11 @@ test('importing an existing parent group preserves subgroup organization', async
   const imported = exampleGroup();
   context.chrome = { storage: { onChanged: { addListener() {} } } };
   context.showImportConfirmation = async () => true;
-  let loaded;
-  context.FileReader = class {
-    readAsText() { loaded = this.onload({ target: { result: JSON.stringify({ type: 'snippetpp_group', group: imported }) } }); }
-  };
+  context.decodeSnippetExport = async () => ({ type: 'snippetpp_group', group: imported });
   vm.runInContext(fs.readFileSync(path.join(root, 'options/storage.js'), 'utf8'), context);
   context.saveToStorage = async () => true;
   context.showStatus = () => {};
-  context.importGroup({ target: { files: [{}], value: 'import.sppgrp' } });
-  await loaded;
+  await context.importGroup({ target: { files: [{ arrayBuffer: async () => new ArrayBuffer(0) }], value: 'import.sppgrp' } });
   assert.equal(context.activeGroupIndex, 1);
   assert.equal(context.snippetSubgroupId(findRow('helper')), 'tools');
   assert.equal(context.findSubgroupSection('tools').classList.contains('collapsed'), true);
