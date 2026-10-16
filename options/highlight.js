@@ -5,7 +5,7 @@
  * and performs real-time syntax validation.
  * @returns {string} First error message found, or empty string if none.
  */
-function updateHighlight(textarea, highlightDiv, triggerValue = "") {
+function updateHighlight(textarea, highlightDiv, triggerValue = "", groupSnippets = null, sourceSnippetName = null) {
   let text = textarea.value;
   text = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -30,6 +30,7 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
           // Handle string literals — skip their content
           if (ch === '\'' || ch === '"') {
             const quote = ch;
+            let closed = false;
             inner += ch;
             i++;
             while (i < src.length) {
@@ -37,7 +38,11 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
               inner += sc;
               i++;
               if (sc === '\\') { if (i < src.length) { inner += src[i]; i++; } continue; }
-              if (sc === quote) break;
+              if (sc === quote) { closed = true; break; }
+            }
+            if (!closed) {
+              results.push({ index: start, match: src.slice(start), inner, error: 'err_unclosed_string' });
+              break;
             }
             continue;
           }
@@ -76,11 +81,13 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
   tagMatches.forEach(m => {
     const content = m.inner.trim();
     const offset = m.index;
+    if (m.error) { addError(offset, t(m.error)); return; }
     if (content.startsWith('if ')) ifStack.push({ offset, content });
     else if (content === 'endif') ifStack.length > 0 ? ifStack.pop() : addError(offset, t("err_endif_no_if"));
     else if (content.startsWith('elif ') || content === 'else') { if (ifStack.length === 0) addError(offset, t("err_elif_else_outside_if")); }
     else if (content.startsWith('for ')) forStack.push({ offset, content });
     else if (content === 'endfor') forStack.length > 0 ? forStack.pop() : addError(offset, t("err_endfor_no_for"));
+    else if ((content === 'break' || content === 'continue') && forStack.length === 0) addError(offset, t('err_loop_control_outside_for', [content]));
     else if (content.startsWith('switch ')) switchStack.push({ offset, content });
     else if (content === 'endswitch') switchStack.length > 0 ? switchStack.pop() : addError(offset, t("err_endswitch_no_switch"));
     else if (content.startsWith('case ')) caseStack.push({ offset, content });
@@ -103,6 +110,37 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
   // Track variables defined via {{set}} and the depth at which they were defined
   const scopedVars = new Map(); // name -> depth
 
+  const splitFunctionArgs = (text) => {
+    const parts = [];
+    let current = '';
+    let depth = 0;
+    let quote = null;
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      if (quote) {
+        current += char;
+        if (char === '\\' && i + 1 < text.length) current += text[++i];
+        else if (char === quote) quote = null;
+      } else if (char === '\'' || char === '"') {
+        quote = char;
+        current += char;
+      } else if ((char === '(' || char === '[')) {
+        depth++;
+        current += char;
+      } else if ((char === ')' || char === ']')) {
+        depth--;
+        current += char;
+      } else if (char === ',' && depth === 0) {
+        parts.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    if (current.trim() || text.trim()) parts.push(current.trim());
+    return parts;
+  };
+
   /**
    * Validates an expression for syntax, variables, and loop context.
    */
@@ -110,23 +148,105 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
     let cond = expr.trim();
     cond = cond.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 
-    // Strip strings before checking for operator errors to avoid false positives inside quotes
-    const strippedForOps = cond.replace(/(['"])(?:(?!\1).|\\\1)*\1/g, '""');
+    // Validate actual calls before hiding their names and string arguments.
+    // Quoted names may contain spaces, operators, variables or even @ signs.
+    let strippedForOps = '';
+    const offsetDelimiters = new Map();
+    const snippetArgsOpenings = new Set();
+    const normalizedArgsOpenings = new Set();
+    for (let i = 0; i < cond.length;) {
+      const char = cond[i];
+      if (offsetDelimiters.has(i)) { strippedForOps += offsetDelimiters.get(i); i++; continue; }
+      if (char === '@') {
+        const call = parseSnippetCall(cond, i);
+        if (call.error) return t(call.error);
+        snippetArgsOpenings.add(call.argsStart - 1);
+        if (call.offsetStart !== null) {
+          offsetDelimiters.set(call.offsetOpenStart, '(');
+          offsetDelimiters.set(call.offsetEnd, ')');
+          const offset = cond.slice(call.offsetStart, call.offsetEnd).trim();
+          if (/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(offset) &&
+              (!Number.isSafeInteger(Number(offset)) || Number(offset) < 0)) return t('err_snippet_cursor_offset');
+        }
+        strippedForOps += '@__snippet';
+        i = call.nameEnd;
+      } else if (char === "'" || char === '"') {
+        const quote = char;
+        i++;
+        while (i < cond.length) {
+          if (cond[i] === '\\') { i += 2; continue; }
+          if (cond[i++] === quote) break;
+        }
+        strippedForOps += '""';
+      } else {
+        if (snippetArgsOpenings.has(i)) normalizedArgsOpenings.add(strippedForOps.length);
+        strippedForOps += cond[i++];
+      }
+    }
+    const withoutSnippetNames = strippedForOps.replace(/@__snippet(?=\s*[([])/g, '');
 
     if (!isAssignment && /(?<![=!><])=(?![=])/.test(strippedForOps)) return t("err_assignment_instead_of_comparison");
     if (/(?<!&)&(?!&)/.test(strippedForOps) || /(?<!\|)\|(?!\|)/.test(strippedForOps)) return t("err_logical_operator_single");
 
-    const pStack = [];
-    for (let i = 0; i < cond.length; i++) {
-      if (cond[i] === '(') pStack.push(i);
-      else if (cond[i] === ')') {
-        if (pStack.length === 0) return t("err_unmatched_close_paren");
-        pStack.pop();
+    // Validate range operands outside strings, including ranges nested in calls.
+    if (/(?:^|[=(,~?:\[])\s*~|~\s*(?:$|[),~?:\]])/.test(strippedForOps)) {
+      return t('err_range_both_values_required', [cond]);
+    }
+    const rangeDepths = [0];
+    for (const char of strippedForOps) {
+      if (char === '(' || char === '[') rangeDepths.push(0);
+      else if ((char === ')' || char === ']') && rangeDepths.length > 1) rangeDepths.pop();
+      else if (char === ',' || char === '?' || char === ':') rangeDepths[rangeDepths.length - 1] = 0;
+      else if (char === '~' && ++rangeDepths[rangeDepths.length - 1] > 1) {
+        return t('err_range_both_values_required', [cond]);
       }
     }
-    if (pStack.length > 0) return t("err_unmatched_open_paren");
 
-    const parts = cond.split(/&&|\|\|/);
+    const pStack = [];
+    const closedGroups = new Map();
+    const isNonIterableLiteral = source => {
+      let text = source.trim();
+      while (text.startsWith('(') && text.endsWith(')')) text = text.slice(1, -1).trim();
+      return /^(?:[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?|true|false|null|undefined)$/.test(text);
+    };
+    for (let i = 0; i < strippedForOps.length; i++) {
+      const char = strippedForOps[i];
+      if (char === '(' || char === '[') {
+        const prefix = strippedForOps.slice(0, i).trimEnd();
+        const literal = prefix.match(/(?:^|[^\p{L}\p{N}_$])((?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?|true|false|null|undefined)\s*$/u);
+        const group = closedGroups.get(prefix.length - 1);
+        if (char === '[' && (literal || (group && !group.isCall && isNonIterableLiteral(group.source)))) {
+          return t('err_list_index_target');
+        }
+        const isIndex = char === '[' && /(?:\$[\p{L}\p{N}_]+|\b(?:index|value)|[\])"])\s*$/u.test(strippedForOps.slice(0, i));
+        pStack.push({ char, index: i, isIndex,
+          isCall: normalizedArgsOpenings.has(i) || /[\p{L}\p{N}_$@]\s*$/u.test(strippedForOps.slice(0, i)) });
+      }
+      else if (char === ')' || char === ']') {
+        const open = pStack.pop();
+        if (open?.char !== (char === ')' ? '(' : '[')) {
+          return t(char === ']' || open?.char === '[' ? 'err_list_syntax' : 'err_unmatched_close_paren');
+        }
+        if (char === ')') {
+          const source = strippedForOps.slice(open.index + 1, i);
+          if (!open.isCall && !source.trim()) return t('err_missing_operand', ['()']);
+          closedGroups.set(i, { source, isCall: open.isCall });
+        }
+        if (char === ']') {
+          const source = strippedForOps.slice(open.index + 1, i);
+          const parts = splitFunctionArgs(source);
+          if (open.isIndex) {
+            if (!source.trim() || parts.length !== 1 || parts.some(part => !part) || /,\s*$/.test(source)) return t('err_list_index_integer');
+            const literal = source.trim();
+            if ((/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(literal) && !Number.isSafeInteger(Number(literal))) ||
+                /^(?:true|false|null|undefined|"")$/.test(literal)) return t('err_list_index_integer');
+          } else if (parts.some(part => !part) || /,\s*$/.test(source)) return t('err_list_syntax');
+        }
+      }
+    }
+    if (pStack.length > 0) return t(pStack.some(item => item.char === '[') ? 'err_list_syntax' : 'err_unmatched_open_paren');
+
+    const parts = strippedForOps.split(/&&|\|\|/);
     for (let part of parts) {
       part = part.trim();
       if (!part) continue;
@@ -137,19 +257,19 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
       }
     }
 
-    if (/\bindex\b/.test(cond) && activeForDepth === 0) return t("err_index_outside_for");
+    if (/\bindex\b/.test(withoutSnippetNames) && activeForDepth === 0) return t("err_index_outside_for");
 
     // Check Ternary Balance (? and :)
     let ternaryDepth = 0;
     let inQTest = null;
     let pDepthTest = 0;
-    for (let i = 0; i < cond.length; i++) {
-        const c = cond[i];
+    for (let i = 0; i < strippedForOps.length; i++) {
+        const c = strippedForOps[i];
         if ((c === "'" || c === '"') && !inQTest) inQTest = c;
         else if (c === inQTest) inQTest = null;
         if (!inQTest) {
-            if (c === '(') pDepthTest++;
-            else if (c === ')') pDepthTest--;
+            if (c === '(' || c === '[') pDepthTest++;
+            else if (c === ')' || c === ']') pDepthTest--;
             if (pDepthTest === 0) {
                 if (c === '?') ternaryDepth++;
                 else if (c === ':') {
@@ -161,13 +281,15 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
     }
     if (ternaryDepth > 0) return t("err_ternary_no_matching_colon");
 
-    const stripped = cond.replace(/(['"])(?:(?!\1).|\\\1)*\1/g, '""');
+    const stripped = strippedForOps;
     const tokens = [...stripped.matchAll(/[\p{L}_][\p{L}\p{N}_]*/gu)];
-    const validKeywords = ['index', 'true', 'false', 'null', 'undefined', ...BUILTIN_ALL];
+    const validKeywords = ['index', 'value', 'true', 'false', 'null', 'undefined', ...BUILTIN_ALL];
     
     for (const tokenMatch of tokens) {
       const token = tokenMatch[0];
+      if (token === 'value' && stripped[tokenMatch.index - 1] !== '$' && activeForDepth === 0) return t('err_value_outside_for');
       if (validKeywords.includes(token)) continue;
+      if (stripped[tokenMatch.index - 1] === '@' && /^\s*[([]/.test(stripped.slice(tokenMatch.index + token.length))) continue;
       if (/^\d+$/.test(token)) continue;
       const idx = tokenMatch.index;
       if (idx === 0 || stripped[idx - 1] !== '$') {
@@ -175,14 +297,14 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
       }
     }
 
-    if (/\$(?![\p{L}\p{N}_])/u.test(cond)) return t("err_var_name_required");
+    if (/\$(?![\p{L}\p{N}_])/u.test(stripped)) return t("err_var_name_required");
 
-    const vars = cond.match(/\$[\p{L}\p{N}_]+/gu);
+    const vars = stripped.match(/\$[\p{L}\p{N}_]+/gu);
     if (vars) {
       for (const v of vars) {
         const name = v.substring(1);
         if (isAssignment) {
-          const assignmentMatch = cond.match(/^\$([\p{L}\p{N}_]+)\s*(?:=|\+=|-=|\*=|%=|\/=)/u);
+          const assignmentMatch = cond.match(/^\$([\p{L}\p{N}_]+)\s*(?:$|=|\+=|-=|\*=|%=|\/=)/u);
           if (assignmentMatch && assignmentMatch[1] === name) continue;
         }
         // Check both trigger args and scoped set variables
@@ -198,65 +320,42 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
    */
   const highlightInnerExpr = (expr, tagOffset, addError) => {
     const isRandomFn = (n) => n === 'uuid' || n === 'random';
-    const isTypeFn = (n) => BUILTIN_FUNCS_TYPE_CAST.includes(n);
+    const isTypeFn = (n) => BUILTIN_FUNCS_TYPE_CAST.includes(n) || n === 'type';
 
-    const splitFunctionArgs = (text) => {
-      const parts = [];
-      let current = '';
-      let depth = 0;
-      let quote = null;
-      for (let i = 0; i < text.length; i++) {
-        const char = text[i];
-        if (quote) {
-          current += char;
-          if (char === '\\' && i + 1 < text.length) current += text[++i];
-          else if (char === quote) quote = null;
-        } else if (char === '\'' || char === '"') {
-          quote = char;
-          current += char;
-        } else if (char === '(') {
-          depth++;
-          current += char;
-        } else if (char === ')') {
-          depth--;
-          current += char;
-        } else if (char === ',' && depth === 0) {
-          parts.push(current.trim());
-          current = '';
-        } else {
-          current += char;
-        }
-      }
-      if (current.trim() || text.trim()) parts.push(current.trim());
-      return parts;
-    };
-    
-    const getError = (n, a) => {
+    const getError = (n, a, snippetName = n.slice(1)) => {
       if (BUILTIN_FUNCS_NO_ARGS.includes(n) && a.trim() !== "") return t("err_fn_no_args_allowed", [n]);
       
-      const parts = splitFunctionArgs(a).filter(p => p.length > 0);
+      const allParts = splitFunctionArgs(a);
+      const parts = allParts.filter(p => p.length > 0);
+      if ((n === 'insertAt' || n === 'removeAt') && /,\s*$/.test(a)) return t(n === 'insertAt' ? 'err_fn_three_args_exact' : 'err_fn_two_args_exact', [n]);
+      if ((n === 'split' || n === 'join' || n === 'removeAt') && (parts.length !== 2 || allParts.some(part => !part))) return t('err_fn_two_args_exact', [n]);
+      if (n === 'insertAt' && (parts.length !== 3 || allParts.some(part => !part))) return t('err_fn_three_args_exact', [n]);
+      if (n === 'type' && (parts.length !== 1 || allParts.some(part => !part))) return t('err_fn_one_arg_exact', [n]);
       if (BUILTIN_FUNCS_HAS_ARGS.includes(n) && parts.length === 0) return t("err_fn_args_required", [n]);
+      if (n.startsWith('@')) {
+        if (allParts.some(part => !part)) return t('err_snippet_call_syntax');
+        if (groupSnippets) {
+          const name = snippetName;
+          const matches = groupSnippets.filter(snippet => snippet.name === name);
+          if (matches.length !== 1) return t('err_snippet_call_target', [name]);
+          const expected = snippetParameterNames(matches[0].trigger).length;
+          if (parts.length !== expected) return t('err_snippet_call_args', [name, expected]);
+        }
+      }
       // Optional args fns like prompt() are allowed to be empty
-      if (BUILTIN_FUNCS_TYPE_CAST.includes(n) && parts.length !== 1) return t("err_fn_one_arg_exact", [n]);
+      if ((BUILTIN_FUNCS_TYPE_CAST.includes(n) || n === 'copy') && parts.length !== 1) return t("err_fn_one_arg_exact", [n]);
 
       // Strict count checks
       const oneArgFns = ['upper', 'lower', 'trim', 'capitalize', 'len', 'prompt', 'round', 'ceil', 'floor', 'date', 'time', 'datetime'];
       if (oneArgFns.includes(n) && parts.length > 1) return t("err_fn_one_arg_max", [n]);
       if ((n === 'min' || n === 'max') && parts.length === 0) return t("err_fn_min_one_arg", [n]);
       if (n === 'substr' && (parts.length < 2 || parts.length > 3)) return t("err_substr_args");
-      if ((n === 'startswith' || n === 'endswith') && parts.length !== 2) return t("err_fn_two_args_exact", [n]);
+      if ((n === 'startswith' || n === 'endswith' || n === 'toast') && parts.length !== 2) return t("err_fn_two_args_exact", [n]);
       if (n === 'replace' && parts.length !== 3) return t("err_replace_args");
 
       if (n === 'random') {
         if (parts.length === 0) return t("err_random_args");
-        for (const p of parts) {
-          if (p.includes('~')) {
-            const rangeParts = p.split('~').map(s => s.trim());
-            if (rangeParts.length !== 2 || !rangeParts[0] || !rangeParts[1]) {
-              return t("err_range_both_values_required", [p]);
-            }
-          }
-        }
+
       }
       return null;
     };
@@ -271,27 +370,69 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
     };
 
     const strings = [];
-    // 1. Mask strings
-    let text = expr.replace(/(['"])(?:(?!\1).|\\\1)*\1/g, (m) => {
-      strings.push(m);
-      return `\x01${strings.length - 1}\x02`;
-    });
+    // Mask argument strings while retaining quoted function names for parsing.
+    let text = '';
+    for (let i = 0; i < expr.length;) {
+      if (expr[i] === '@') {
+        const name = parseSnippetFunctionName(expr, i);
+        if (!name.error) { text += expr.slice(i, name.nameEnd); i = name.nameEnd; continue; }
+      }
+      if (expr[i] === "'" || expr[i] === '"') {
+        const start = i;
+        const quote = expr[i++];
+        while (i < expr.length) {
+          if (expr[i] === '\\') { i += 2; continue; }
+          if (expr[i++] === quote) break;
+        }
+        strings.push(expr.slice(start, i));
+        text += `\x01${strings.length - 1}\x02`;
+      } else text += expr[i++];
+    }
 
     let output = "";
     let i = 0;
     let fnParenStack = []; // Stores { depth, cls }
     let currentDepth = 0;
+    const punctuationStack = [];
 
     while (i < text.length) {
+      if (text[i] === '@') {
+        const call = parseSnippetCall(text, i);
+        if (call.error) {
+          if (addError) addError(tagOffset, t(call.error));
+          output += `<span class="hl-fn-err">@</span>`;
+          i++;
+          continue;
+        }
+        const name = text.slice(i, call.nameEnd);
+        const lookupName = call.name.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+        const error = getError(name, text.slice(call.argsStart, call.argsEnd), lookupName);
+        const cls = error ? 'hl-fn-err' : 'hl-fn-snippet';
+        if (error && addError) addError(tagOffset, error);
+        output += `<span class="${cls}">${name}</span>`;
+        let position = call.nameEnd;
+        const blocks = [{ from: call.argsStart, to: call.argsEnd, openStart: call.argsStart - 1, closeEnd: call.argsEnd + 1 }];
+        if (call.offsetStart !== null) blocks.push({ from: call.offsetStart, to: call.offsetEnd, openStart: call.offsetOpenStart, closeEnd: call.offsetCloseEnd });
+        blocks.sort((a, b) => a.from - b.from);
+        for (const block of blocks) {
+          output += text.slice(position, block.openStart);
+          output += `<span class="${cls}">${text.slice(block.openStart, block.from)}</span>`;
+          output += highlightInnerExpr(text.slice(block.from, block.to), tagOffset, addError);
+          output += `<span class="${cls}">${text.slice(block.to, block.closeEnd)}</span>`;
+          position = block.closeEnd;
+        }
+        i = call.end;
+        continue;
+      }
       // A. Check for function start: name(
-      const fnMatch = text.substring(i).match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/);
+      const fnMatch = text.substring(i).match(/^(@[\p{L}_][\p{L}\p{N}_]*|[a-zA-Z_][a-zA-Z0-9_]*)\s*\(/u);
       if (fnMatch) {
         const name = fnMatch[1];
         const fullMatch = fnMatch[0];
         const openIdx = i + fullMatch.length - 1;
         const closeIdx = getMatchingParen(text, openIdx);
 
-        let cls = isRandomFn(name) ? 'hl-fn-rand' : (isTypeFn(name) ? 'hl-fn-type' : 'hl-fn');
+        let cls = name.startsWith('@') ? 'hl-fn-snippet' : (isRandomFn(name) ? 'hl-fn-rand' : (isTypeFn(name) ? 'hl-fn-type' : 'hl-fn'));
         if (closeIdx !== -1) {
           const args = text.substring(openIdx + 1, closeIdx).trim();
           const err = getError(name, args);
@@ -304,6 +445,7 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
         output += `<span class="${cls}">${name}(</span>`;
         i += fullMatch.length;
         currentDepth++;
+        punctuationStack.push('(');
         fnParenStack.push({ depth: currentDepth, cls });
         continue;
       }
@@ -311,9 +453,11 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
       const char = text[i];
       // B. Track depth and handle closing parens
       if (char === '(') {
+        punctuationStack.push('(');
         currentDepth++;
         output += char;
       } else if (char === ')') {
+        punctuationStack.pop();
         const stackItem = fnParenStack.length > 0 && fnParenStack[fnParenStack.length - 1];
         if (stackItem && stackItem.depth === currentDepth) {
           output += `<span class="${stackItem.cls}">)</span>`;
@@ -323,12 +467,20 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
         }
         currentDepth--;
       } 
-      else if (char === '?' || char === ':') {
+      else if (char === '?' || char === ':' || char === '~') {
         output += `<span class="hl-op">${char}</span>`;
       } 
+      else if (char === '[' || char === ']') {
+        if (char === '[') punctuationStack.push('[');
+        else punctuationStack.pop();
+        output += `<span class="hl-list">${char}</span>`;
+      }
+      else if (char === ',' && punctuationStack[punctuationStack.length - 1] === '[') {
+        output += `<span class="hl-list">${char}</span>`;
+      }
       // C. Handle variables: $name and special 'index'
-      else if (char === '$' || (char === 'i' && text.substring(i, i + 5) === 'index')) {
-        const varMatch = text.substring(i).match(/^(\$[\p{L}\p{N}_]+|index\b)/u);
+      else if (char === '$' || /^(?:index|value)\b/.test(text.substring(i))) {
+        const varMatch = text.substring(i).match(/^(\$[\p{L}\p{N}_]+|index\b|value\b)/u);
         if (varMatch) {
           output += `<span class="hl-var">${varMatch[0]}</span>`;
           i += varMatch[0].length - 1;
@@ -343,13 +495,13 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
     }
 
     // 4. Unmask strings
-    return output.replace(/\x01(\d+)\x02/g, (_, i) => strings[i]);
+    return output.replace(/\x01(\d+)\x02/g, (marker, i) => strings[i] ?? marker);
   };
 
   // Process tags one by one using the string-aware parser results
   let output = '';
   let lastIndex = 0;
-  for (const m of findTags(text)) {
+  for (const m of tagMatches) {
     const { index, match, inner } = m;
     const offset = index;
     const content = inner.trim();
@@ -360,11 +512,13 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
     if (tagErrors.has(offset)) return `<span class="error-badge">${match}</span>`;
 
     // 2. Control Flow & Expressions
-    const isControl = /^(if\s+|elif\s+|for\s+|set\s+|switch\s+|case\s+|else$|default$|endif$|endfor$|endswitch$|endcase$|enddefault$|index$)/.test(content);
-    const hasOperators = /[+\-*/%=$]/.test(content);
+    const isControl = /^(if\s+|elif\s+|for\s+|set\s+|switch\s+|case\s+|else$|default$|endif$|endfor$|endswitch$|endcase$|enddefault$|index$|break$|continue$)/.test(content);
+    const hasOperators = /[+\-*/%=$~]/.test(content);
     const isNumber = /^\d+$/.test(content);
-    const hasFunction = /[a-zA-Z_][a-zA-Z0-9_]*\s*\(/.test(content);
-    const hasVariable = /\$[\p{L}\p{N}_]+/u.test(content) || /\bindex\b/.test(content);
+    const isString = /^(?:"(?:\\[\s\S]|[^"\\])*"|'(?:\\[\s\S]|[^'\\])*')$/.test(content);
+    const hasList = content.includes('[') || content.includes(']');
+    const hasFunction = /(?:@[\p{L}_][\p{L}\p{N}_]*|[a-zA-Z_][a-zA-Z0-9_]*)\s*\(/u.test(content) || content.includes('@');
+    const hasVariable = /\$[\p{L}\p{N}_]+/u.test(content) || /\b(?:index|value)\b/.test(content);
     const isCursor    = content === 'cursor' || content.startsWith('#');
 
     if (isCursor) {
@@ -388,7 +542,7 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
       }
     }
 
-    if (isControl || hasOperators || isNumber || hasFunction || hasVariable) {
+    if (isControl || hasOperators || isNumber || isString || hasList || hasFunction || hasVariable) {
       if (content.startsWith('if ') || content.startsWith('elif ') || content.startsWith('switch ') || content.startsWith('case ') || content === 'default') {
         const prefixLen = content.startsWith('switch ') ? 7 : (content.startsWith('case ') ? 5 : (content.startsWith('if ') ? 3 : (content === 'default' ? 7 : 5)));
         const exprPart = content.substring(prefixLen);
@@ -400,7 +554,7 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
 
         // For 'case', validate each comma-separated expression
         if (content.startsWith('case ')) {
-          const valExprs = exprPart.split(',').map(s => s.trim()).filter(s => s.length > 0);
+          const valExprs = splitFunctionArgs(exprPart).filter(s => s.length > 0);
           for (const expr of valExprs) {
             const err = validateExpr(expr, offset);
             if (err) { addError(offset, err); return `<span class="error-badge">${match}</span>`; }
@@ -421,7 +575,7 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
 
       if (content.startsWith('set ')) {
         const assignment = content.substring(4);
-        if (!assignment.includes('=')) {
+        if (!assignment.includes('=') && !/^\$[\p{L}\p{N}_]+\s*$/u.test(assignment)) {
           addError(offset, t("err_set_operator_required"));
           return `<span class="error-badge">${match}</span>`;
         }
@@ -429,7 +583,7 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
         if (err) { addError(offset, err); return `<span class="error-badge">${match}</span>`; }
 
         // Mutation Logic: Only add to scopedVars if it doesn't exist in any outer scope
-        const varMatch = assignment.match(/^\$([\p{L}\p{N}_]+)\s*(?:=|\+=|-=|\*=|%=|\/=)/u);
+        const varMatch = assignment.match(/^\$([\p{L}\p{N}_]+)\s*(?:$|=|\+=|-=|\*=|%=|\/=)/u);
         if (varMatch) {
           const name = varMatch[1];
           if (!definedArgs.has(name) && !scopedVars.has(name)) {
@@ -457,12 +611,12 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "") {
         return `<span class="error-badge">${match}</span>`;
       }
 
-      if (!isControl && (hasOperators || hasFunction || hasVariable)) {
+      if (!isControl && (hasOperators || hasFunction || hasVariable || hasList)) {
         const err = validateExpr(content, offset);
         if (err) { addError(offset, err); return `<span class="error-badge">${match}</span>`; }
       }
 
-      const keywordMatch = content.match(/^(if|elif|for|set|switch|case|else|default|endif|endfor|endswitch|endcase|enddefault)\b/);
+      const keywordMatch = content.match(/^(if|elif|for|set|switch|case|else|default|endif|endfor|endswitch|endcase|enddefault|break|continue)\b/);
       if (keywordMatch) {
         const keyword = keywordMatch[1];
         let keywordEndIndex = inner.indexOf(keyword) + keyword.length;

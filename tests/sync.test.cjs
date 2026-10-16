@@ -101,3 +101,14 @@ test('settings exceeding Chromium item size fail before publishing any chunks', 
     /Settings exceed Chrome Sync item capacity/);
   assert.equal(JSON.stringify(data), before);
 });
+
+test('subgroup organization round-trips through sync while snippets stay flat', async () => {
+  const { context, data } = syncHarness();
+  const groups = [{ name: 'Parent', subgroups: [{ id: 'tools', name: 'Tools', collapsed: true }], snippets: [
+    { name: 'inside', trigger: '/inside', replacement: 'text', subgroupId: 'tools', disabled: true },
+    { name: 'outside', trigger: '/outside', replacement: 'text' }
+  ] }];
+  await context.saveSyncedState({}, groups);
+  const loaded = await syncHarness(data).context.loadSyncedState({}, []);
+  assert.equal(JSON.stringify(loaded.snippetGroups), JSON.stringify(groups));
+});

@@ -5,7 +5,8 @@ const snippetsList = document.getElementById('snippets-list');
 document.addEventListener('DOMContentLoaded', restoreOptions);
 
 document.getElementById('add-group-btn').addEventListener('click', addGroup);
-document.getElementById('add-snippet-btn').addEventListener('click', addSnippetRow);
+document.getElementById('add-snippet-btn').addEventListener('click', () => addSnippetRow());
+document.getElementById('add-subgroup-btn').addEventListener('click', addSubgroup);
 document.getElementById('delete-group-btn').addEventListener('click', deleteActiveGroup);
 document.getElementById('export-btn').addEventListener('click', exportSettings);
 document.getElementById('import-btn').addEventListener('click', () => document.getElementById('import-file').click());
@@ -20,6 +21,7 @@ document.getElementById('add-site-btn').addEventListener('click', () => {
 document.getElementById('export-group-btn').addEventListener('click', exportActiveGroup);
 document.getElementById('import-group-btn').addEventListener('click', () => document.getElementById('import-group-file').click());
 document.getElementById('import-group-file').addEventListener('change', importGroup);
+document.getElementById('snippet-search').addEventListener('input', applySnippetSearch);
 
 // Tab Switching
 document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -28,6 +30,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(`${btn.dataset.tab}-tab`).classList.add('active');
+    if (btn.dataset.tab === 'tester') refreshSnippetTester();
   });
 });
 
@@ -46,8 +49,17 @@ snippetsList.addEventListener('dragover', e => {
 
   startAutoScroll();
 
-  const afterElement = getDragAfterElement(snippetsList, e.clientY);
-  afterElement == null ? snippetsList.appendChild(dragging) : snippetsList.insertBefore(dragging, afterElement);
+  if (dragging.classList.contains('snippet-subgroup')) {
+    reorderSubgroup(dragging, e.clientY);
+    return;
+  }
+
+  const section = e.target.closest('.snippet-subgroup');
+  if (section?.classList.contains('collapsed')) setSubgroupCollapsed(section, false, false);
+  const container = section ? section.querySelector('.subgroup-snippets') : snippetsList;
+  const afterElement = getDragAfterElement(container, e.clientY);
+  if (afterElement) container.insertBefore(dragging, afterElement);
+  else appendSnippetToContainer(dragging, container);
 });
 
 snippetsList.addEventListener('drop',    () => stopAutoScroll());

@@ -1,12 +1,13 @@
 {
   "manifest_version": 3,
   "name": "__MSG_app_name__",
-  "version": "1.0",
+  "version": "1.1.0",
   "description": "__MSG_app_description__",
   "default_locale": "ko",
   "permissions": [
     "storage",
     "clipboardRead",
+    "clipboardWrite",
     "downloads"
   ],
   "background": {
@@ -25,6 +26,7 @@
         "utils/constants.js",
         "utils/config.js",
         "utils/sync.js",
+        "utils/i18n.js",
         "utils/triggers.js",
         "content/evaluator.js",
         "content/state.js",
@@ -36,6 +38,17 @@
         "content/handlers.js"
       ],
       "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "_locales/en/messages.json",
+        "_locales/ko/messages.json"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ],
   "options_page": "options.html",

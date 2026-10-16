@@ -46,8 +46,38 @@ function showStatus(message, isError = false) {
   }, 2500);
 }
 
+// Chrome extension versions are numeric components; missing trailing components
+// are zero, so 1.0 and 1.0.0 compare as the same version.
+function compareExtensionVersions(left, right) {
+  const parse = value => {
+    if (typeof value !== 'string' || !/^\d+(?:\.\d+){0,3}$/.test(value)) return null;
+    const parts = value.split('.').map(Number);
+    return parts.every(part => part <= 65535) ? parts : null;
+  };
+  const a = parse(left);
+  const b = parse(right);
+  if (!a || !b) return null;
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const difference = (a[i] || 0) - (b[i] || 0);
+    if (difference) return Math.sign(difference);
+  }
+  return 0;
+}
+
+function importVersionWarning(fileVersion) {
+  // Legacy files without a version keep their original import flow.
+  if (fileVersion == null) return '';
+  const currentVersion = chrome.runtime.getManifest().version;
+  const comparison = compareExtensionVersions(fileVersion, currentVersion);
+  if (comparison === null || comparison === 0) return '';
+  return t(comparison < 0 ? 'status_import_older_version' : 'status_import_newer_version', {
+    fileVersion, currentVersion
+  });
+}
+
 function exportSettings() {
-  const data = { config: currentConfig, snippetGroups, version: "1.0", exportedAt: new Date().toISOString() };
+  syncActiveGroupData();
+  const data = { config: currentConfig, snippetGroups, version: chrome.runtime.getManifest().version, exportedAt: new Date().toISOString() };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/octet-stream' });
   const url = URL.createObjectURL(blob);
   const fileName = `snippetpp_config_${new Date().toISOString().split('T')[0]}.sppcfg`;
@@ -66,11 +96,15 @@ function importSettings(e) {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = (event) => {
+  reader.onload = async (event) => {
     try {
       const data = JSON.parse(event.target.result);
       if (!Array.isArray(data.snippetGroups)) throw new Error();
-      if (confirm(t('status_import_confirm'))) {
+      if (await showImportConfirmation({
+        title: t('import_dialog_settings_title'),
+        message: t('status_import_confirm'),
+        warning: importVersionWarning(data.version)
+      })) {
         if (saveTimeout) clearTimeout(saveTimeout);
         saveTimeout = null;
         currentConfig = data.config || currentConfig;
@@ -78,6 +112,7 @@ function importSettings(e) {
         saveToStorage(false).then(saved => { if (saved) window.location.reload(); });
       }
     } catch (err) { showStatus(t('status_invalid_file'), true); }
+    finally { e.target.value = ''; }
   };
   reader.readAsText(file);
 }
@@ -88,7 +123,7 @@ function exportActiveGroup() {
   const group = snippetGroups[activeGroupIndex];
   const data = { 
     type: "snippetpp_group",
-    version: "1.0",
+    version: chrome.runtime.getManifest().version,
     group: group,
     exportedAt: new Date().toISOString() 
   };
@@ -111,16 +146,21 @@ function importGroup(e) {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = (event) => {
+  reader.onload = async (event) => {
     try {
       const data = JSON.parse(event.target.result);
       const groupData = data.type === "snippetpp_group" ? data.group : data;
       if (!groupData || !Array.isArray(groupData.snippets)) throw new Error("Invalid group file");
 
-      if (confirm(t('status_group_import_confirm', { name: groupData.name || 'Untitled' }))) {
+      if (await showImportConfirmation({
+        title: t('import_dialog_group_title'),
+        message: t('status_group_import_confirm', { name: groupData.name || 'Untitled' }),
+        warning: importVersionWarning(data.version)
+      })) {
         snippetGroups.push({
           name: groupData.name || t('groups_default_name'),
           snippets: groupData.snippets || [],
+          subgroups: subgroupDefinitions(groupData),
           disabledSites: groupData.disabledSites || []
         });
         saveToStorage().then(saved => { if (saved) showStatus(t('status_group_imported')); });
@@ -143,11 +183,36 @@ function restoreOptions() {
     lastSyncedSnapshot = snapshotSyncedState(currentConfig, snippetGroups);
     await loadLocale(currentConfig.uiLocale, false);
 
-    for (const key of ['nextCursor', 'undoExpansion', 'addSnippet', 'toggleFold']) {
+    for (const key of ['nextCursor', 'undoExpansion', 'addSnippet', 'addSubgroup', 'reloadSnippets', 'toggleFold']) {
       document.getElementById(`hotkey-display-${key}`).textContent = currentConfig[key] || DEFAULT_CONFIG[key];
     }
 
     const particlesToggle = document.getElementById('particles-toggle');
+    const depthInput = document.getElementById('snippet-depth-input');
+    if (depthInput) {
+      depthInput.value = String(normalizeSnippetCallDepth(currentConfig.maxCallDepth));
+      depthInput.addEventListener('change', () => {
+        if (!depthInput.checkValidity()) { depthInput.reportValidity(); return; }
+        currentConfig.maxCallDepth = normalizeSnippetCallDepth(Number(depthInput.value));
+        depthInput.value = String(currentConfig.maxCallDepth);
+        saveToStorage();
+      });
+      initTimeoutScrubber(depthInput, {
+        controlId: 'snippet-depth-scrubber', min: 1, max: MAX_SNIPPET_CALL_DEPTH,
+        scale: 1, normalize: normalizeSnippetCallDepth
+      });
+    }
+    const timeoutInput = document.getElementById('snippet-timeout-input');
+    if (timeoutInput) {
+      timeoutInput.value = String(normalizeSnippetTimeout(currentConfig.maxExecutionMs) / 1000);
+      timeoutInput.addEventListener('change', () => {
+        if (!timeoutInput.checkValidity()) { timeoutInput.reportValidity(); return; }
+        currentConfig.maxExecutionMs = normalizeSnippetTimeout(Number(timeoutInput.value) * 1000);
+        timeoutInput.value = String(currentConfig.maxExecutionMs / 1000);
+        saveToStorage();
+      });
+      initTimeoutScrubber(timeoutInput);
+    }
     if (particlesToggle) {
       particlesToggle.checked = currentConfig.showParticles !== false;
       particlesToggle.addEventListener('change', () => {
@@ -188,6 +253,7 @@ function restoreOptions() {
     if (typeof updateAllHighlights === 'function') updateAllHighlights();
     if (snippetGroups.length > 0) selectGroup(0);
     initHotkeyButtons();
+    refreshSnippetTester();
   }).catch(async error => {
     console.error('Snippet++: Sync load failed', error);
     await loadLocale('system', false);
@@ -222,6 +288,10 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 function updateAllHighlights() {
   document.querySelectorAll('.snippet-row').forEach(row => {
+    if (row.updateValidation) {
+      row.updateValidation();
+      return;
+    }
     const textarea = row.querySelector('.replacement-input');
     const highlightDiv = row.querySelector('.replacement-highlight');
     const triggerInput = row.querySelector('.trigger-input');

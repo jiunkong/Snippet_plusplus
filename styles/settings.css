@@ -209,3 +209,19 @@ input:checked+.slider:before {
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5),
     0 0 20px rgba(239, 68, 68, 0.1);
 }
+/* A scrub control: drag horizontally, or click the value to type. */
+.execution-timeout-control { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; }
+.timeout-scrubber { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 12px; background: var(--bg-color); cursor: ew-resize; touch-action: none; transition: border-color 0.15s, background 0.15s; }
+.timeout-scrubber:hover { border-color: var(--accent-hover); background: rgba(99, 102, 241, 0.06); }
+.timeout-scrubber:focus-within, .timeout-scrubber.is-dragging { border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12); }
+.timeout-drag-handle { color: var(--text-secondary); user-select: none; font-size: 19px; line-height: 1; }
+.timeout-scrubber input { appearance: textfield; width: 64px; min-width: 0; padding: 0; border: 0; outline: none; background: transparent; color: var(--text-primary); font: inherit; font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; cursor: ew-resize; }
+.timeout-scrubber input:focus { cursor: text; }
+.timeout-scrubber input::-webkit-inner-spin-button, .timeout-scrubber input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.timeout-scrubber.is-dragging, .timeout-scrubber.is-dragging input { cursor: ew-resize; user-select: none; }
+.timeout-unit { color: var(--text-secondary); font-size: 12px; user-select: none; }
+.timeout-hint { color: var(--text-secondary); font-size: 11px; line-height: 1.5; }
+.advanced-settings { border: 1px solid var(--border-color); border-radius: 14px; overflow: hidden; }
+.advanced-settings > summary { padding: 18px 24px; cursor: pointer; color: var(--text-primary); font-weight: 600; }
+.advanced-settings > summary:hover { background: rgba(99, 102, 241, 0.06); }
+.advanced-settings > .setting-card { margin: 0; border: 0; border-top: 1px solid var(--border-color); border-radius: 0; }

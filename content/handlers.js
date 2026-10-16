@@ -195,7 +195,7 @@ function showSnippetChoice(title, options) {
   });
 }
 
-async function selectAndReplace(el, info, context, triggerLength, replacement, args = {}) {
+async function selectAndReplace(el, info, context, triggerLength, replacement, args = {}, templateContext) {
   const selection = window.getSelection();
   const triggerText = context.textBefore.slice(-triggerLength);
   const triggerStart = context.textBefore.length - triggerLength;
@@ -215,10 +215,19 @@ async function selectAndReplace(el, info, context, triggerLength, replacement, a
   withInternalEdit(() => document.execCommand('delete', false, null));
 
   // 2. PROCESS TEMPLATE (may show prompt modal)
-  let processedReplacement = await processTemplate(replacement, args);
+  let processedReplacement;
+  try {
+    processedReplacement = await processTemplate(replacement, args, templateContext);
+  } catch (error) {
+    insertRestoredText(triggerText);
+    if (error.name !== 'SnippetPromptCancelled') {
+      await showSnippetError(error);
+    }
+    return { cancelled: true };
+  }
   
   // 3. IF CANCELLED, JUST STOP
-  if (processedReplacement === null || (processedReplacement === "" && replacement.includes('prompt('))) {
+  if (processedReplacement === null) {
     insertRestoredText(triggerText);
     return { cancelled: true };
   }
@@ -372,7 +381,10 @@ async function handleInput(event) {
 
     if (match && typingSeqLength >= triggerLength) {
       typingSeqLength = 0;
-      const result = await selectAndReplace(el, info, context, triggerLength, snippet.replacement, match.groups || {});
+      const result = await selectAndReplace(el, info, context, triggerLength, snippet.replacement, match.groups || {}, {
+        snippets: snippet.groupSnippets || [],
+        stack: snippet.sourceSnippet ? [snippet.sourceSnippet] : []
+      });
       if (result.cancelled) break;
       let fullText = '';
       if (info.isInput) {
@@ -398,6 +410,12 @@ async function handleInput(event) {
 
 // --- Keydown Handler (Hotkey Navigation) ---
 function handleKeyDown(event) {
+  if (!event.isComposing && isHotkeyPressed(event, config.reloadSnippets) && typeof reloadSnippetSettings === 'function') {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!event.repeat) reloadSnippetSettings();
+    return;
+  }
   const el   = event.target;
   const info = getTargetInfo(el);
   if (!info.isInput && !info.isEditable) return;
@@ -435,8 +453,9 @@ function handleKeyDown(event) {
     return;
   }
 
-  // Undo Expansion
-  if (isHotkeyPressed(event, config.undoExpansion)) {
+  // Ctrl+Z also undoes the most recent snippet expansion, even for users
+  // whose saved custom undo hotkey still uses the previous default.
+  if (isHotkeyPressed(event, config.undoExpansion) || isHotkeyPressed(event, 'Ctrl+Z')) {
     if (undoLastExpansion()) {
       event.preventDefault();
       event.stopPropagation();
@@ -461,7 +480,7 @@ function isHotkeyPressed(event, hotkeyString) {
   if (event.metaKey  !== needsMeta)  return false;
 
   if (keyPart === 'space' && event.code === 'Space') return true;
-  return keyPart && event.key.toLowerCase() === keyPart.toLowerCase();
+  return keyPart && (event.key.toLowerCase() === keyPart || event.code?.toLowerCase() === `key${keyPart}`);
 }
 
 function placeExpansionCursor(el, info, result, fullText) {

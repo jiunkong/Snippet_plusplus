@@ -1,12 +1,17 @@
 // --- Group Management ---
 
+function groupListLabel(group, index) {
+  const name = group.name || `${t('groups.default_name')} ${index + 1}`;
+  return `${name} (${group.snippets?.length || 0})`;
+}
+
 function renderGroupsList() {
   const list = document.getElementById('groups-list');
   list.innerHTML = '';
   snippetGroups.forEach((group, index) => {
     const item = document.createElement('div');
     item.className = `group-item ${index === activeGroupIndex ? 'active' : ''}`;
-    item.textContent = group.name || `${t('groups.default_name')} ${index + 1}`;
+    item.textContent = groupListLabel(group, index);
     item.onclick = () => selectGroup(index);
     list.appendChild(item);
   });
@@ -14,6 +19,8 @@ function renderGroupsList() {
 
 function selectGroup(index) {
   syncActiveGroupData();
+  const search = document.getElementById('snippet-search');
+  if (search) search.value = '';
   activeGroupIndex = index;
   renderGroupsList();
 
@@ -32,7 +39,7 @@ function selectGroup(index) {
   const group = snippetGroups[index];
   document.getElementById('active-group-name').value = group.name || "";
   renderDisabledSitesList(group.disabledSites || []);
-  renderSnippetsList(group.snippets);
+  renderSnippetsList(group.snippets, subgroupDefinitions(group));
 
   // Update mode selector UI
   const mode = group.siteMode || 'blacklist';
@@ -60,10 +67,19 @@ function addGroup() {
   debouncedSave();
 }
 
-function deleteActiveGroup() {
-  if (activeGroupIndex === -1 || !confirm(t('groups.delete_confirm'))) return;
-  snippetGroups.splice(activeGroupIndex, 1);
-  const prev = activeGroupIndex;
+async function deleteActiveGroup() {
+  if (activeGroupIndex === -1) return;
+  syncActiveGroupData();
+  const target = snippetGroups[activeGroupIndex];
+  if (!await showOptionsConfirmation({
+    title: t('groups_delete_title'),
+    message: t('groups_delete_message', { name: target.name || t('groups_default_name') }),
+    acceptLabel: t('groups_delete_action'),
+    danger: true
+  })) return;
+  const prev = snippetGroups.indexOf(target);
+  if (prev === -1) return;
+  snippetGroups.splice(prev, 1);
   activeGroupIndex = -1;
   renderGroupsList();
   selectGroup(snippetGroups.length > 0 ? Math.max(0, prev - 1) : -1);
@@ -79,16 +95,19 @@ function syncActiveGroupData() {
     trigger: row.querySelector('.trigger-input').value.trim(),
     replacement: row.querySelector('.replacement-input').value,
     name: row.querySelector('.snippet-name-input').value,
-    collapsed: row.classList.contains('collapsed')
+    collapsed: row.classList.contains('collapsed'),
+    ...(row.classList.contains('is-disabled') ? { disabled: true } : {}),
+    ...(snippetSubgroupId(row) ? { subgroupId: snippetSubgroupId(row) } : {})
   })).filter(s => s.trigger || s.name);
 
   snippetGroups[activeGroupIndex].name = name;
   snippetGroups[activeGroupIndex].disabledSites = disabledSites;
   snippetGroups[activeGroupIndex].siteMode = siteMode;
   snippetGroups[activeGroupIndex].snippets = snippets;
+  snippetGroups[activeGroupIndex].subgroups = readSubgroupDefinitions();
 
   const activeItem = document.querySelector('.group-item.active');
-  if (activeItem) activeItem.textContent = name || t('groups.default_name');
+  if (activeItem) activeItem.textContent = groupListLabel(snippetGroups[activeGroupIndex], activeGroupIndex);
 }
 
 function renderDisabledSitesList(sites) {

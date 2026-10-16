@@ -1,7 +1,7 @@
 /* ============================================================
    options.css — Entry point
    Imports are processed in dependency order:
-   base → layout → settings → groups → snippets → badges → guide
+   base → layout → settings → groups → snippets → badges → guide → dialog
    ============================================================ */
 
 @import url('styles/base.css');
@@ -11,3 +11,4 @@
 @import url('styles/snippets.css');
 @import url('styles/badges.css');
 @import url('styles/guide.css');
+@import url('styles/dialog.css');

@@ -48,7 +48,7 @@ function handleKeyCapture(e) {
 }
 
 window.addEventListener('keydown', (e) => {
-  if (recordingTarget) return;
+  if (recordingTarget || e.target?.closest('dialog[open]')) return;
 
   const matchShortcut = (hotkeyStr) => {
     if (!hotkeyStr) return false;
@@ -88,6 +88,16 @@ window.addEventListener('keydown', (e) => {
     if (snippetsTab.classList.contains('active') && activeGroupIndex !== -1) {
       e.preventDefault();
       addSnippetRow();
+      return;
+    }
+  }
+
+  // Add Subgroup (Alt+G)
+  if (matchShortcut(currentConfig.addSubgroup)) {
+    const snippetsTab = document.getElementById('snippets-tab');
+    if (snippetsTab.classList.contains('active') && activeGroupIndex !== -1) {
+      e.preventDefault();
+      addSubgroup();
       return;
     }
   }

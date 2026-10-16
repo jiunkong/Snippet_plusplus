@@ -58,6 +58,11 @@
   font-weight: 700;
 }
 
+.hl-fn-snippet {
+  color: #5eead4 !important; /* Teal: user-defined snippet functions */
+  font-weight: 700;
+}
+
 .hl-fn-err {
   color: #ef4444 !important; /* Red */
   font-weight: 700;
@@ -81,6 +86,11 @@
 
 .hl-op {
   color: #d946ef !important; /* Purple */
+  font-weight: 700;
+}
+
+.hl-list {
+  color: #a3e635 !important; /* Lime: list brackets and element separators */
   font-weight: 700;
 }
 

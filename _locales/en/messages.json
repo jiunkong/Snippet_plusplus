@@ -1,4 +1,136 @@
 {
+  "err_list_index_integer": {
+    "message": "An index must be a single integer."
+  },
+  "err_list_index_target": {
+    "message": "Indexed values must be iterable (list, string or range)."
+  },
+  "guide_doc_list_index_title": {
+    "message": "Reading iterable items"
+  },
+  "guide_doc_list_index_desc": {
+    "message": "Use [index] on lists, strings and ranges. Indices start at zero; -1 reads the last item and -2 the second last. Strings use Unicode code points; ranges return numbers in iteration order. Indices may be variables or expressions but must be integers. Convert captured numeric strings with num() or int(). Out-of-range indices return undefined. Nested indexing and function results are supported."
+  },
+  "err_join_list_required": {
+    "message": "The first argument to join() must be a list."
+  },
+  "guide_doc_split_title": {
+    "message": "Split a string into a list"
+  },
+  "guide_doc_split_desc": {
+    "message": "Split text into a list using a separator string. An empty separator is also supported. The separator is plain text rather than a regular expression. Empty items between consecutive separators are preserved."
+  },
+  "guide_doc_join_title": {
+    "message": "Join a list into a string"
+  },
+  "guide_doc_join_desc": {
+    "message": "Combine list elements into a string with the separator between them. An empty separator concatenates without spaces. The first argument must be a list; null and undefined elements become empty strings."
+  },
+  "tabs_tester": {
+    "message": "Snippet Test"
+  },
+  "tester_title": {
+    "message": "Snippet Test"
+  },
+  "tester_description": {
+    "message": "Type a trigger below to test expansion. Current edits apply immediately, including unsaved changes. Site restrictions are ignored in the tester. Cursor navigation and undo shortcuts work here too."
+  },
+  "tester_group_label": {
+    "message": "Group to test"
+  },
+  "tester_all_groups": {
+    "message": "All groups"
+  },
+  "tester_clear": {
+    "message": "Clear inputs"
+  },
+  "tester_input_label": {
+    "message": "Single-line input"
+  },
+  "tester_textarea_label": {
+    "message": "Multiline input"
+  },
+  "tester_rich_label": {
+    "message": "Web editor input"
+  },
+  "tester_rich_description": {
+    "message": "Test snippet expansion and cursor navigation in an editable web page area, which has a different structure from a regular input field."
+  },
+  "tester_placeholder": {
+    "message": "Type a trigger here"
+  },
+  "subgroups_drag": {
+    "message": "Drag to reorder subgroups"
+  },
+  "subgroups_add": {
+    "message": "Add Subgroup"
+  },
+  "subgroups_default_name": {
+    "message": "New Subgroup"
+  },
+  "subgroups_name": {
+    "message": "Subgroup name"
+  },
+  "subgroups_toggle": {
+    "message": "Collapse or expand subgroup"
+  },
+  "subgroups_ungrouped": {
+    "message": "Ungrouped"
+  },
+  "subgroups_move": {
+    "message": "Move to subgroup"
+  },
+  "subgroups_remove": {
+    "message": "Ungroup"
+  },
+  "subgroups_remove_desc": {
+    "message": "Remove this subgroup and move its snippets to Ungrouped. No snippets are deleted."
+  },
+  "subgroups_empty": {
+    "message": "Drag snippets here or choose this subgroup from their move menu."
+  },
+  "err_toast_color": {
+    "message": "Invalid toast color. Use a CSS color such as #22c55e, red, or rgb(...)."
+  },
+  "err_unknown_function": {
+    "message": "Unknown function: $1"
+  },
+  "err_function_arguments": {
+    "message": "The argument count or syntax for function $1 is invalid."
+  },
+  "err_unclosed_string": {
+    "message": "A string is missing its closing quote."
+  },
+  "err_template_unclosed_tag": {
+    "message": "A template tag is missing its closing }}."
+  },
+  "err_template_syntax": {
+    "message": "Invalid template syntax: $1"
+  },
+  "err_cursor_level": {
+    "message": "Cursor levels must be non-negative safe integers."
+  },
+  "status_expansion_failed": {
+    "message": "Snippet++: Expansion failed. $1"
+  },
+  "err_snippet_cursor_offset": {
+    "message": "The cursor offset must be a non-negative safe integer, and shifted cursor levels must remain safe integers."
+  },
+  "err_range_integer_bounds": {
+    "message": "Range endpoints and the range length must be safe integers."
+  },
+  "err_snippet_call_syntax": {
+    "message": "Invalid snippet function call. Use @name(arg1, ...)."
+  },
+  "err_snippet_call_target": {
+    "message": "Snippet \"$1\" must have a unique name in the same group."
+  },
+  "err_snippet_call_args": {
+    "message": "Snippet \"$1\" requires $2 arguments in trigger capture order."
+  },
+  "err_snippet_call_recursion": {
+    "message": "Circular or excessive snippet calls: \"$1\"."
+  },
   "tabs_general": {
     "message": "General Settings"
   },
@@ -57,7 +189,7 @@
     "message": "Undo Expansion"
   },
   "settings_undo_expansion_desc": {
-    "message": "Set the hotkey to revert a snippet expansion back to its trigger text."
+    "message": "Press Ctrl+Z after a snippet expands to restore its trigger text."
   },
   "settings_add_snippet": {
     "message": "Add Snippet"
@@ -116,180 +248,6 @@
   "guide_title": {
     "message": "Syntax Guide"
   },
-  "guide_categories_basic": {
-    "message": "Basic"
-  },
-  "guide_categories_info": {
-    "message": "Info"
-  },
-  "guide_categories_input": {
-    "message": "Input"
-  },
-  "guide_categories_random": {
-    "message": "Random"
-  },
-  "guide_categories_string": {
-    "message": "String"
-  },
-  "guide_categories_args": {
-    "message": "Arguments"
-  },
-  "guide_categories_logic": {
-    "message": "Logic"
-  },
-  "guide_categories_loops": {
-    "message": "Loops"
-  },
-  "guide_categories_expr": {
-    "message": "Expr"
-  },
-  "guide_categories_misc": {
-    "message": "기타"
-  },
-  "guide_sections_placeholders": {
-    "message": "Placeholders"
-  },
-  "guide_sections_system": {
-    "message": "System Functions"
-  },
-  "guide_sections_interaction": {
-    "message": "Interaction"
-  },
-  "guide_sections_generators": {
-    "message": "Generators"
-  },
-  "guide_sections_manipulation": {
-    "message": "Manipulation"
-  },
-  "guide_sections_capture": {
-    "message": "Trigger Capture"
-  },
-  "guide_sections_conditionals": {
-    "message": "Conditionals"
-  },
-  "guide_sections_switch": {
-    "message": "Switch/Case"
-  },
-  "guide_sections_iteration": {
-    "message": "Iteration"
-  },
-  "guide_sections_math": {
-    "message": "Variables & Math"
-  },
-  "guide_sections_formatting": {
-    "message": "Formatting"
-  },
-  "guide_items_cursor_desc": {
-    "message": "Set the tab order for moving the cursor after replacement."
-  },
-  "guide_items_dynamic_cursor_desc": {
-    "message": "Use expressions to set the cursor order dynamically."
-  },
-  "guide_items_date_desc": {
-    "message": "Inserts the current date and time."
-  },
-  "guide_items_url_desc": {
-    "message": "Inserts address, domain, or title of the current tab."
-  },
-  "guide_items_clipboard_desc": {
-    "message": "Asynchronously fetches and inserts clipboard text."
-  },
-  "guide_items_prompt_desc": {
-    "message": "Shows a popup for user input and inserts the value."
-  },
-  "guide_items_choice_desc": {
-    "message": "Displays a menu to select one of several options. Can also be selected with numeric keys (1-9)."
-  },
-  "guide_items_prompt_tip": {
-    "message": "Tip: Dynamic Prompt"
-  },
-  "guide_items_prompt_tip_desc": {
-    "message": "Variables or formulas can be used in prompt messages."
-  },
-  "guide_items_uuid_desc": {
-    "message": "Generates and inserts a random UUID v4."
-  },
-  "guide_items_random_range_desc": {
-    "message": "Generates a random integer between a and b."
-  },
-  "guide_items_random_list_desc": {
-    "message": "Randomly selects one of the comma-separated arguments."
-  },
-  "guide_items_len_desc": {
-    "message": "Returns the length of the string."
-  },
-  "guide_items_transform_desc": {
-    "message": "Performs uppercase, lowercase, or capitalization."
-  },
-  "guide_items_replace_desc": {
-    "message": "Replaces specific text within a string with other text."
-  },
-  "guide_items_trim_desc": {
-    "message": "Removes all leading and trailing whitespace from a string."
-  },
-  "guide_items_substr_desc": {
-    "message": "Cuts the string to the desired length from a specified position."
-  },
-  "guide_items_string_match_desc": {
-    "message": "Checks whether a string starts or ends with the given text."
-  },
-  "guide_items_str_desc": {
-    "message": "Forcefully converts a value to a string."
-  },
-  "guide_items_num_desc": {
-    "message": "Converts a value to a numeric type (including decimals)."
-  },
-  "guide_items_int_desc": {
-    "message": "Converts a value to an integer type (truncates decimals)."
-  },
-  "guide_items_round_desc": {
-    "message": "Performs rounding, ceiling, or flooring."
-  },
-  "guide_items_min_max_desc": {
-    "message": "Returns the minimum or maximum among given values."
-  },
-  "guide_items_capture_desc": {
-    "message": "Captures variables from the trigger (flags supported)."
-  },
-  "guide_items_variable_desc": {
-    "message": "Use captured variables in the body (highlighted)."
-  },
-  "guide_items_if_desc": {
-    "message": "Shows text according to the condition."
-  },
-  "guide_items_elif_else_desc": {
-    "message": "Supports multiple conditions or fallback."
-  },
-  "guide_items_switch_desc": {
-    "message": "Compares an expression result with multiple values."
-  },
-  "guide_items_case_desc": {
-    "message": "Comparison block. Multiple values can be specified."
-  },
-  "guide_items_for_desc": {
-    "message": "Repeats content for a specified number of times."
-  },
-  "guide_items_index_desc": {
-    "message": "Shows the current index (starts from 0)."
-  },
-  "guide_items_set_desc": {
-    "message": "Declares a variable and stores the calculation result."
-  },
-  "guide_items_expr_desc": {
-    "message": "Performs math (+, -, *, /, %) and function calls."
-  },
-  "guide_items_scope_tip": {
-    "message": "💡 Tip: Variable Scope"
-  },
-  "guide_items_scope_tip_desc": {
-    "message": "Variables declared outside can be modified inside if, for, and switch blocks. However, variables first defined inside a block disappear when the block ends."
-  },
-  "guide_items_backspace_desc": {
-    "message": "Performs a backspace action to delete the previous character."
-  },
-  "guide_items_line_cont_desc": {
-    "message": "Adding \\ at the end of a line removes the newline and the following line's indentation."
-  },
   "snippets_trigger_label": {
     "message": "Trigger"
   },
@@ -301,6 +259,12 @@
   },
   "snippets_name_placeholder": {
     "message": "Snippet Name (Optional)"
+  },
+  "snippets_search_placeholder": {
+    "message": "Search snippets by name"
+  },
+  "snippets_search_empty": {
+    "message": "No snippets match this name."
   },
   "snippets_replacement_placeholder": {
     "message": "Enter snippet content here..."
@@ -454,5 +418,509 @@
   },
   "status_sync_conflict_confirm": {
     "message": "Synced settings changed on another device while you were editing. Press OK to use the remote settings, or Cancel to keep this device's settings."
+  },
+  "guide_doc_example": {
+    "message": "View example"
+  },
+  "guide_doc_trigger": {
+    "message": "Trigger"
+  },
+  "guide_doc_body": {
+    "message": "Body"
+  },
+  "guide_doc_result": {
+    "message": "Result"
+  },
+  "guide_doc_call": {
+    "message": "Calling body"
+  },
+  "guide_doc_name": {
+    "message": "Snippet name"
+  },
+  "guide_doc_input": {
+    "message": "Text to type"
+  },
+  "guide_doc_note": {
+    "message": "Behavior"
+  },
+  "guide_doc_plain_title": {
+    "message": "Text and tags"
+  },
+  "guide_doc_plain_desc": {
+    "message": "Plain text is inserted as written. A tag inserts the result of its expression."
+  },
+  "guide_doc_strings_title": {
+    "message": "Strings and function arguments"
+  },
+  "guide_doc_strings_desc": {
+    "message": "Wrap strings in double or single quotes. Separate function arguments with commas. Close every quote; escape a matching quote inside a string with a backslash (\\)."
+  },
+  "guide_doc_start_title": {
+    "message": "Template basics"
+  },
+  "guide_doc_start_intro": {
+    "message": "A trigger is the shortcut you type. The body is the text inserted in its place. Inside the body, {{…}} evaluates a variable, expression or function."
+  },
+  "guide_doc_capture_value_title": {
+    "message": "Capture and reuse"
+  },
+  "guide_doc_capture_value_desc": {
+    "message": "Write a variable name and regular expression in the trigger, then read it as $name in the body. Flags are optional. For example, \\d+ captures one or more digits."
+  },
+  "guide_doc_capture_title": {
+    "message": "Capture trigger variables"
+  },
+  "guide_doc_capture_intro": {
+    "message": "Capture part of the typed text and reuse it in the body."
+  },
+  "guide_doc_set_value_title": {
+    "message": "Store and update values"
+  },
+  "guide_doc_set_value_desc": {
+    "message": "set stores a value without inserting text. Update an existing value with +=, -=, *=, /= or %=."
+  },
+  "guide_doc_operators_title": {
+    "message": "Arithmetic and comparison"
+  },
+  "guide_doc_operators_desc": {
+    "message": "Use parentheses to control evaluation order. Compare with == and combine conditions with && (and) or || (or). A conditional expression uses condition ? value_if_true : value_if_false."
+  },
+  "guide_doc_range_value_title": {
+    "message": "Integer ranges"
+  },
+  "guide_doc_range_value_desc": {
+    "message": "A range includes both integer endpoints. 2~5 means 2, 3, 4, 5; 5~2 runs in reverse. Endpoints can be variables or expressions. Store a range in a variable or pass it to random(), for or a snippet function."
+  },
+  "guide_doc_scope": {
+    "message": "Variable scope: you can update an outer variable inside a block. A variable first created inside an if, for or switch block disappears when that block ends."
+  },
+  "guide_doc_values_title": {
+    "message": "Variables, expressions, ranges and lists"
+  },
+  "guide_doc_values_intro": {
+    "message": "Use captured values or values you store yourself in expressions."
+  },
+  "guide_doc_cursor_note": {
+    "message": "After expansion, type after Name, then use the next-position shortcut to move after Email."
+  },
+  "guide_doc_cursor_positions_title": {
+    "message": "Fixed cursor stops"
+  },
+  "guide_doc_cursor_positions_desc": {
+    "message": "Stops are visited in ascending order. Repeated numbers share the same navigation step. {{cursor}} and {{#cursor}} are aliases for stop zero."
+  },
+  "guide_doc_cursor_dynamic_note": {
+    "message": "Creates cursor stop 3 after Name."
+  },
+  "guide_doc_cursor_dynamic_title": {
+    "message": "Computed cursor stops"
+  },
+  "guide_doc_cursor_dynamic_desc": {
+    "message": "Use a variable or expression that evaluates to a nonnegative integer."
+  },
+  "guide_doc_cursors_title": {
+    "message": "Cursor positions"
+  },
+  "guide_doc_cursors_intro": {
+    "message": "Choose where to continue typing after expansion and the order of cursor stops. Next and previous navigation use the shortcuts in General Settings."
+  },
+  "guide_doc_if_note": {
+    "message": "/task bug inserts [BUG], /task feature inserts [FEATURE], and other values insert [TASK]. A backslash (\\) at each line end removes the line break so the result stays on one line. Without it, line breaks in the selected body are also inserted."
+  },
+  "guide_doc_if_branch_title": {
+    "message": "if · elif · else"
+  },
+  "guide_doc_if_branch_desc": {
+    "message": "Use the first true branch, starting with if. Add elif and else only when needed."
+  },
+  "guide_doc_switch_note": {
+    "message": "A or B inserts Pass; any other value inserts Review. Line breaks outside case and default bodies are ignored, so no backslash (\\) is needed after switch, endcase or enddefault. The backslashes shown remove only line breaks within the selected body."
+  },
+  "guide_doc_switch_branch_title": {
+    "message": "switch · case · default"
+  },
+  "guide_doc_switch_branch_desc": {
+    "message": "Compare one value with several candidates. A case can list multiple comma-separated values. If none match, use the optional default block; close it with enddefault."
+  },
+  "guide_doc_conditions_title": {
+    "message": "Conditional text"
+  },
+  "guide_doc_conditions_intro": {
+    "message": "Insert only the matching branch. Pair every opening block tag with its closing tag."
+  },
+  "guide_doc_loop_count_title": {
+    "message": "Repeat by count"
+  },
+  "guide_doc_loop_count_desc": {
+    "message": "A number repeats the body that many times. index starts at zero. Convert captured numeric strings with num() or int() to repeat by count."
+  },
+  "guide_doc_loop_range_title": {
+    "message": "Repeat over a range"
+  },
+  "guide_doc_loop_range_desc": {
+    "message": "For ranges, index is the zero-based position and value is the current number. value moves from start to end in steps of one, in either direction, including both endpoints. A variable holding a range also works."
+  },
+  "guide_doc_loops_title": {
+    "message": "Loops"
+  },
+  "guide_doc_loops_intro": {
+    "message": "Repeat by a numeric count, or iterate over a list, string or range."
+  },
+  "guide_doc_text_transform_title": {
+    "message": "Case and whitespace"
+  },
+  "guide_doc_text_transform_desc": {
+    "message": "upper and lower change the case of the whole string; capitalize uppercases the first character. trim removes leading and trailing whitespace."
+  },
+  "guide_doc_text_extract_title": {
+    "message": "Length, slicing and replacement"
+  },
+  "guide_doc_text_extract_desc": {
+    "message": "len returns the length. substr returns the requested length starting at the given position. replace substitutes matching text."
+  },
+  "guide_doc_text_match_title": {
+    "message": "Check a prefix or suffix"
+  },
+  "guide_doc_text_match_desc": {
+    "message": "Return true or false depending on whether the string starts or ends with the given text. Use the result in an if condition."
+  },
+  "guide_doc_text_title": {
+    "message": "String functions"
+  },
+  "guide_doc_text_intro": {
+    "message": "Pass a string literal or a $variable to a function. String positions start at zero."
+  },
+  "guide_doc_cast_value_title": {
+    "message": "Convert a value"
+  },
+  "guide_doc_cast_value_desc": {
+    "message": "str converts to a string, num to a number, and int to an integer by truncating the fractional part."
+  },
+  "guide_doc_math_value_title": {
+    "message": "Rounding, minimum and maximum"
+  },
+  "guide_doc_math_value_desc": {
+    "message": "round rounds to the nearest integer, ceil rounds up, and floor rounds down. min and max select the smallest or largest argument."
+  },
+  "guide_doc_random_note": {
+    "message": "The first line is an integer from 1 to 6. The second is red, blue or green."
+  },
+  "guide_doc_random_value_title": {
+    "message": "Choose randomly from a range or list"
+  },
+  "guide_doc_random_value_desc": {
+    "message": "A range returns a random integer including both endpoints. Multiple arguments return one randomly chosen argument."
+  },
+  "guide_doc_uuid_value_title": {
+    "message": "Generate an identifier"
+  },
+  "guide_doc_uuid_value_desc": {
+    "message": "Generate a random UUID v4 identifier."
+  },
+  "guide_doc_numbers_title": {
+    "message": "Types and numbers"
+  },
+  "guide_doc_numbers_intro": {
+    "message": "Inspect value types, convert values and perform calculations. Convert captured numeric strings before doing arithmetic."
+  },
+  "guide_doc_date_note": {
+    "message": "Displays the date and time when the snippet runs."
+  },
+  "guide_doc_date_value_title": {
+    "message": "Date and time"
+  },
+  "guide_doc_date_value_desc": {
+    "message": "Omit the format to use the default. YYYY, MM and DD are date tokens; HH, mm and ss are time tokens; ddd and dddd are weekday tokens. Tokens are case-sensitive."
+  },
+  "guide_doc_page_value_title": {
+    "message": "Current page information"
+  },
+  "guide_doc_page_value_desc": {
+    "message": "Read the current page URL, domain and title."
+  },
+  "guide_doc_system_title": {
+    "message": "Date, page and clipboard"
+  },
+  "guide_doc_system_intro": {
+    "message": "Read the current time or information from the page where expansion runs."
+  },
+  "guide_doc_prompt_value_title": {
+    "message": "Ask for text"
+  },
+  "guide_doc_prompt_value_desc": {
+    "message": "Open an input dialog and return the entered value. Cancelling stops expansion and restores the original trigger."
+  },
+  "guide_doc_choice_value_title": {
+    "message": "Ask for a choice"
+  },
+  "guide_doc_choice_value_desc": {
+    "message": "Open a menu and return the selected option. Number keys 1–9 also select options."
+  },
+  "guide_doc_toast_note": {
+    "message": "Shows a Done toast with a green accent."
+  },
+  "guide_doc_toast_value_title": {
+    "message": "Show a toast"
+  },
+  "guide_doc_toast_value_desc": {
+    "message": "Display a message for six seconds using a CSS color. Inserts no text. Colors can be #22c55e, red or rgb(...). A new toast replaces the previous one."
+  },
+  "guide_doc_interaction_title": {
+    "message": "Prompts, choices and notifications"
+  },
+  "guide_doc_interaction_intro": {
+    "message": "Collect input or display a toast during expansion."
+  },
+  "guide_doc_snippet_call_title": {
+    "message": "Call by name and pass arguments"
+  },
+  "guide_doc_snippet_call_desc": {
+    "message": "Write the snippet name after @. Captures in its trigger become parameters from left to right; the argument count must match. Missing or duplicate names cause an error. Double-click the function name in the body editor to jump to that snippet."
+  },
+  "guide_doc_quote_alternative": {
+    "message": "Using single quotes for the name, @'hello world'(\"Guest\"), works the same way."
+  },
+  "guide_doc_snippet_quoted_title": {
+    "message": "Names with spaces"
+  },
+  "guide_doc_snippet_quoted_desc": {
+    "message": "Wrap names containing spaces or special characters in double or single quotes. The quoted name must exactly match the saved snippet name."
+  },
+  "guide_doc_shift_alternative": {
+    "message": "@func<2>() produces the same result. Use @func()<$offset + 1> to compute the offset from a variable."
+  },
+  "guide_doc_snippet_shift_title": {
+    "message": "Shift cursor numbers in the result"
+  },
+  "guide_doc_snippet_shift_desc": {
+    "message": "Put an optional <offset> before or after (). It must be a nonnegative integer and defaults to zero. Variables and expressions also work. {{cursor}} and {{#cursor}} count as stop zero; nested offsets add up."
+  },
+  "guide_doc_call_scope": {
+    "message": "Called snippets use a separate variable scope with their supplied arguments; caller variables are not shared automatically. Recursive calls are supported. Adjust maximum function nesting depth and execution time in Advanced settings."
+  },
+  "guide_doc_calls_title": {
+    "message": "Call another snippet as a function"
+  },
+  "guide_doc_calls_intro": {
+    "message": "Reuse the body of another snippet in the same group, including snippets in other subgroups."
+  },
+  "guide_doc_line_join_title": {
+    "message": "Write across lines, insert on one line"
+  },
+  "guide_doc_line_join_desc": {
+    "message": "A backslash (\\) at the end of a line removes the line break and indentation on the next line. Use it to lay out a template without inserting those breaks."
+  },
+  "guide_doc_backspace_value_title": {
+    "message": "Delete the previous character"
+  },
+  "guide_doc_backspace_value_desc": {
+    "message": "Perform one backspace to delete the previous character."
+  },
+  "guide_doc_formatting_title": {
+    "message": "Line breaks and backspace"
+  },
+  "guide_doc_formatting_intro": {
+    "message": "Whitespace and line breaks in the body are preserved by default."
+  },
+  "guide_doc_intro": {
+    "message": "Read from the top to learn the basics, or jump to a topic using the contents. Expand an example whenever you need it."
+  },
+  "guide_doc_contents": {
+    "message": "On this page"
+  },
+  "guide_doc_range_note": {
+    "message": "$range stores the range 2~5. Use it in loops and random selection, described below."
+  },
+  "guide_doc_paste_value_title": {
+    "message": "Paste from the clipboard"
+  },
+  "guide_doc_paste_value_desc": {
+    "message": "Read and insert text from the clipboard."
+  },
+  "guide_doc_copy_value_title": {
+    "message": "Copy to the clipboard"
+  },
+  "guide_doc_copy_value_desc": {
+    "message": "Convert a value to text and copy it to the clipboard without inserting text into the body. Variables, expressions and snippet function results are supported."
+  },
+  "guide_doc_copy_note": {
+    "message": "Copies Hello, Guest! to the clipboard. You can also copy a computed value, such as {{copy(upper('hello'))}}."
+  },
+  "err_clipboard_copy_failed": {
+    "message": "Could not copy to the clipboard."
+  },
+  "settings_add_subgroup": {
+    "message": "Add Subgroup"
+  },
+  "settings_add_subgroup_desc": {
+    "message": "Set the hotkey to add a subgroup to the current group in the snippet editor tab."
+  },
+  "status_import_older_version": {
+    "message": "This file was exported by an older version.\nFile version: {fileVersion} / Current version: {currentVersion}\nSome settings may be handled differently in this version."
+  },
+  "status_import_newer_version": {
+    "message": "This file was exported by a newer version.\nFile version: {fileVersion} / Current version: {currentVersion}\nIt may contain syntax or settings that this version does not support."
+  },
+  "import_dialog_settings_title": {
+    "message": "Import settings"
+  },
+  "import_dialog_group_title": {
+    "message": "Import group"
+  },
+  "import_dialog_warning_title": {
+    "message": "Version compatibility"
+  },
+  "import_dialog_cancel": {
+    "message": "Cancel"
+  },
+  "import_dialog_accept": {
+    "message": "Import"
+  },
+  "err_snippet_call_self": {
+    "message": "Snippet \"$1\" cannot call itself."
+  },
+  "guide_doc_type_value_title": {
+    "message": "Inspect the value type"
+  },
+  "guide_doc_type_value_desc": {
+    "message": "Return the value type as a string: string, number, boolean, range, list, null or undefined. Captured variables are strings even when they look numeric; num() and int() convert them to numbers. An undefined variable name still causes an error."
+  },
+  "guide_doc_declare_value_title": {
+    "message": "Declare a variable without a value"
+  },
+  "guide_doc_declare_value_desc": {
+    "message": "Omitting the value stores undefined. Assign a value later; until then, inserting the variable produces empty text. Using this form on an existing variable resets its value to undefined."
+  },
+  "groups_delete_title": {
+    "message": "Delete group"
+  },
+  "groups_delete_message": {
+    "message": "Delete \"{name}\" and all snippets in it?"
+  },
+  "groups_delete_action": {
+    "message": "Delete"
+  },
+  "settings_reload_snippets": {
+    "message": "Reload snippets on the current page"
+  },
+  "settings_reload_snippets_desc": {
+    "message": "Reload the latest saved settings when an open page still expands older snippets."
+  },
+  "status_snippets_reloaded": {
+    "message": "Snippets refreshed."
+  },
+  "status_snippets_reload_failed": {
+    "message": "Could not reload snippets. Refresh the page and try again."
+  },
+  "settings_execution_timeout": {
+    "message": "Maximum snippet execution time"
+  },
+  "settings_execution_timeout_desc": {
+    "message": "Defaults to 0.5 seconds; adjustable from 0.1 to 60 seconds. Expansion stops when the limit is exceeded. Time spent waiting for prompt or choice input is excluded."
+  },
+  "settings_seconds": {
+    "message": "seconds"
+  },
+  "err_snippet_timeout": {
+    "message": "The snippet exceeded its execution time limit ($1 seconds)."
+  },
+  "settings_execution_timeout_drag": {
+    "message": "Drag to adjust · Type a value"
+  },
+  "err_list_syntax": {
+    "message": "Invalid list syntax. Close the square brackets and separate elements with commas."
+  },
+  "guide_doc_list_value_title": {
+    "message": "Store and use lists"
+  },
+  "guide_doc_list_value_desc": {
+    "message": "Separate elements with commas inside square brackets. Lists can contain numbers, strings, variables, expressions and other lists; [] is empty. type() returns list and len() returns the element count. Direct output uses [1,2,3] notation with double quotes around string elements."
+  },
+  "err_snippet_call_depth": {
+    "message": "Maximum function nesting depth ($1) exceeded: \"$2\"."
+  },
+  "settings_advanced": {
+    "message": "Advanced settings"
+  },
+  "settings_call_depth": {
+    "message": "Maximum function nesting depth"
+  },
+  "settings_call_depth_desc": {
+    "message": "Recursive calls are allowed. The default depth is 32 (range: 1–256). Expansion stops when this limit is exceeded. The currently expanding snippet counts toward the depth."
+  },
+  "err_loop_control_outside_for": {
+    "message": "$1 can only be used inside a for loop."
+  },
+  "err_list_concat_types": {
+    "message": "Both operands must be lists when concatenating lists with +."
+  },
+  "guide_doc_list_concat_title": {
+    "message": "Concatenating lists"
+  },
+  "guide_doc_list_concat_desc": {
+    "message": "Use + to combine two lists into a new list in order. Original lists stay unchanged and nested lists stay nested. += is also supported. Both operands must be lists; wrap a single item in [value] to append it."
+  },
+  "guide_doc_loop_control_title": {
+    "message": "Stopping and skipping iterations"
+  },
+  "guide_doc_loop_control_desc": {
+    "message": "break ends the nearest for loop. continue skips the rest of the current iteration. Output produced before the tag is preserved. Both work inside if and switch blocks. A called snippet cannot control its caller’s loop."
+  },
+  "err_list_function_target": {
+    "message": "The first argument to $1 must be a list."
+  },
+  "err_list_subtract_types": {
+    "message": "Both operands must be lists when removing list values with -."
+  },
+  "err_fn_three_args_exact": {
+    "message": "$1 requires exactly three arguments."
+  },
+  "guide_doc_list_remove_title": {
+    "message": "Removing items by value"
+  },
+  "guide_doc_list_remove_desc": {
+    "message": "list - list returns a new list with all items matching values on the right removed. -= is supported. Remaining items keep their order, and different types remain distinct. Nested lists and ranges match by contents. Both operands must be lists."
+  },
+  "guide_doc_list_insert_at_title": {
+    "message": "Inserting an item by index"
+  },
+  "guide_doc_list_insert_at_desc": {
+    "message": "Returns a new list or string with a value inserted before index, preserving the target type. A list receives one item; a string receives str(value). len(target) appends; -1 inserts before the last item. Use 0 for empty targets. Indices must be integers; out-of-range indices leave contents unchanged. String positions use Unicode code points. Readonly ranges are not supported."
+  },
+  "guide_doc_list_remove_at_title": {
+    "message": "Removing an item by index"
+  },
+  "guide_doc_list_remove_at_desc": {
+    "message": "Returns a new list or string with one item at index removed, preserving the target type. 0 is the first item and -1 the last. Indices must be integers; out-of-range indices leave contents unchanged. String positions use Unicode code points. Readonly ranges are not supported. Assign the returned value to update a variable."
+  },
+  "snippets_enabled_hint": {
+    "message": "Enable trigger expansion · Can still be called as a snippet function when disabled."
+  },
+  "err_iterable_function_target": {
+    "message": "The first argument to $1 must be a list or string."
+  },
+  "err_readonly_iterable": {
+    "message": "range is a readonly iterable and cannot be used with $1."
+  },
+  "err_value_outside_for": {
+    "message": "value can only be used inside a for loop."
+  },
+  "guide_doc_iterable_title": {
+    "message": "Iterable values"
+  },
+  "guide_doc_iterable_desc": {
+    "message": "Lists and strings are iterable: for visits their items, and insertAt/removeAt return edited values. A range is a readonly iterable: for and len are supported, but insertion and removal are not. type() still returns list, string or range. String iteration, insertion, removal and len use Unicode code points."
+  },
+  "guide_doc_loop_iterable_title": {
+    "message": "Iterating lists and strings"
+  },
+  "guide_doc_loop_iterable_desc": {
+    "message": "For every iterable loop, index is the zero-based position and value is the current item. Enclosing index/value are restored after nested loops. value is separate from variables such as $value. Only numeric count loops make value equal to index. The string \"3\" iterates one character; use num() or int() to convert captured numeric strings to repetition counts."
+  },
+  "error_location": {
+    "message": "Body: line $1, column $2"
+  },
+  "error_location_snippet": {
+    "message": "$1 · body: line $2, column $3"
   }
 }

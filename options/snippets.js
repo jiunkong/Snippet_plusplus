@@ -38,18 +38,103 @@ function stopAutoScroll() {
 }
 
 function getDragAfterElement(container, y) {
-  return [...container.querySelectorAll('.snippet-row:not(.dragging)')].reduce((closest, child) => {
+  return [...container.querySelectorAll(':scope > .snippet-row:not(.dragging)')].reduce((closest, child) => {
     const box    = child.getBoundingClientRect();
     const offset = y - box.top - box.height / 2;
     return offset < 0 && offset > closest.offset ? { offset, element: child } : closest;
   }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
-function renderSnippetsList(snippets) {
+function renderSnippetsList(snippets, subgroups = []) {
   const list = document.getElementById('snippets-list');
   list.innerHTML = '';
-  snippets.forEach(snippet => addSnippetRowUI(snippet));
+  const containers = new Map(subgroups.map(subgroup => [subgroup.id, createSubgroupSection(subgroup).querySelector('.subgroup-snippets')]));
+  snippets.forEach(snippet => addSnippetRowUI(snippet, containers.get(snippet.subgroupId) || list, true));
+  refreshSubgroupSelectors();
+  applySnippetSearch();
   checkTriggerConflicts();
+  updateAllHighlights();
+}
+
+function applySnippetSearch() {
+  const search = document.getElementById('snippet-search');
+  const query = (search?.value || '').trim().toLocaleLowerCase();
+  let visibleCount = 0;
+  document.querySelectorAll('#snippets-list .snippet-row').forEach(row => {
+    const name = row.querySelector('.snippet-name-input').value.trim().toLocaleLowerCase();
+    row.hidden = !!query && !name.includes(query);
+    if (!row.hidden) visibleCount++;
+  });
+  updateSubgroupVisibility(query);
+  const emptyMessage = document.getElementById('snippet-search-empty');
+  if (emptyMessage) emptyMessage.hidden = !query || visibleCount > 0;
+}
+
+// Textarea double-clicks select a word before the event fires. Resolve only
+// function names inside template expressions, excluding quoted/literal text.
+function snippetFunctionAtSelection(text, selectionStart, selectionEnd) {
+  let inTag = false;
+  let quote = null;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (!inTag) {
+      if (text.slice(i, i + 2) === '{{' && text[i + 2] !== '{') {
+        inTag = true;
+        i++;
+      }
+      continue;
+    }
+    if (quote) {
+      if (char === '\\') i++;
+      else if (char === quote) quote = null;
+      continue;
+    }
+    if (char === '"' || char === "'") { quote = char; continue; }
+    if (text.slice(i, i + 2) === '}}') { inTag = false; i++; continue; }
+    if (char !== '@') continue;
+    const call = parseSnippetCall(text, i);
+    if (call.error) continue;
+    const nameEnd = call.nameEnd;
+    if (selectionStart >= i && selectionStart < nameEnd && selectionEnd <= nameEnd) return call.name;
+    i = nameEnd - 1;
+  }
+  return null;
+}
+
+function navigateToSnippetFunction(textarea, event) {
+  const name = snippetFunctionAtSelection(textarea.value, textarea.selectionStart, textarea.selectionEnd);
+  if (name === null) return false;
+  const matches = Array.from(document.querySelectorAll('#snippets-list .snippet-row'))
+    .filter(row => row.querySelector('.snippet-name-input').value === name);
+  if (matches.length !== 1) return false;
+
+  event.preventDefault();
+  const target = matches[0];
+  const search = document.getElementById('snippet-search');
+  if (search?.value) { search.value = ''; applySnippetSearch(); }
+  const wasCollapsed = target.classList.contains('collapsed');
+  const subgroupWasCollapsed = revealSnippetSubgroup(target);
+  target.classList.remove('collapsed');
+  const body = target.querySelector('.replacement-input');
+  body.focus({ preventScroll: true });
+  body.setSelectionRange(0, 0);
+  target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (wasCollapsed || subgroupWasCollapsed) { syncActiveGroupData(); debouncedSave(); }
+  return true;
+}
+
+function updateSnippetFunctionCursor(textarea, highlightDiv, event) {
+  // The transparent textarea receives events above the highlight layer. Use
+  // the rendered name's rectangles so wrapping and scrolling stay aligned.
+  const nameSpan = Array.from(highlightDiv.querySelectorAll('.hl-fn-snippet, .hl-fn-err')).find(span =>
+    !parseSnippetFunctionName(span.textContent).error &&
+    Array.from(span.getClientRects()).some(rect => event.clientX >= rect.left && event.clientX < rect.right &&
+      event.clientY >= rect.top && event.clientY < rect.bottom)
+  );
+  const name = nameSpan ? parseSnippetFunctionName(nameSpan.textContent).name : null;
+  const matches = name ? Array.from(document.querySelectorAll('#snippets-list .snippet-row'))
+    .filter(row => row.querySelector('.snippet-name-input').value === name) : [];
+  textarea.style.cursor = matches.length === 1 ? 'pointer' : '';
 }
 
 /**
@@ -96,7 +181,7 @@ function checkTriggerConflicts() {
   snippetGroups.forEach((group, gIdx) => {
     if (gIdx === activeGroupIndex) return;
     (group.snippets || []).forEach(snip => {
-      if (!snip.trigger) return;
+      if (!snip.trigger || snip.disabled === true) return;
       const tRaw = snip.trigger.trim();
       const compiled = compileTrigger(tRaw);
       otherGroupSnippets.push({
@@ -115,6 +200,13 @@ function checkTriggerConflicts() {
     const triggerInput = row.querySelector('.trigger-input');
     const nameInput    = row.querySelector('.snippet-name-input');
     const t1Raw        = triggerInput.value.trim();
+
+    if (row.classList.contains('is-disabled')) {
+      nameInput.classList.remove('invalid');
+      nameInput.classList.remove('conflict');
+      nameInput.title = '';
+      return;
+    }
 
     if (!t1Raw) {
       nameInput.classList.add('invalid');
@@ -139,7 +231,7 @@ function checkTriggerConflicts() {
 
     // 1. Compare against other rows in the active group (skip self by DOM index)
     currentRows.forEach((otherRow, otherIdx) => {
-      if (otherIdx === rowIndex) return;
+      if (otherIdx === rowIndex || otherRow.classList.contains('is-disabled')) return;
       const t2Raw = otherRow.querySelector('.trigger-input').value.trim();
       if (!t2Raw) return;
       const c2  = compileTrigger(t2Raw);
@@ -166,10 +258,10 @@ function checkTriggerConflicts() {
   });
 }
 
-function addSnippetRowUI(snippet = { trigger: '', replacement: '', name: '', collapsed: false }) {
-  const list = document.getElementById('snippets-list');
+function addSnippetRowUI(snippet = { trigger: '', replacement: '', name: '', collapsed: false }, container, deferRefresh = false) {
+  const list = container || document.getElementById('snippets-list');
   const row  = document.createElement('div');
-  row.className = `snippet-row ${snippet.collapsed ? 'collapsed' : ''}`;
+  row.className = `snippet-row ${snippet.collapsed ? 'collapsed' : ''} ${snippet.disabled === true ? 'is-disabled' : ''}`;
   row.draggable = true;
 
   const escHtml     = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -182,6 +274,11 @@ function addSnippetRowUI(snippet = { trigger: '', replacement: '', name: '', col
       <button class="fold-btn" title="Toggle Fold">▾</button>
       <input type="text" class="snippet-name-input" placeholder="${t('snippets_name_placeholder')}" value="${safeName}">
       <span class="collapsed-trigger-display">${safeTrigger}</span>
+      <select class="snippet-subgroup-select" aria-label="${escHtml(t('subgroups_move'))}"></select>
+      <label class="switch snippet-enable-switch" title="${escHtml(t('snippets_enabled_hint'))}">
+        <input type="checkbox" class="snippet-enabled-toggle" aria-label="${escHtml(t('snippets_enabled_hint'))}">
+        <span class="slider round"></span>
+      </label>
       <button class="delete-row-btn" title="Delete Snippet">×</button>
     </div>
     <div class="row-inputs">
@@ -208,11 +305,12 @@ function addSnippetRowUI(snippet = { trigger: '', replacement: '', name: '', col
 
   // --- Drag-and-Drop ---
   row.addEventListener('mousedown', (e) => {
-    row.draggable = !e.target.closest('input, textarea, _highlight-container, _snippet-name-input');
+    row.draggable = !document.getElementById('snippet-search')?.value.trim() &&
+      !e.target.closest('input, textarea, select, button, label, .highlight-container, .snippet-name-input');
   });
 
   row.addEventListener('dragstart', (e) => {
-    if (!row.draggable) { e.preventDefault(); return; }
+    if (!row.draggable || document.getElementById('snippet-search')?.value.trim()) { e.preventDefault(); return; }
     row.classList.add('dragging');
     startAutoScroll();
   });
@@ -220,6 +318,8 @@ function addSnippetRowUI(snippet = { trigger: '', replacement: '', name: '', col
   row.addEventListener('dragend', () => {
     row.classList.remove('dragging');
     stopAutoScroll();
+    refreshSubgroupSelectors();
+    applySnippetSearch();
     syncActiveGroupData();
     debouncedSave();
     checkTriggerConflicts();
@@ -233,10 +333,23 @@ function addSnippetRowUI(snippet = { trigger: '', replacement: '', name: '', col
   const errorDiv         = row.querySelector('.error-msg-container');
   const nameInput        = row.querySelector('.snippet-name-input');
   const foldBtn          = row.querySelector('.fold-btn');
+  const enabledToggle    = row.querySelector('.snippet-enabled-toggle');
+  enabledToggle.checked = snippet.disabled !== true;
+  enabledToggle.onchange = () => {
+    row.classList.toggle('is-disabled', !enabledToggle.checked);
+    syncActiveGroupData();
+    debouncedSave();
+    checkTriggerConflicts();
+  };
 
   const runUpdate = () => {
     const triggerError = updateTriggerHighlight(triggerInput, triggerHighlight);
-    const replacementError = updateHighlight(textarea, highlightDiv, triggerInput.value);
+    // Read the active group's rows so unsaved name/trigger edits are included.
+    const library = Array.from(document.querySelectorAll('#snippets-list .snippet-row')).map(item => ({
+      name: item.querySelector('.snippet-name-input').value,
+      trigger: item.querySelector('.trigger-input').value.trim()
+    }));
+    const replacementError = updateHighlight(textarea, highlightDiv, triggerInput.value, library, nameInput.value);
     
     const finalError = triggerError || replacementError;
 
@@ -248,11 +361,14 @@ function addSnippetRowUI(snippet = { trigger: '', replacement: '', name: '', col
     }
   };
 
-  runUpdate();
+  row.updateValidation = runUpdate;
+  textarea.addEventListener('dblclick', event => navigateToSnippetFunction(textarea, event));
+  textarea.addEventListener('mousemove', event => updateSnippetFunctionCursor(textarea, highlightDiv, event));
+  textarea.addEventListener('mouseleave', () => { textarea.style.cursor = ''; });
 
   triggerInput.oninput = () => {
     row.querySelector('.collapsed-trigger-display').textContent = triggerInput.value;
-    runUpdate();
+    updateAllHighlights();
     syncActiveGroupData();
     debouncedSave();
     checkTriggerConflicts();
@@ -366,7 +482,10 @@ function addSnippetRowUI(snippet = { trigger: '', replacement: '', name: '', col
     syncActiveGroupData(); 
     debouncedSave(); 
   };
-  textarea.onscroll = () => { highlightDiv.scrollTop = textarea.scrollTop; };
+  textarea.onscroll = () => {
+    highlightDiv.scrollTop = textarea.scrollTop;
+    textarea.style.cursor = '';
+  };
 
   triggerInput.onscroll = () => { triggerHighlight.scrollLeft = triggerInput.scrollLeft; };
 
@@ -413,28 +532,40 @@ function addSnippetRowUI(snippet = { trigger: '', replacement: '', name: '', col
     }
   };
 
-  nameInput.oninput = () => { syncActiveGroupData(); debouncedSave(); };
+  nameInput.oninput = () => { applySnippetSearch(); updateAllHighlights(); syncActiveGroupData(); debouncedSave(); };
   foldBtn.onclick   = () => { row.classList.toggle('collapsed'); };
+  const subgroupSelect = row.querySelector('.snippet-subgroup-select');
+  subgroupSelect.onchange = () => moveSnippetToSubgroup(row, subgroupSelect.value);
 
   row.querySelector('.delete-row-btn').onclick = () => {
     row.remove();
+    applySnippetSearch();
+    updateAllHighlights();
     syncActiveGroupData();
     debouncedSave();
     checkTriggerConflicts();
   };
 
-  list.appendChild(row);
+  appendSnippetToContainer(row, list);
+  if (!deferRefresh) { refreshSubgroupSelectors(); runUpdate(); }
+  return row;
 }
 
-function addSnippetRow() {
-  addSnippetRowUI();
+function addSnippetRow(subgroupId = '') {
+  const search = document.getElementById('snippet-search');
+  if (search?.value) {
+    search.value = '';
+    applySnippetSearch();
+  }
+  const section = findSubgroupSection(subgroupId);
+  if (section) setSubgroupCollapsed(section, false, false);
+  const newRow = addSnippetRowUI(undefined, section?.querySelector('.subgroup-snippets'));
+  applySnippetSearch();
+  updateAllHighlights();
   syncActiveGroupData();
   debouncedSave();
   checkTriggerConflicts();
-  const rows = document.querySelectorAll('.snippet-row');
-  if (rows.length > 0) {
-    const lastRow = rows[rows.length - 1];
-    const input   = lastRow.querySelector('.snippet-name-input');
-    if (input) { input.focus(); lastRow.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-  }
+  const input = newRow.querySelector('.snippet-name-input');
+  input.focus();
+  newRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }

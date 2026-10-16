@@ -33,6 +33,7 @@ function editorHarness(value, caret) {
     window: { getSelection: () => ({}) },
     chrome: { storage: { onChanged: { addListener() {} } } },
     loadSettings() {},
+    showSnippetError() {},
     getTargetInfo: () => ({ isInput: true, isEditable: false }),
     processTemplate: async text => text,
     getMaxCursorLevel: () => -1,
@@ -42,6 +43,7 @@ function editorHarness(value, caret) {
     VISUAL_OPEN: '⟦',
     VISUAL_CLOSE: '⟧',
     setTimeout() {},
+    performance: { now: () => 0 },
     console
   });
   vm.runInContext('let lastExpansion = null; let isInternalEdit = false;', context);
@@ -123,6 +125,30 @@ test('input handler records expansion immediately and still allows undo', async 
   assert.equal(el.value, '/hello');
 });
 
+test('Ctrl+Z restores the most recent snippet expansion', async () => {
+  const { el, context } = editorHarness('/hello', 6);
+  const info = { isInput: true, isEditable: false };
+  const result = await context.selectAndReplace(el, info, { textBefore: '/hello' }, 6, 'WORLD');
+  context.recordExpansion(el, info, result.before);
+  const event = {
+    target: el,
+    key: 'z',
+    code: 'KeyZ',
+    ctrlKey: true,
+    altKey: false,
+    shiftKey: false,
+    metaKey: false,
+    preventDefault() { this.defaultPrevented = true; },
+    stopPropagation() { this.propagationStopped = true; }
+  };
+
+  context.handleKeyDown(event);
+
+  assert.equal(el.value, '/hello');
+  assert.equal(event.defaultPrevented, true);
+  assert.equal(event.propagationStopped, true);
+});
+
 test('input handler removes the first placeholder synchronously', async () => {
   const { el, context } = editorHarness('/hello', 6);
   const scheduled = [];
@@ -166,7 +192,11 @@ test('an auto cursor never falls through to an existing placeholder', () => {
 
 test('cancelled prompt restores its trigger', async () => {
   const { el, context } = editorHarness('prefix /hello', 13);
-  context.processTemplate = async () => '';
+  context.processTemplate = async () => {
+    const error = new Error('Cancelled');
+    error.name = 'SnippetPromptCancelled';
+    throw error;
+  };
   const result = await context.selectAndReplace(
     el, { isInput: true, isEditable: false }, { textBefore: 'prefix /hello' }, 6, 'prompt("Name")'
   );
@@ -212,4 +242,177 @@ test('contenteditable undo selects the changed text even when the caret moved', 
   context.recordExpansion(el, info, { text: 'prefix /hello suffix', html: 'prefix /hello suffix' });
   assert.equal(context.undoLastExpansion(), true);
   assert.equal(el.textContent, 'prefix /hello suffix');
+});
+
+test('template call failures and nested prompt cancellation restore the original input', async () => {
+  for (const replacement of ['{{@Missing()}}', '{{@Ask()}}', '{{@Ask<-1>()}}']) {
+    const { el, context } = editorHarness('prefix /hello suffix', 13);
+    for (const file of ['utils/constants.js', 'utils/triggers.js', 'utils/i18n.js', 'content/evaluator.js', 'content/template.js']) {
+      vm.runInContext(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'), context, { filename: file });
+    }
+    context.console = { error() { assert.fail('Handled template failures must not be logged as extension errors'); } };
+    context.showSnippetPrompt = async () => '';
+    const errors = [];
+    context.showSnippetError = error => errors.push(error);
+    const result = await context.selectAndReplace(el, { isInput: true }, { textBefore: 'prefix /hello' }, 6,
+      replacement, {}, { snippets: [{ name: 'Ask', replacement: 'prefix {{prompt("Name?")}} suffix' }] });
+    assert.equal(result.cancelled, true);
+    assert.equal(el.value, 'prefix /hello suffix');
+    assert.equal(el.selectionStart, 13);
+    assert.equal(errors.length, replacement === '{{@Ask()}}' ? 0 : 1);
+  }
+});
+
+test('typed regex captures pass through snippet calls with cursor placement and undo', async () => {
+  const { el, context } = editorHarness('/greet Jiun', 11);
+  for (const file of ['utils/constants.js', 'utils/triggers.js', 'utils/i18n.js', 'content/evaluator.js', 'content/template.js']) {
+    vm.runInContext(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'), context, { filename: file });
+  }
+  const caller = { name: 'Caller', trigger: '/greet ${name}', replacement: '{{@Greeting($name)}}' };
+  const helper = { name: 'Greeting', trigger: '/hello ${person}', replacement: 'Hi {{$person}}{{#0}}!' };
+  const compiled = context.compileTrigger(caller.trigger);
+  context.runtimeSnippets = [{ ...caller, isRegex: true, compiledRegex: compiled.regex,
+    groupSnippets: [caller, helper], sourceSnippet: caller }];
+  vm.runInContext('let typingSeqLength = 10; let snippets = runtimeSnippets;', context);
+  el.closest = () => null;
+  context.getCaretContext = () => ({ textBefore: el.value.slice(0, el.selectionEnd) });
+  context.triggerEffect = () => {};
+  context.findNextPlaceholder = text => {
+    const index = text.indexOf('⟦0⟧');
+    return index < 0 ? null : { index, length: 3, level: 0 };
+  };
+  context.selectPlaceholder = (target, _info, match) => {
+    target.setSelectionRange(match.index, match.index + match.length);
+    return true;
+  };
+  await context.handleInput({ target: el, inputType: 'insertText', data: 'n' });
+  assert.equal(el.value, 'Hi Jiun!');
+  assert.equal(el.selectionStart, 7);
+  assert.equal(context.undoLastExpansion(), true);
+  assert.equal(el.value, '/greet Jiun');
+});
+
+test('shifted snippet cursors become input placeholders for either call order', async () => {
+  for (const replacement of ['{{@func()<2>}}', '{{@func<2>()}}']) {
+    const { el, context } = editorHarness('/hello', 6);
+    for (const file of ['utils/constants.js', 'utils/triggers.js', 'utils/i18n.js', 'content/evaluator.js', 'content/template.js']) {
+      vm.runInContext(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'), context, { filename: file });
+    }
+    await context.selectAndReplace(el, { isInput: true }, { textBefore: '/hello' }, 6, replacement, {}, {
+      snippets: [{ name: 'func', trigger: '', replacement: 'hello{{#0}}{{#1}}{{cursor}}' }]
+    });
+    assert.equal(el.value, 'hello⟦2⟧⟦3⟧⟦2⟧');
+  }
+});
+
+test('replacement syntax errors restore the trigger and display Korean errors without console logging', async () => {
+  const ko = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '_locales/ko/messages.json'), 'utf8'));
+  const en = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '_locales/en/messages.json'), 'utf8'));
+  for (const [replacement, key, values] of [
+    ['{{$missing}}', 'err_undefined_variable', ['$missing']],
+    ['{{unknownTag}}', 'err_unknown_tag', ['unknownTag']],
+    ['{{unknownFunction()}}', 'err_unknown_function', ['unknownFunction']],
+    ['{{2[0]}}', 'err_list_index_target', []],
+    ['{{true[0]}}', 'err_list_index_target', []],
+    ['{{if true}}body', 'err_if_unclosed', []]
+  ]) {
+    const { el, context } = editorHarness('prefix /hello suffix', 13);
+    context.config.uiLocale = 'ko';
+    context.chrome.runtime = { getURL: path => path };
+    context.chrome.i18n = { getMessage: (key, values = []) => (en[key]?.message || '').replace(/\$(\d+)/g, (_, i) => values[i - 1]) };
+    context.fetch = async () => ({ ok: true, json: async () => ko });
+    context.console = { error() { assert.fail('Syntax errors should only display a toast'); } };
+    for (const file of ['utils/constants.js', 'utils/triggers.js', 'utils/i18n.js', 'content/evaluator.js', 'content/template.js']) {
+      vm.runInContext(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'), context, { filename: file });
+    }
+    await context.loadSnippetLocale('ko');
+    const errors = [];
+    context.showSnippetError = error => errors.push(error.message);
+    const result = await context.selectAndReplace(el, { isInput: true }, { textBefore: 'prefix /hello' }, 6, replacement);
+    assert.equal(result.cancelled, true);
+    assert.equal(el.value, 'prefix /hello suffix');
+    assert.deepEqual(errors, [ko[key].message.replace(/\$(\d+)/g, (_, index) => values[index - 1])]);
+  }
+});
+
+test('a toast-only snippet consumes its trigger without inserting or restoring text', async () => {
+  const { el, context } = editorHarness('prefix /hello suffix', 13);
+  for (const file of ['utils/constants.js', 'utils/triggers.js', 'utils/i18n.js', 'content/evaluator.js', 'content/template.js']) {
+    vm.runInContext(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'), context, { filename: file });
+  }
+  const messages = [];
+  context.showSnippetToast = (message, color) => messages.push([message, color]);
+  const result = await context.selectAndReplace(el, { isInput: true }, { textBefore: 'prefix /hello' }, 6,
+    '{{toast("prompt() finished", "green")}}');
+  assert.notEqual(result.cancelled, true);
+  assert.equal(el.value, 'prefix  suffix');
+  assert.deepEqual(messages, [['prompt() finished', 'green']]);
+});
+
+test('the test frame runs unsaved snippets through real input expansion and undo', async () => {
+  const { el, context } = editorHarness('/test Guest', 11);
+  context.window.location = { origin: 'chrome-extension://test' };
+  context.window.parent = { postMessage() {} };
+  context.window.addEventListener = () => {};
+  context.document.getElementById = () => ({ setAttribute() {} });
+  context.loadLocale = async () => {};
+  context.t = key => key;
+  vm.runInContext('let snippets = []; let typingSeqLength = 0;', context);
+  for (const file of ['utils/constants.js', 'utils/config.js', 'utils/triggers.js', 'utils/i18n.js', 'content/evaluator.js', 'content/template.js', 'options/tester-runtime.js']) {
+    vm.runInContext(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'), context, { filename: file });
+  }
+  const library = [{ name: 'Test', siteMode: 'whitelist', disabledSites: ['unrelated.example'], snippets: [
+    { name: 'caller', trigger: '/test ${name}', replacement: '{{@"hello world"($name)}}', subgroupId: 'one' },
+    { name: 'hello world', trigger: '/hello ${name}', replacement: 'Hello {{$name}}', subgroupId: 'two' }
+  ] }];
+  await context.applySnippetTestState({ config: {}, snippetGroups: library });
+  el.closest = () => null;
+  context.getCaretContext = () => ({ textBefore: el.value.slice(0, el.selectionEnd) });
+  context.triggerEffect = () => {};
+  context.findNextPlaceholder = () => null;
+  vm.runInContext('typingSeqLength = 10;', context);
+  await context.handleInput({ target: el, inputType: 'insertText', data: 't' });
+  assert.equal(el.value, 'Hello Guest');
+  assert.equal(context.undoLastExpansion(), true);
+  assert.equal(el.value, '/test Guest');
+});
+
+test('a copy-only snippet consumes its trigger and failed writes restore it', async () => {
+  for (const fails of [false, true]) {
+    const { el, context } = editorHarness('prefix /hello suffix', 13);
+    for (const file of ['utils/constants.js', 'utils/triggers.js', 'utils/i18n.js', 'content/evaluator.js', 'content/template.js']) {
+      vm.runInContext(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'), context, { filename: file });
+    }
+    const writes = [];
+    const errors = [];
+    context.navigator = { clipboard: { async writeText(text) {
+      if (fails) throw new Error('Permission denied');
+      writes.push(text);
+    } } };
+    context.showSnippetError = error => errors.push(error.messageKey);
+    const result = await context.selectAndReplace(el, { isInput: true }, { textBefore: 'prefix /hello' }, 6,
+      '{{copy("Guest")}}');
+    assert.equal(el.value, fails ? 'prefix /hello suffix' : 'prefix  suffix');
+    assert.deepEqual(writes, fails ? [] : ['Guest']);
+    assert.deepEqual(errors, fails ? ['err_clipboard_copy_failed'] : []);
+    if (!fails) assert.notEqual(result.cancelled, true);
+  }
+});
+
+test('execution timeout restores the trigger and reports a localized error without inserting partial output', async () => {
+  const { el, context } = editorHarness('prefix /hello suffix', 13);
+  for (const file of ['utils/constants.js', 'utils/triggers.js', 'utils/i18n.js', 'content/evaluator.js', 'content/template.js']) {
+    vm.runInContext(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'), context);
+  }
+  const errors = [];
+  context.config.maxExecutionMs = 100;
+  let time = 0;
+  context.performance.now = () => time;
+  context.showSnippetToast = () => { time += 101; };
+  context.showSnippetError = error => errors.push(error.messageKey);
+  const result = await context.selectAndReplace(el, { isInput: true }, { textBefore: 'prefix /hello' }, 6,
+    'partial{{toast("work", "red")}}trailing');
+  assert.equal(result.cancelled, true);
+  assert.equal(el.value, 'prefix /hello suffix');
+  assert.deepEqual(errors, ['err_snippet_timeout']);
 });

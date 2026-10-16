@@ -5,8 +5,8 @@
  *           and built-in functions: date(), time(), datetime(), url(), domain(),
  *           title(), uuid(), random(...).
  *
- * async functions (clipboard(), prompt()) are pre-resolved in template.js
- * before being passed here as string literals.
+ * async functions (paste(), prompt()) are pre-resolved in template.js
+ * before being passed here as expression-local variables.
  */
 
 // --- Built-in Functions ---
@@ -18,10 +18,14 @@ function splitArgs(str) {
   let inQuote = null;
   for (let i = 0; i < str.length; i++) {
     const c = str[i];
+    if (inQuote && c === '\\' && i + 1 < str.length) {
+      current += c + str[++i];
+      continue;
+    }
     if ((c === "'" || c === '"') && !inQuote) inQuote = c;
     else if (c === inQuote) inQuote = null;
-    else if (!inQuote && c === '(') depth++;
-    else if (!inQuote && c === ')') depth--;
+    else if (!inQuote && (c === '(' || c === '[')) depth++;
+    else if (!inQuote && (c === ')' || c === ']')) depth--;
     if (!inQuote && depth === 0 && c === ',') {
       items.push(current.trim());
       current = '';
@@ -33,32 +37,18 @@ function splitArgs(str) {
   return items;
 }
 
-function callRandomFunction(argsStr, args) {
+function callRandomFunction(argsStr, args, execution) {
   const items = splitArgs(argsStr);
   if (items.length === 0) return '';
 
   const evaluated = items.map(item => {
-    item = item.trim();
-    // Find ~ outside quotes for range syntax
-    let tildeIdx = -1;
-    let inQ = null;
-    for (let i = 0; i < item.length; i++) {
-      const c = item[i];
-      if ((c === "'" || c === '"') && !inQ) inQ = c;
-      else if (c === inQ) inQ = null;
-      if (c === '~' && !inQ) { tildeIdx = i; break; }
-    }
-    if (tildeIdx !== -1) {
-      const v1 = Number(evaluateExpression(item.substring(0, tildeIdx).trim(), args));
-      const v2 = Number(evaluateExpression(item.substring(tildeIdx + 1).trim(), args));
-      if (!isNaN(v1) && !isNaN(v2)) {
-        return Math.floor(Math.random() * (Math.abs(v2 - v1) + 1)) + Math.min(v1, v2);
-      }
-    }
-    return evaluateExpression(item, args);
+    const value = evaluateExpression(item, args, execution);
+    if (!isRange(value)) return value;
+    const low = Math.min(value.start, value.end);
+    return low + Math.floor(Math.random() * (Math.abs(value.end - value.start) + 1));
   });
 
-  if (evaluated.length === 1) return evaluated[0]; // single range arg
+  if (evaluated.length === 1) return evaluated[0]; // single value or sampled range
   return evaluated[Math.floor(Math.random() * evaluated.length)];
 }
 
@@ -84,7 +74,20 @@ function formatDate(date, format) {
   return format.replace(/YYYY|YY|MM|M|DD|D|HH|H|mm|m|ss|s|dddd|ddd/g, match => tokens[match]);
 }
 
-function callBuiltinFunction(name, argsStr, args) {
+function callBuiltinFunction(name, argsStr, args, execution) {
+  const arities = {
+    url: [0, 0], domain: [0, 0], title: [0, 0], uuid: [0, 0], bs: [0, 0], backspace: [0, 0],
+    date: [0, 1], time: [0, 1], datetime: [0, 1], random: [1, Infinity],
+    upper: [1, 1], lower: [1, 1], trim: [1, 1], capitalize: [1, 1], substr: [2, 3],
+    startswith: [2, 2], endswith: [2, 2], split: [2, 2], join: [2, 2], insertAt: [3, 3], removeAt: [2, 2], replace: [3, 3], len: [1, 1], str: [1, 1],
+    num: [1, 1], int: [1, 1], type: [1, 1], round: [1, 1], ceil: [1, 1], floor: [1, 1], min: [1, Infinity], max: [1, Infinity]
+  };
+  if (!Object.prototype.hasOwnProperty.call(arities, name)) throw createSnippetError('err_unknown_function', [name]);
+  const parts = splitArgs(argsStr);
+  const [minimum, maximum] = arities[name];
+  if (parts.some(part => !part) || /,\s*$/.test(argsStr) || parts.length < minimum || parts.length > maximum) {
+    throw createSnippetError('err_function_arguments', [name]);
+  }
   const now = new Date();
   const pad = n => String(n).padStart(2, '0');
   const defaultDate = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
@@ -92,115 +95,289 @@ function callBuiltinFunction(name, argsStr, args) {
 
   switch (name) {
     case 'date': {
-      const format = evaluateExpression(splitArgs(argsStr)[0] || '', args);
+      const format = evaluateExpression(splitArgs(argsStr)[0] || '', args, execution);
       return format ? formatDate(now, String(format)) : defaultDate;
     }
     case 'time': {
-      const format = evaluateExpression(splitArgs(argsStr)[0] || '', args);
+      const format = evaluateExpression(splitArgs(argsStr)[0] || '', args, execution);
       return format ? formatDate(now, String(format)) : defaultTime;
     }
     case 'datetime': {
-      const format = evaluateExpression(splitArgs(argsStr)[0] || '', args);
+      const format = evaluateExpression(splitArgs(argsStr)[0] || '', args, execution);
       return format ? formatDate(now, String(format)) : `${defaultDate} ${defaultTime}`;
     }
     case 'url':      return window.location.href;
     case 'domain':   return window.location.hostname;
     case 'title':    return document.title;
     case 'uuid':     return crypto.randomUUID();
-    case 'random':   return callRandomFunction(argsStr, args);
+    case 'random':   return callRandomFunction(argsStr, args, execution);
     case 'bs':
     case 'backspace': return '\u0008';
-    case 'upper':    return String(evaluateExpression(splitArgs(argsStr)[0] || '', args) || '').toUpperCase();
-    case 'lower':    return String(evaluateExpression(splitArgs(argsStr)[0] || '', args) || '').toLowerCase();
-    case 'trim':     return String(evaluateExpression(splitArgs(argsStr)[0] || '', args) || '').trim();
+    case 'upper':    return String(evaluateExpression(splitArgs(argsStr)[0] || '', args, execution) || '').toUpperCase();
+    case 'lower':    return String(evaluateExpression(splitArgs(argsStr)[0] || '', args, execution) || '').toLowerCase();
+    case 'trim':     return String(evaluateExpression(splitArgs(argsStr)[0] || '', args, execution) || '').trim();
     case 'capitalize': {
-      const s = String(evaluateExpression(splitArgs(argsStr)[0] || '', args) || '');
+      const s = String(evaluateExpression(splitArgs(argsStr)[0] || '', args, execution) || '');
       return s.charAt(0).toUpperCase() + s.slice(1);
     }
     case 'substr': {
-      const items = splitArgs(argsStr).map(p => evaluateExpression(p, args));
+      const items = splitArgs(argsStr).map(p => evaluateExpression(p, args, execution));
       return String(items[0] || '').substr(items[1] || 0, items[2]);
     }
     case 'startswith':
     case 'endswith': {
-      const items = splitArgs(argsStr).map(p => evaluateExpression(p, args));
+      const items = splitArgs(argsStr).map(p => evaluateExpression(p, args, execution));
       const value = String(items[0] ?? '');
       const search = String(items[1] ?? '');
       return name === 'startswith' ? value.startsWith(search) : value.endsWith(search);
     }
     case 'replace': {
-      const items = splitArgs(argsStr).map(p => evaluateExpression(p, args));
+      const items = splitArgs(argsStr).map(p => evaluateExpression(p, args, execution));
       return String(items[0] || '').replace(items[1] || '', items[2] || '');
     }
-    case 'len': return String(evaluateExpression(splitArgs(argsStr)[0] || '', args) || '').length;
-    case 'str': return String(evaluateExpression(splitArgs(argsStr)[0] || '', args) ?? '');
+    case 'len': {
+      const value = evaluateExpression(parts[0], args, execution);
+      if (isRange(value)) return Math.abs(value.end - value.start) + 1;
+      return Array.isArray(value) ? value.length : Array.from(String(value || '')).length;
+    }
+    case 'split': {
+      const value = evaluateExpression(parts[0], args, execution);
+      const separator = evaluateExpression(parts[1], args, execution);
+      return createList(String(value ?? '').split(String(separator ?? '')));
+    }
+    case 'join': {
+      const value = evaluateExpression(parts[0], args, execution);
+      const separator = evaluateExpression(parts[1], args, execution);
+      if (!Array.isArray(value)) throw createSnippetError('err_join_list_required');
+      return value.join(String(separator ?? ''));
+    }
+    case 'insertAt':
+    case 'removeAt': {
+      const target = evaluateExpression(parts[0], args, execution);
+      if (isRange(target)) throw createSnippetError('err_readonly_iterable', [name]);
+      if (!isSnippetIterable(target)) throw createSnippetError('err_iterable_function_target', [name]);
+      const index = evaluateExpression(parts[1], args, execution);
+      if (!Number.isSafeInteger(index)) throw createSnippetError('err_list_index_integer');
+      const result = Array.from(target);
+      const length = result.length;
+      const position = index < 0 ? length + index : index;
+      if (name === 'insertAt') {
+        const value = evaluateExpression(parts[2], args, execution);
+        if (position >= 0 && position <= length) result.splice(position, 0, typeof target === 'string' ? String(value ?? '') : value);
+      } else if (position >= 0 && position < length) result.splice(position, 1);
+      return typeof target === 'string' ? result.join('') : createList(result);
+    }
+    case 'str': return String(evaluateExpression(splitArgs(argsStr)[0] || '', args, execution) ?? '');
+    case 'type': {
+      const value = evaluateExpression(parts[0], args, execution);
+      if (value === null) return 'null';
+      if (Array.isArray(value)) return 'list';
+      return isRange(value) ? 'range' : typeof value;
+    }
     case 'num': {
-      const v = Number(evaluateExpression(splitArgs(argsStr)[0] || 0, args));
+      const v = Number(evaluateExpression(splitArgs(argsStr)[0] || 0, args, execution));
       return isNaN(v) ? 0 : v;
     }
     case 'int': {
-      const v = parseInt(evaluateExpression(splitArgs(argsStr)[0] || 0, args));
+      const v = parseInt(evaluateExpression(splitArgs(argsStr)[0] || 0, args, execution));
       return isNaN(v) ? 0 : v;
     }
     case 'round': {
-      const v = Number(evaluateExpression(splitArgs(argsStr)[0] || 0, args));
+      const v = Number(evaluateExpression(splitArgs(argsStr)[0] || 0, args, execution));
       return isNaN(v) ? 0 : Math.round(v);
     }
     case 'ceil': {
-      const v = Number(evaluateExpression(splitArgs(argsStr)[0] || 0, args));
+      const v = Number(evaluateExpression(splitArgs(argsStr)[0] || 0, args, execution));
       return isNaN(v) ? 0 : Math.ceil(v);
     }
     case 'floor': {
-      const v = Number(evaluateExpression(splitArgs(argsStr)[0] || 0, args));
+      const v = Number(evaluateExpression(splitArgs(argsStr)[0] || 0, args, execution));
       return isNaN(v) ? 0 : Math.floor(v);
     }
     case 'min': {
-      const vals = splitArgs(argsStr).map(p => Number(evaluateExpression(p, args))).filter(n => !isNaN(n));
+      const vals = splitArgs(argsStr).map(p => Number(evaluateExpression(p, args, execution))).filter(n => !isNaN(n));
       return vals.length ? Math.min(...vals) : 0;
     }
     case 'max': {
-      const vals = splitArgs(argsStr).map(p => Number(evaluateExpression(p, args))).filter(n => !isNaN(n));
+      const vals = splitArgs(argsStr).map(p => Number(evaluateExpression(p, args, execution))).filter(n => !isNaN(n));
       return vals.length ? Math.max(...vals) : 0;
     }
-    // clipboard() and prompt() are pre-resolved in template.js before reaching here
-    default: return '';
+    // paste() and prompt() are pre-resolved in template.js before reaching here
+    default: throw createSnippetError('err_unknown_function', [name]);
   }
+}
+
+// Range has lower precedence than arithmetic. Ignore quoted text and nested
+// calls/grouping; each nested expression is evaluated separately.
+function rangeOperatorPositions(expression) {
+  const positions = [];
+  let quote = null;
+  let depth = 0;
+  for (let i = 0; i < expression.length; i++) {
+    const char = expression[i];
+    if (quote) {
+      if (char === '\\') i++;
+      else if (char === quote) quote = null;
+    } else if (char === '"' || char === "'") quote = char;
+    else if (char === '(') depth++;
+    else if (char === ')') depth--;
+    else if (char === '~' && depth === 0) positions.push(i);
+  }
+  return positions;
+}
+function isRange(value) {
+  return value !== null && typeof value === 'object' && value.type === 'range'
+    && Number.isSafeInteger(value.start) && Number.isSafeInteger(value.end)
+    && Number.isSafeInteger(Math.abs(value.end - value.start) + 1);
+}
+
+function createRange(start, end) {
+  const range = { type: 'range', start, end };
+  if (!isRange(range)) {
+    throw createSnippetError('err_range_integer_bounds', [], 'Range endpoints must be safe integers.');
+  }
+  Object.defineProperty(range, 'toString', { value: () => `${start}~${end}` });
+  return Object.freeze(range);
+}
+
+function isSnippetIterable(value) {
+  return typeof value === 'string' || Array.isArray(value) || isRange(value);
+}
+
+function addSnippetValues(left, right) {
+  if (Array.isArray(left) || Array.isArray(right)) {
+    if (!Array.isArray(left) || !Array.isArray(right)) throw createSnippetError('err_list_concat_types');
+    return createList([...left, ...right]);
+  }
+  return left + right;
+}
+
+function snippetValuesEqual(left, right, execution) {
+  execution?.check();
+  if (Array.isArray(left) && Array.isArray(right)) {
+    return left.length === right.length && left.every((value, i) => snippetValuesEqual(value, right[i], execution));
+  }
+  if (isRange(left) && isRange(right)) return left.start === right.start && left.end === right.end;
+  return Object.is(left, right) || left === right;
+}
+
+function subtractSnippetValues(left, right, execution) {
+  if (Array.isArray(left) || Array.isArray(right)) {
+    if (!Array.isArray(left) || !Array.isArray(right)) throw createSnippetError('err_list_subtract_types');
+    return createList(left.filter(value => {
+      execution?.check();
+      return !right.some(removed => snippetValuesEqual(value, removed, execution));
+    }));
+  }
+  return left - right;
+}
+
+function createList(values) {
+  const list = [...values];
+  Object.defineProperty(list, 'toString', { value: () =>
+    `[${list.map(value => typeof value === 'string' ? JSON.stringify(value) : String(value)).join(',')}]`
+  });
+  return Object.freeze(list);
 }
 
 // --- Expression Evaluator ---
 
-function evaluateExpression(expr, args) {
+function evaluateExpression(expr, args, execution) {
+  execution?.check();
   let text = expr.trim();
   if (!text) return null;
+  let quote = null;
+  const delimiters = [];
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (quote) {
+      if (char === '\\') i++;
+      else if (char === quote) quote = null;
+    } else if (char === '"' || char === "'") quote = char;
+    else if (char === '(' || char === '[') delimiters.push(char);
+    else if (char === ')' || char === ']') {
+      const open = delimiters.pop();
+      if (open !== (char === ')' ? '(' : '[')) {
+        throw createSnippetError(char === ']' || open === '[' ? 'err_list_syntax' : 'err_unmatched_close_paren');
+      }
+    }
+  }
+  if (quote) throw createSnippetError('err_unclosed_string');
+  if (delimiters.length) throw createSnippetError(delimiters.includes('[') ? 'err_list_syntax' : 'err_unmatched_open_paren');
+  args = { ...args };
+  const storeResult = value => {
+    let index = 0;
+    let name;
+    do { name = `__expressionValue${index++}`; }
+    while (Object.prototype.hasOwnProperty.call(args, name) || text.includes('$' + name));
+    args[name] = value;
+    return '$' + name;
+  };
 
-  // 1. Function calls and parentheses (innermost first)
-  while (text.includes('(')) {
+  // 1. Function calls, grouping and list literals (innermost first).
+  // Replace lists with scoped values before scanning outer operators.
+  while (text.includes('(') || text.includes('[')) {
+    execution?.check();
     let start = -1;
     let end = -1;
     let inQ = null;
     for (let i = 0; i < text.length; i++) {
       const c = text[i];
+      if (inQ && c === '\\') { i++; continue; }
       if ((c === "'" || c === '"') && !inQ) inQ = c;
       else if (c === inQ) inQ = null;
       if (!inQ) {
-        if (c === '(') start = i;
-        else if (c === ')') { if (start !== -1) { end = i; break; } }
+        if (c === '(' || c === '[') start = i;
+        else if (c === ')' || c === ']') { if (start !== -1) { end = i; break; } }
       }
     }
     if (start !== -1 && end !== -1) {
-      const funcNameMatch = text.substring(0, start).match(/([a-zA-Z_][a-zA-Z0-9_]*)$/);
+      if (text[start] === '[') {
+        const source = text.slice(start + 1, end);
+        const target = text.slice(0, start).match(/(\$[\p{L}\p{N}_]+|\b[\p{L}_][\p{L}\p{N}_]*|(?:\b\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?|"(?:\\[\s\S]|[^"\\])*"|'(?:\\[\s\S]|[^'\\])*')\s*$/u);
+        if (target) {
+          const parts = splitArgs(source);
+          if (parts.length !== 1 || !source.trim() || /,\s*$/.test(source)) throw createSnippetError('err_list_index_integer');
+          const iterable = resolveToken(target[1], args, execution);
+          if (!isSnippetIterable(iterable)) throw createSnippetError('err_list_index_target');
+          const index = evaluateExpression(source, args, execution);
+          if (typeof index !== 'number' || !Number.isSafeInteger(index)) throw createSnippetError('err_list_index_integer');
+          let value;
+          if (isRange(iterable)) {
+            // Read ranges arithmetically; even huge ranges need no allocation.
+            const distance = Math.abs(iterable.end - iterable.start);
+            const step = iterable.end < iterable.start ? -1 : 1;
+            if ((index < 0 ? -index - 1 : index) <= distance) {
+              value = index < 0 ? iterable.end + (index + 1) * step : iterable.start + index * step;
+            }
+          } else {
+            const items = typeof iterable === 'string' ? Array.from(iterable) : iterable;
+            const position = index < 0 ? items.length + index : index;
+            value = position >= 0 && position < items.length ? items[position] : undefined;
+          }
+          text = text.slice(0, start - target[0].length) + storeResult(value) + text.slice(end + 1);
+          continue;
+        }
+        const parts = splitArgs(source);
+        if (parts.some(part => !part) || /,\s*$/.test(source)) throw createSnippetError('err_list_syntax');
+        const value = createList(parts.map(part => evaluateExpression(part, args, execution)));
+        text = text.slice(0, start) + storeResult(value) + text.slice(end + 1);
+        continue;
+      }
+      const funcNameMatch = text.substring(0, start).match(/([a-zA-Z_][a-zA-Z0-9_]*)\s*$/);
       if (funcNameMatch) {
         const funcName = funcNameMatch[1];
-        const funcStart = start - funcName.length;
+        const funcStart = start - funcNameMatch[0].length;
         const argsStr = text.substring(start + 1, end);
-        const res = callBuiltinFunction(funcName, argsStr, args);
-        const val = (typeof res === 'string') ? `'${res.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'` : String(res ?? '');
+        const res = callBuiltinFunction(funcName, argsStr, args, execution);
+        const val = storeResult(res);
         text = text.substring(0, funcStart) + val + text.substring(end + 1);
       } else {
         // Plain parentheses grouping
         const sub = text.substring(start + 1, end);
-        const res = evaluateExpression(sub, args);
-        const val = (typeof res === 'string') ? `'${res.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'` : (res ?? '');
+        if (!sub.trim()) throw createSnippetError('err_missing_operand', ['()']);
+        const res = evaluateExpression(sub, args, execution);
+        const val = storeResult(res);
         text = text.substring(0, start) + val + text.substring(end + 1);
       }
     } else break;
@@ -248,10 +425,24 @@ function evaluateExpression(expr, args) {
       const condRaw = text.substring(0, ternaryStart);
       const trueRaw = text.substring(ternaryStart + 1, ternaryEnd);
       const falseRaw = text.substring(ternaryEnd + 1);
+      if (!condRaw.trim() || !trueRaw.trim() || !falseRaw.trim()) {
+        throw createSnippetError('err_missing_operand', [text]);
+      }
       
-      const conditionRes = evaluateCondition(condRaw, args);
-      return evaluateExpression(conditionRes ? trueRaw : falseRaw, args);
+      const conditionRes = evaluateCondition(condRaw, args, execution);
+      return evaluateExpression(conditionRes ? trueRaw : falseRaw, args, execution);
     }
+  }
+
+  // Range values can be stored in variables and passed to functions.
+  const rangeOperators = rangeOperatorPositions(text);
+  if (rangeOperators.length) {
+    const index = rangeOperators[0];
+    if (rangeOperators.length !== 1 || !text.slice(0, index).trim() || !text.slice(index + 1).trim()) {
+      throw createSnippetError('err_range_both_values_required', [text], 'A range requires exactly two endpoints.');
+    }
+    return createRange(evaluateExpression(text.slice(0, index), args, execution),
+      evaluateExpression(text.slice(index + 1), args, execution));
   }
 
   // 2. Logic OR (||)
@@ -268,9 +459,10 @@ function evaluateExpression(expr, args) {
     }
   }
   if (orIdx !== -1) {
-    const left = evaluateExpression(text.substring(0, orIdx), args);
+    if (!text.slice(0, orIdx).trim() || !text.slice(orIdx + 2).trim()) throw createSnippetError('err_missing_operand', [text]);
+    const left = evaluateExpression(text.substring(0, orIdx), args, execution);
     if (!!left) return true;
-    return !!evaluateExpression(text.substring(orIdx + 2), args);
+    return !!evaluateExpression(text.substring(orIdx + 2), args, execution);
   }
 
   // 3. Logic AND (&&)
@@ -287,9 +479,10 @@ function evaluateExpression(expr, args) {
     }
   }
   if (andIdx !== -1) {
-    const left = evaluateExpression(text.substring(0, andIdx), args);
+    if (!text.slice(0, andIdx).trim() || !text.slice(andIdx + 2).trim()) throw createSnippetError('err_missing_operand', [text]);
+    const left = evaluateExpression(text.substring(0, andIdx), args, execution);
     if (!left) return false;
-    return !!evaluateExpression(text.substring(andIdx + 2), args);
+    return !!evaluateExpression(text.substring(andIdx + 2), args, execution);
   }
 
   // 4. Comparison (==, !=, >=, <=, >, <)
@@ -324,8 +517,9 @@ function evaluateExpression(expr, args) {
   if (opIdx !== -1) {
     const leftRaw = text.substring(0, opIdx);
     const rightRaw = text.substring(opIdx + opType.length);
-    const left = evaluateExpression(leftRaw, args);
-    const right = evaluateExpression(rightRaw, args);
+    if (!leftRaw.trim() || !rightRaw.trim()) throw createSnippetError('err_missing_operand', [text]);
+    const left = evaluateExpression(leftRaw, args, execution);
+    const right = evaluateExpression(rightRaw, args, execution);
     switch (opType) {
       case '==': return left == right;
       case '!=': return left != right;
@@ -339,16 +533,22 @@ function evaluateExpression(expr, args) {
   // 5. Addition / Subtraction
   const lastAddSub = findLastOperator(text, ['+', '-']);
   if (lastAddSub !== -1) {
-    const left  = evaluateExpression(text.substring(0, lastAddSub), args);
-    const right = evaluateExpression(text.substring(lastAddSub + 1), args);
-    return text[lastAddSub] === '+' ? (left + right) : (left - right);
+    if (!text.slice(0, lastAddSub).trim() || !text.slice(lastAddSub + 1).trim()) {
+      throw createSnippetError('err_missing_operand', [text]);
+    }
+    const left  = evaluateExpression(text.substring(0, lastAddSub), args, execution);
+    const right = evaluateExpression(text.substring(lastAddSub + 1), args, execution);
+    return text[lastAddSub] === '+' ? addSnippetValues(left, right) : subtractSnippetValues(left, right, execution);
   }
 
   // 6. Multiplication / Division / Modulo
   const lastMulDiv = findLastOperator(text, ['*', '/', '%']);
   if (lastMulDiv !== -1) {
-    const left  = evaluateExpression(text.substring(0, lastMulDiv), args);
-    const right = evaluateExpression(text.substring(lastMulDiv + 1), args);
+    if (!text.slice(0, lastMulDiv).trim() || !text.slice(lastMulDiv + 1).trim()) {
+      throw createSnippetError('err_missing_operand', [text]);
+    }
+    const left  = evaluateExpression(text.substring(0, lastMulDiv), args, execution);
+    const right = evaluateExpression(text.substring(lastMulDiv + 1), args, execution);
     const op = text[lastMulDiv];
     if (op === '*') return left * right;
     if (op === '/') return left / right;
@@ -356,7 +556,7 @@ function evaluateExpression(expr, args) {
   }
 
   // 7. Base Token
-  return resolveToken(text, args);
+  return resolveToken(text, args, execution);
 }
 
 /**
@@ -371,32 +571,42 @@ function findLastOperator(text, ops) {
       else if (inQuote === char) inQuote = null;
     }
     if (!inQuote && ops.includes(char)) {
-      if (char === '-' && (i === 0 || /[+\-*/%=(!]/.test(text[i-1]))) continue;
+      if ((char === '-' || char === '+') && (i === 0 || /[+\-*/%=(!]/.test(text[i-1]))) continue;
       return i;
     }
   }
   return -1;
 }
 
-function resolveToken(token, args) {
+function resolveToken(token, args, execution) {
   token = token.trim();
   if (token.startsWith('$')) {
-    const val = args[token.substring(1)];
-    return val === undefined ? null : val;
+    const name = token.substring(1);
+    if (!/^[\p{L}\p{N}_]+$/u.test(name)) throw createSnippetError('err_var_name_required');
+    if (!Object.prototype.hasOwnProperty.call(args, name)) throw createSnippetError('err_undefined_variable', [token]);
+    return args[name];
   }
-  if (token === 'index') return args.index;
+  if (token === 'index') {
+    if (!Object.prototype.hasOwnProperty.call(args, 'index')) throw createSnippetError('err_index_outside_for');
+    return args.index;
+  }
+  if (token === 'value') {
+    if (!Object.prototype.hasOwnProperty.call(args, SNIPPET_LOOP_VALUE)) throw createSnippetError('err_value_outside_for');
+    return args[SNIPPET_LOOP_VALUE];
+  }
   if (token === 'true')  return true;
   if (token === 'false') return false;
   if (token === 'null')  return null;
+  if (token === 'undefined') return undefined;
   if (!isNaN(token) && token !== '') return parseFloat(token);
   if ((token.startsWith("'") && token.endsWith("'")) ||
       (token.startsWith('"') && token.endsWith('"'))) {
     return token.substring(1, token.length - 1);
   }
-  return "";
+  throw createSnippetError('err_unknown_tag', [token]);
 }
 
-function evaluateCondition(condition, args) {
-  const result = evaluateExpression(condition, args);
+function evaluateCondition(condition, args, execution) {
+  const result = evaluateExpression(condition, args, execution);
   return !!result && result !== 'false' && result !== '0';
 }

@@ -6,7 +6,7 @@ const vm = require('node:vm');
 
 const root = path.join(__dirname, '..');
 const context = vm.createContext({});
-for (const file of ['utils/constants.js', 'content/evaluator.js']) {
+for (const file of ['utils/constants.js', 'utils/i18n.js', 'content/evaluator.js']) {
   vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
 }
 
@@ -18,4 +18,55 @@ test('startswith and endswith compare strings and accept variables', () => {
   assert.equal(context.evaluateExpression('endswith($text, $suffix)', args), true);
   assert.equal(context.evaluateExpression('endswith($text, "++!")', args), false);
   assert.equal(context.evaluateExpression("startswith(substr($text, 0, 3), 'Sni')", args), true);
+});
+
+test('range expressions produce reusable integer range values', () => {
+  for (const [expression, args, start, end] of [
+    ['2~5', {}, 2, 5], ['-3 ~ -1', {}, -3, -1], ['5~2', {}, 5, 2],
+    ['$a + 1 ~ $b * 2', { a: 1, b: 3 }, 2, 6],
+    ['(1 + 1) ~ max(4, 5)', {}, 2, 5],
+    ['true ? 2~5 : 8~9', {}, 2, 5]
+  ]) {
+    const range = context.evaluateExpression(expression, args);
+    assert.equal(context.isRange(range), true);
+    assert.equal(range.start, start);
+    assert.equal(range.end, end);
+    assert.equal(String(range), `${start}~${end}`);
+    assert.equal(context.evaluateExpression('$range', { range }), range);
+  }
+  assert.equal(context.evaluateExpression('"2~5"', {}), '2~5');
+  for (const expression of ['2~', '~5', '1~2~3', '1.5~3', '1~(1/0)', '1~9007199254740992']) {
+    assert.throws(() => context.evaluateExpression(expression, {}), /range/i);
+  }
+});
+
+test('random samples range values and retains literal choices containing tildes', () => {
+  const math = Object.create(Math);
+  let sample = 0;
+  math.random = () => sample;
+  const ctx = vm.createContext({ Math: math });
+  vm.runInContext(fs.readFileSync(path.join(root, 'content/evaluator.js'), 'utf8'), ctx);
+  const range = ctx.evaluateExpression('2~5', {});
+  assert.equal(ctx.evaluateExpression('random($r)', { r: range }), 2);
+  sample = 0.999;
+  assert.equal(ctx.evaluateExpression('random($r)', { r: range }), 5);
+  assert.equal(ctx.evaluateExpression('random(5~2)', {}), 5);
+  assert.equal(ctx.evaluateExpression('random((1+1)~(2+3))', {}), 5);
+  assert.equal(ctx.evaluateExpression('random("a~b")', {}), 'a~b');
+  assert.equal(ctx.evaluateExpression('random(2~5, "literal")', {}), 'literal');
+});
+
+test('type identifies values without coercion and preserves range, null and undefined', () => {
+  for (const [expression, expected] of [
+    ['type("42")', 'string'], ['type("")', 'string'], ['type(42)', 'number'],
+    ['type(0)', 'number'], ['type(-1.5)', 'number'], ['type(true)', 'boolean'],
+    ['type(false)', 'boolean'], ['type(2~5)', 'range'], ['type((5~2))', 'range'],
+    ['type(null)', 'null'], ['type(undefined)', 'undefined'], ['type((undefined))', 'undefined'],
+    ['type(num("42"))', 'number'], ['type(2 < 3)', 'boolean'], ['type(type(42))', 'string'],
+    ['type($captured)', 'string'], ['type($optional)', 'undefined'], ['type($empty)', 'null']
+  ]) assert.equal(context.evaluateExpression(expression, { captured: '42', optional: undefined, empty: null }), expected, expression);
+  assert.throws(() => context.evaluateExpression('type($missing)', {}), error => error.messageKey === 'err_undefined_variable');
+  for (const expression of ['type()', 'type(1, 2)', 'type(,1)', 'type(1,)']) {
+    assert.throws(() => context.evaluateExpression(expression, {}), error => error.messageKey === 'err_function_arguments', expression);
+  }
 });

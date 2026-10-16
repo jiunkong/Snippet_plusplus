@@ -2,11 +2,12 @@
 
 let settingsLoadVersion = 0;
 
-function loadSettings() {
+function loadSettings(reportFailure = false) {
   const version = ++settingsLoadVersion;
-  loadSyncedState(defaultConfig, defaultSnippetGroups).then(items => {
-    if (version !== settingsLoadVersion) return;
+  return loadSyncedState(defaultConfig, defaultSnippetGroups).then(items => {
+    if (version !== settingsLoadVersion) return false;
     config = items.config;
+    loadSnippetLocale(config.uiLocale);
 
     const currentUrl = window.location.href;
     snippets = [];
@@ -30,10 +31,12 @@ function loadSettings() {
         if (siteMode === 'whitelist' && !onList) return;
 
         group.snippets.forEach(s => {
-          if (!s || typeof s.trigger !== 'string' || !s.trigger) return;
+          if (!s || s.disabled === true || typeof s.trigger !== 'string' || !s.trigger) return;
           const compiled = compileTrigger(s.trigger);
           snippets.push({
             ...s,
+            groupSnippets: group.snippets,
+            sourceSnippet: s,
             isRegex:        compiled.isRegex,
             compiledRegex:  compiled.regex,
             literalTrigger: compiled.literal
@@ -44,7 +47,30 @@ function loadSettings() {
 
     // Longer triggers take priority so they match before their prefixes
     snippets.sort((a, b) => b.trigger.length - a.trigger.length);
-  }).catch(error => console.error('Snippet++: Sync load failed', error));
+    return true;
+  }).catch(error => {
+    if (reportFailure) throw error;
+    console.error('Snippet++: Sync load failed', error);
+    return false;
+  });
+}
+
+let settingsReloadTask = null;
+
+function reloadSnippetSettings() {
+  if (settingsReloadTask) return settingsReloadTask;
+  settingsReloadTask = (async () => {
+    // A storage-change load may supersede the explicit request; retry once to
+    // make sure the success toast follows an applied, complete snapshot.
+    if (!await loadSettings(true) && !await loadSettings(true)) throw new Error('Settings refresh superseded');
+    typingSeqLength = 0;
+    await loadSnippetLocale(config.uiLocale);
+    showSnippetToast(snippetMessage('status_snippets_reloaded'), '#22c55e', 'success');
+  })().catch(async () => {
+    await loadSnippetLocale(config.uiLocale);
+    showSnippetToast(snippetMessage('status_snippets_reload_failed'), '#f87171', true);
+  }).finally(() => { settingsReloadTask = null; });
+  return settingsReloadTask;
 }
 
 // Watch for settings changes and hot-reload

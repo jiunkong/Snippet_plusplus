@@ -10,6 +10,37 @@
   padding-bottom: 100px;
 }
 
+.snippet-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0 8px;
+  padding: 3px;
+}
+
+.snippet-search {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 11px 14px;
+  color: var(--text-primary);
+  background: var(--card-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  font: inherit;
+}
+
+.snippet-search:focus {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 1px;
+}
+
+.snippet-search-empty {
+  color: var(--text-secondary);
+  text-align: center;
+}
+
 /* ── Snippet row ── */
 .snippet-row {
   background: var(--card-bg);
@@ -20,6 +51,15 @@
   flex-direction: column;
   gap: 20px;
 }
+
+.snippet-row[hidden] {
+  display: none !important;
+}
+
+.snippet-enable-switch { flex-shrink: 0; }
+.snippet-row.is-disabled { border-style: dashed; }
+.snippet-row.is-disabled .snippet-name-input,
+.snippet-row.is-disabled .collapsed-trigger-display { opacity: 0.55; }
 
 .snippet-row.collapsed {
   gap: 0;
@@ -72,6 +112,7 @@
 .snippet-row.collapsed .fold-btn { transform: rotate(-90deg); }
 
 .snippet-name-input {
+  min-width: 0;
   background: transparent;
   border: none;
   color: var(--text-primary);
@@ -290,3 +331,86 @@
   border-radius: 0 0 12px 12px;
   opacity: 0.6;
 }
+
+/* Subgroups keep the parent group's snippets together while organizing edits. */
+.snippet-subgroup {
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  background: rgba(99, 102, 241, 0.04);
+  overflow: hidden;
+}
+
+.snippet-subgroup[hidden] { display: none !important; }
+
+.subgroup-header {
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+}
+
+.subgroup-name-input {
+  cursor: text;
+  min-width: 0;
+  flex: 1;
+  padding: 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-weight: 700;
+}
+
+.subgroup-name-input:focus { border-color: var(--accent-color); outline: none; }
+.subgroup-count { color: var(--text-secondary); font-size: 13px; }
+
+.subgroup-fold-btn,
+.subgroup-add-btn,
+.subgroup-remove-btn {
+  border: 0;
+  border-radius: 6px;
+  padding: 6px 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
+}
+
+.subgroup-fold-btn { color: var(--accent-color); }
+.subgroup-add-btn:hover,
+.subgroup-remove-btn:hover { background: var(--glass-border); color: var(--text-primary); }
+.snippet-subgroup.collapsed:not(.search-open) .subgroup-fold-btn { transform: rotate(-90deg); }
+.snippet-subgroup.collapsed:not(.search-open) .subgroup-snippets { display: none; }
+
+.subgroup-snippets {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 12px 12px;
+  min-height: 44px;
+}
+
+.subgroup-snippets:empty::before {
+  content: attr(data-empty-text);
+  color: var(--text-secondary);
+  padding: 12px;
+  font-size: 13px;
+}
+
+.snippet-subgroup-select {
+  max-width: 160px;
+  min-width: 90px;
+  padding: 6px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-color);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+}
+
+#add-subgroup-btn { white-space: nowrap; flex-shrink: 0; }
+
+.snippet-subgroup.dragging { opacity: 0.45; border: 1px dashed var(--accent-color); }
