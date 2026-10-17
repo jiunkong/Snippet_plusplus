@@ -36,6 +36,21 @@ test('standalone string literals use expression highlighting without interpretin
   assert.notEqual(context.updateHighlight({ value: '{{"str" invalid}}' }, { innerHTML: '' }), '');
 });
 
+test('set highlights multiple sequential assignments and rejects malformed separators', () => {
+  for (const value of [
+    '{{set $a = 3, $b = 5}}{{$a}}{{$b}}',
+    '{{set $a = 3, $b = $a + 2, $a += $b}}{{$a}}{{$b}}',
+    '{{set $a, $b = type($a), $a = "ab", $a *= 2}}{{$b}}{{$a}}',
+    '{{set $a = "x,y", $b = join(["a", "b"], ","), $c = max(3, 5)}}{{$a}}{{$b}}{{$c}}',
+    '{{set $a = 1}}{{if true}}{{set $a += 2, $b = 5}}{{endif}}{{$a}}'
+  ]) assert.equal(context.updateHighlight({ value }, { innerHTML: '' }), '', value);
+  for (const value of ['{{set , $a = 3}}', '{{set $a = 3,}}', '{{set $a = 3,, $b = 5}}', '{{set $a = 3, $b =}}', '{{set $a = 3, b = 5}}']) {
+    assert.notEqual(context.updateHighlight({ value }, { innerHTML: '' }), '', value);
+  }
+  assert.equal(context.updateHighlight({ value: '{{set $a = $b, $b = 5}}' }, { innerHTML: '' }), 'err_undefined_variable:$b');
+  assert.equal(context.updateHighlight({ value: '{{if true}}{{set $a = 3, $b = 5}}{{endif}}{{$b}}' }, { innerHTML: '' }), 'err_undefined_variable:$b');
+});
+
 test('set variable names containing a trigger argument name do not cause a false error', () => {
   const textarea = { value: '{{set $mty = substr($ty, 1, 2)}}\\{{$ty}}_{{{#0}}}{{#1}}' };
   const highlight = { innerHTML: '' };

@@ -574,17 +574,17 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "", groupSnippet
       }
 
       if (content.startsWith('set ')) {
-        const assignment = content.substring(4);
-        if (!assignment.includes('=') && !/^\$[\p{L}\p{N}_]+\s*$/u.test(assignment)) {
-          addError(offset, t("err_set_operator_required"));
-          return `<span class="error-badge">${match}</span>`;
-        }
-        const err = validateExpr(assignment, offset, true);
-        if (err) { addError(offset, err); return `<span class="error-badge">${match}</span>`; }
+        const assignments = splitFunctionArgs(content.substring(4));
+        for (const assignment of assignments) {
+          const varMatch = assignment.match(/^\$([\p{L}\p{N}_]+)\s*(?:$|(?:=|\+=|-=|\*=|%=|\/=)\s*([\s\S]+))$/u);
+          if (!varMatch || (varMatch[2] !== undefined && !varMatch[2].trim())) {
+            addError(offset, t("err_template_syntax", [content]));
+            return `<span class="error-badge">${match}</span>`;
+          }
+          const err = validateExpr(assignment, offset, true);
+          if (err) { addError(offset, err); return `<span class="error-badge">${match}</span>`; }
 
-        // Mutation Logic: Only add to scopedVars if it doesn't exist in any outer scope
-        const varMatch = assignment.match(/^\$([\p{L}\p{N}_]+)\s*(?:$|=|\+=|-=|\*=|%=|\/=)/u);
-        if (varMatch) {
+          // Each assignment becomes visible to the next, keeping outer scopes.
           const name = varMatch[1];
           if (!definedArgs.has(name) && !scopedVars.has(name)) {
             scopedVars.set(name, scopeDepth);

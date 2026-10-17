@@ -382,21 +382,21 @@
                 <article class="guide-item">
                   <h3 data-i18n="guide_doc_set_value_title">변수 저장과 수정</h3>
                   <code class="guide-syntax">{{set $name = expression}}</code>
-                  <p class="guide-desc" data-i18n="guide_doc_set_value_desc">set은 값을 저장하고 본문에는 아무것도 삽입하지 않습니다. 이미 있는 값은 +=, -=, *=, /=, %=로 수정할 수 있습니다.</p>
+                  <p class="guide-desc" data-i18n="guide_doc_set_value_desc">set은 값을 저장하고 본문에는 아무것도 삽입하지 않습니다. 이미 있는 값은 +=, -=, *=, /=, %=로 수정할 수 있습니다. 쉼표로 여러 할당이나 선언을 나눌 수 있습니다. 예: {{set $a = 3, $b = 5}}. 왼쪽부터 순서대로 적용하므로 뒤의 식에서 앞에서 바꾼 값을 사용할 수 있습니다. 문자열·함수·리스트 안의 쉼표는 할당을 나누지 않습니다.</p>
                   <details class="guide-example">
                     <summary data-i18n="guide_doc_example">예제 보기</summary>
                     <div class="guide-example-content">
                       <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
-                      <pre><code data-guide-language="template">{{set $count = 2}}{{set $count += 3}}Count: {{$count}}</code></pre>
+                      <pre><code data-guide-language="template">{{set $a = 3, $b = 5}}{{$a}} + {{$b}} = {{$a + $b}}</code></pre>
                       <div class="guide-code-label" data-i18n="guide_doc_result">결과</div>
-                      <pre><code>Count: 5</code></pre>
+                      <pre><code>3 + 5 = 8</code></pre>
                     </div>
                   </details>
                 </article>
                 <article class="guide-item">
                   <h3 data-i18n="guide_doc_operators_title">계산과 비교</h3>
                   <code class="guide-syntax">+  -  *  /  % · ==  !=  &gt;  &gt;=  &lt;  &lt;= · &amp;&amp;  ||  !</code>
-                  <p class="guide-desc" data-i18n="guide_doc_operators_desc">괄호로 계산 순서를 정합니다. 비교에는 ==를 사용하고, 여러 조건은 &amp;&amp;(그리고), ||(또는)로 연결합니다. 조건 ? 참일_때 : 거짓일_때 형식도 사용할 수 있습니다.</p>
+                  <p class="guide-desc" data-i18n="guide_doc_operators_desc">괄호로 계산 순서를 정합니다. 비교에는 ==를 사용하고, 여러 조건은 &amp;&amp;(그리고), ||(또는)로 연결합니다. 조건 ? 참일_때 : 거짓일_때 형식도 사용할 수 있습니다. 문자열에 0 이상의 정수를 곱하면 반복합니다. "ab" * 3 또는 3 * "ab"의 결과는 "ababab"입니다. 0번 반복하면 빈 문자열이 되며, *=에도 적용됩니다.</p>
                   <details class="guide-example">
                     <summary data-i18n="guide_doc_example">예제 보기</summary>
                     <div class="guide-example-content">

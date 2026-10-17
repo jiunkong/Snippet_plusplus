@@ -252,6 +252,23 @@ function addSnippetValues(left, right) {
   return left + right;
 }
 
+function multiplySnippetValues(left, right) {
+  if (typeof left === 'string' || typeof right === 'string') {
+    const text = typeof left === 'string' ? left : right;
+    const count = typeof left === 'string' ? right : left;
+    if (typeof count !== 'number' || !Number.isSafeInteger(count) || count < 0) {
+      throw createSnippetError('err_string_repeat_count');
+    }
+    try {
+      return text.repeat(count);
+    } catch (error) {
+      if (error instanceof RangeError) throw createSnippetError('err_string_repeat_size');
+      throw error;
+    }
+  }
+  return left * right;
+}
+
 function snippetValuesEqual(left, right, execution) {
   execution?.check();
   if (Array.isArray(left) && Array.isArray(right)) {
@@ -550,7 +567,7 @@ function evaluateExpression(expr, args, execution) {
     const left  = evaluateExpression(text.substring(0, lastMulDiv), args, execution);
     const right = evaluateExpression(text.substring(lastMulDiv + 1), args, execution);
     const op = text[lastMulDiv];
-    if (op === '*') return left * right;
+    if (op === '*') return multiplySnippetValues(left, right);
     if (op === '/') return left / right;
     if (op === '%') return left % right;
   }

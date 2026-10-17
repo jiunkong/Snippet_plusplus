@@ -1,4 +1,10 @@
 {
+  "err_string_repeat_count": {
+    "message": "String repetition requires a non-negative safe integer count."
+  },
+  "err_string_repeat_size": {
+    "message": "The repeated string is too large."
+  },
   "err_list_index_integer": {
     "message": "An index must be a single integer."
   },
@@ -477,13 +483,13 @@
     "message": "Store and update values"
   },
   "guide_doc_set_value_desc": {
-    "message": "set stores a value without inserting text. Update an existing value with +=, -=, *=, /= or %=."
+    "message": "set stores a value without inserting text. Update an existing value with +=, -=, *=, /= or %=. Separate multiple assignments or declarations with commas, for example {{set $a = 3, $b = 5}}. They run from left to right, so later expressions can use earlier updates. Commas inside strings, functions or lists do not separate assignments."
   },
   "guide_doc_operators_title": {
     "message": "Arithmetic and comparison"
   },
   "guide_doc_operators_desc": {
-    "message": "Use parentheses to control evaluation order. Compare with == and combine conditions with && (and) or || (or). A conditional expression uses condition ? value_if_true : value_if_false."
+    "message": "Use parentheses to control evaluation order. Compare with == and combine conditions with && (and) or || (or). A conditional expression uses condition ? value_if_true : value_if_false. Multiply a string by a non-negative integer to repeat it: \"ab\" * 3 or 3 * \"ab\" produces \"ababab\". Zero produces an empty string; *= also supports repetition."
   },
   "guide_doc_range_value_title": {
     "message": "Integer ranges"

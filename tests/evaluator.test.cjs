@@ -10,6 +10,26 @@ for (const file of ['utils/constants.js', 'utils/i18n.js', 'content/evaluator.js
   vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
 }
 
+test('multiplication repeats strings in either order and preserves numeric multiplication', () => {
+  for (const [expression, expected] of [
+    ['"ab" * 3', 'ababab'], ['3 * "ab"', 'ababab'],
+    ['"12" * 3', '121212'], ['"ab" * 0', ''], ['0 * "ab"', ''],
+    ['"" * 4', ''], ['"한😀" * 2', '한😀한😀'],
+    ['"ab" * 1', 'ab'], ['"a" * (1 + 2)', 'aaa'],
+    ['"a" * 2 * 3', 'aaaaaa'], ['"a" + "b" * 2', 'abb'],
+    ['$text * $count', 'xyxy'], ['6 * 3', 18], ['1.5 * 2', 3], ['-2 * 3', -6]
+  ]) assert.equal(context.evaluateExpression(expression, { text: 'xy', count: 2 }), expected, expression);
+});
+
+test('string repetition rejects invalid counts and reports oversized results', () => {
+  for (const count of ['(-1)', '1.5', '"3"', 'true', 'null', 'undefined', '(1/0)', '(0/0)', '9007199254740992']) {
+    for (const expression of [`"ab" * ${count}`, `${count} * "ab"`]) {
+      assert.throws(() => context.evaluateExpression(expression, {}), error => error.messageKey === 'err_string_repeat_count', expression);
+    }
+  }
+  assert.throws(() => context.evaluateExpression('"ab" * 9007199254740991', {}), error => error.messageKey === 'err_string_repeat_size');
+});
+
 test('startswith and endswith compare strings and accept variables', () => {
   const args = { text: 'Snippet++', prefix: 'Sni', suffix: '++' };
 

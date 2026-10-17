@@ -376,33 +376,40 @@ async function processSnippetTemplate(template, args, context) {
       break;
     }
 
-    // 1. {{set $var}} or {{set $var [op] expr}}
+    // 1. Comma-separated declarations and assignments: {{set $a = 3, $b = 5}}
     if (content.startsWith('set ')) {
-      const assignment = content.substring(4);
-      const declaration = assignment.match(/^\$([\p{L}\p{N}_]+)\s*$/u);
-      if (declaration) {
-        setVar(declaration[1], undefined);
-        continue;
+      const source = content.substring(4);
+      const assignments = splitArgs(source);
+      if (!assignments.length || assignments.some(part => !part) || /,\s*$/.test(source)) {
+        throw createSnippetError('err_template_syntax', [content]);
       }
-      const varMatch = assignment.match(/^\$(?<n>[\p{L}\p{N}_]+)\s*(?<op>=|\+=|-=|\*=|%=|\/=)\s*(?<v>[\s\S]*)$/u);
-      if (varMatch) {
-        const { n: name, op, v: expr } = varMatch.groups;
-        if (!expr.trim()) throw createSnippetError('err_template_syntax', [content]);
-        const newVal = await evaluateTemplateExpression(expr, args, context);
-        
-        if (op === '=') {
-          setVar(name, newVal);
-        } else {
-          const oldVal = args[name] ?? 0;
-          switch (op) {
-            case '+=': setVar(name, addSnippetValues(oldVal, newVal)); break;
-            case '-=': setVar(name, subtractSnippetValues(oldVal, newVal, context.execution)); break;
-            case '*=': setVar(name, oldVal * newVal); break;
-            case '/=': setVar(name, oldVal / newVal); break;
-            case '%=': setVar(name, oldVal % newVal); break;
-          }
+      // Apply left to right so later expressions can use earlier updates.
+      for (const assignment of assignments) {
+        const declaration = assignment.match(/^\$([\p{L}\p{N}_]+)\s*$/u);
+        if (declaration) {
+          setVar(declaration[1], undefined);
+          continue;
         }
-      } else throw createSnippetError('err_template_syntax', [content]);
+        const varMatch = assignment.match(/^\$(?<n>[\p{L}\p{N}_]+)\s*(?<op>=|\+=|-=|\*=|%=|\/=)\s*(?<v>[\s\S]*)$/u);
+        if (varMatch) {
+          const { n: name, op, v: expr } = varMatch.groups;
+          if (!expr.trim()) throw createSnippetError('err_template_syntax', [content]);
+          const newVal = await evaluateTemplateExpression(expr, args, context);
+
+          if (op === '=') {
+            setVar(name, newVal);
+          } else {
+            const oldVal = args[name] ?? 0;
+            switch (op) {
+              case '+=': setVar(name, addSnippetValues(oldVal, newVal)); break;
+              case '-=': setVar(name, subtractSnippetValues(oldVal, newVal, context.execution)); break;
+              case '*=': setVar(name, multiplySnippetValues(oldVal, newVal)); break;
+              case '/=': setVar(name, oldVal / newVal); break;
+              case '%=': setVar(name, oldVal % newVal); break;
+            }
+          }
+        } else throw createSnippetError('err_template_syntax', [content]);
+      }
       continue;
     }
 

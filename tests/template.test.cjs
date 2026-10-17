@@ -10,6 +10,31 @@ for (const file of ['utils/constants.js', 'utils/triggers.js', 'utils/i18n.js', 
   vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
 }
 
+test('set applies comma-separated declarations and assignments from left to right', async () => {
+  for (const [template, expected] of [
+    ['{{set $a = 3, $b = 5}}{{$a}}:{{$b}}', '3:5'],
+    ['{{set $a = 3, $b = $a + 2, $a += $b}}{{$a}}:{{$b}}', '8:5'],
+    ['{{set $a = 2, $a *= 3, $a -= 1, $a /= 5, $a %= 1}}{{$a}}', '0'],
+    ['{{set $a, $b = type($a), $a = "ab", $a *= 2}}{{$b}}:{{$a}}', 'undefined:abab'],
+    ['{{set $a = "x,y", $b = join(["a", "b"], ","), $c = max(3, 5)}}{{$a}}|{{$b}}|{{$c}}', 'x,y|a,b|5'],
+    ['{{set $a = 1}}{{if true}}{{set $a += 2, $b = 5}}{{endif}}{{$a}}', '3'],
+    ['{{set $a = @Value("x,y"), $b = @Value(max(3, 5))}}{{$a}}|{{$b}}', 'x,y|5']
+  ]) assert.equal(await context.processTemplate(template, {}, { snippets: [{ name: 'Value', trigger: '/v ${x}', replacement: '{{$x}}' }] }), expected, template);
+  for (const template of ['{{set , $a = 3}}', '{{set $a = 3,}}', '{{set $a = 3,, $b = 5}}', '{{set $a = 3, $b =}}', '{{set $a = 3, b = 5}}']) {
+    await assert.rejects(context.processTemplate(template, {}), error => error.messageKey === 'err_template_syntax', template);
+  }
+  await assert.rejects(context.processTemplate('{{set $a = $b, $b = 5}}', {}), error => error.messageKey === 'err_undefined_variable');
+  await assert.rejects(context.processTemplate('{{if true}}{{set $a = 3, $b = 5}}{{endif}}{{$b}}', {}), error => error.messageKey === 'err_undefined_variable');
+});
+
+test('templates repeat strings in expressions and compound assignments', async () => {
+  assert.equal(await context.processTemplate('{{"ab" * 3}}|{{3 * "12"}}', {}), 'ababab|121212');
+  assert.equal(await context.processTemplate('{{set $s = "한😀"}}{{set $s *= 2}}{{$s}}{{set $s *= 0}}[{{$s}}]', {}), '한😀한😀[]');
+  assert.equal(await context.processTemplate('{{set $n = 3}}{{set $n *= "ab"}}{{$n}}', {}), 'ababab');
+  assert.equal(await context.processTemplate('{{set $n = 3}}{{set $n *= 2}}{{$n}}', {}), '6');
+  await assert.rejects(context.processTemplate('{{set $s = "ab"}}{{set $s *= -1}}', {}), error => error.messageKey === 'err_string_repeat_count');
+});
+
 test('if string predicates update an existing variable and CR-only continuations are removed', async () => {
   const template = [
     '{{set $mty = $ty}}\\',
