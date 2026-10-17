@@ -113,6 +113,11 @@ function undoLastExpansion() {
   if (expansion.autoCursorId) {
     el.querySelector(`[data-spp-auto-cursor="${expansion.autoCursorId}"]`)?.remove();
   }
+  // The changed text can end before the original caret (for example when the
+  // replacement keeps a common suffix). Restore the saved position explicitly.
+  const caretOffset = before.caretOffset ?? change.start + change.removed.length;
+  if (info.isInput) el.setSelectionRange(caretOffset, caretOffset);
+  else selectEditableText(el, caretOffset, caretOffset);
   lastExpansion = null;
   return true;
 }

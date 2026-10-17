@@ -201,6 +201,7 @@ async function selectAndReplace(el, info, context, triggerLength, replacement, a
   const triggerStart = context.textBefore.length - triggerLength;
   let insertionStart = triggerStart;
   const before = getEditorSnapshot(el, info);
+  before.caretOffset = context.textBefore.length;
 
   // 1. DELETE TRIGGER SYNCHRONOUSLY (before async boundary)
   if (info.isInput) {

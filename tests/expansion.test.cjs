@@ -64,6 +64,30 @@ test('input expansion records the original trigger position and undo restores su
   el.setSelectionRange(0, 0);
   assert.equal(context.undoLastExpansion(), true);
   assert.equal(el.value, 'prefix /hello suffix');
+  assert.equal(el.selectionStart, 13);
+  assert.equal(el.selectionEnd, 13);
+});
+
+test('undo restores the original caret when a shared suffix lies beyond the text change', async () => {
+  for (const replacement of ['WORLD/hello', '/hello!', '']) {
+    const { el, context } = editorHarness('prefix /hello suffix', 13);
+    const info = { isInput: true, isEditable: false };
+    const result = await context.selectAndReplace(el, info, { textBefore: 'prefix /hello' }, 6, replacement);
+    context.recordExpansion(el, info, result.before);
+    el.setSelectionRange(0, 0);
+    // Some host editors leave selection at the insertion start after execCommand.
+    const execCommand = context.document.execCommand;
+    context.document.execCommand = (...args) => {
+      const start = el.selectionStart;
+      const restored = execCommand(...args);
+      el.setSelectionRange(start, start);
+      return restored;
+    };
+    assert.equal(context.undoLastExpansion(), true);
+    assert.equal(el.value, 'prefix /hello suffix');
+    assert.equal(el.selectionStart, 13, replacement);
+    assert.equal(el.selectionEnd, 13, replacement);
+  }
 });
 
 test('expansion keeps the trigger position when shifted levels gain a digit', async () => {
@@ -147,6 +171,8 @@ test('Ctrl+Z restores the most recent snippet expansion', async () => {
   assert.equal(el.value, '/hello');
   assert.equal(event.defaultPrevented, true);
   assert.equal(event.propagationStopped, true);
+  assert.equal(el.selectionStart, 6);
+  assert.equal(el.selectionEnd, 6);
 });
 
 test('input handler removes the first placeholder synchronously', async () => {
@@ -212,14 +238,14 @@ test('text change includes backspace effects before the trigger', () => {
   assert.equal(change.inserted, 'X');
 });
 
-test('contenteditable undo selects the changed text even when the caret moved', () => {
+test('contenteditable undo restores text and the original caret even when the caret moved', () => {
   const { el, context } = editorHarness('', 0);
   el.textContent = 'prefix WORLD suffix';
   el.innerHTML = el.textContent;
   const info = { isInput: false, isEditable: true };
   context.getTargetInfo = () => info;
   context.NodeFilter = { SHOW_TEXT: 4 };
-  const textNode = { textContent: el.textContent };
+  const textNode = { get textContent() { return el.textContent; } };
   context.document.createTreeWalker = () => {
     let visited = false;
     return { nextNode: () => visited ? null : ((visited = true), textNode) };
@@ -239,9 +265,11 @@ test('contenteditable undo selects the changed text even when the caret moved', 
     return true;
   };
 
-  context.recordExpansion(el, info, { text: 'prefix /hello suffix', html: 'prefix /hello suffix' });
+  context.recordExpansion(el, info, { text: 'prefix /hello suffix', html: 'prefix /hello suffix', caretOffset: 13 });
   assert.equal(context.undoLastExpansion(), true);
   assert.equal(el.textContent, 'prefix /hello suffix');
+  assert.equal(selectedRange.start, 13);
+  assert.equal(selectedRange.end, 13);
 });
 
 test('template call failures and nested prompt cancellation restore the original input', async () => {
@@ -290,6 +318,8 @@ test('typed regex captures pass through snippet calls with cursor placement and 
   assert.equal(el.selectionStart, 7);
   assert.equal(context.undoLastExpansion(), true);
   assert.equal(el.value, '/greet Jiun');
+  assert.equal(el.selectionStart, 11);
+  assert.equal(el.selectionEnd, 11);
 });
 
 test('shifted snippet cursors become input placeholders for either call order', async () => {
