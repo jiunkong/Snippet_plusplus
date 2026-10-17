@@ -83,7 +83,7 @@ function undoLastExpansion() {
   if (!lastExpansion) return false;
   const expansion = lastExpansion;
   const { el, before, after } = expansion;
-  if (document.activeElement !== el) return false;
+  if (document.activeElement !== el && getEditorTarget(document.activeElement) !== el) return false;
   if (Date.now() - expansion.timestamp > 30000) {
     lastExpansion = null;
     return false;
@@ -120,4 +120,30 @@ function undoLastExpansion() {
   else selectEditableText(el, caretOffset, caretOffset);
   lastExpansion = null;
   return true;
+}
+
+// Some host editors restore their own selection during the next render. Resolve
+// the offset again against fresh text nodes, and stop as soon as the user acts.
+function settleEditableExpansionCaret(el, offset, expansion) {
+  if (!expansion || typeof requestAnimationFrame !== 'function') return;
+  const events = ['pointerdown', 'keydown', 'beforeinput', 'compositionstart'];
+  let stopped = false;
+  const stop = () => {
+    stopped = true;
+    for (const event of events) document.removeEventListener(event, stop, true);
+  };
+  for (const event of events) document.addEventListener(event, stop, true);
+  let frames = 0;
+  const restore = () => {
+    if (stopped) return;
+    if (lastExpansion !== expansion || !el.isConnected || el.textContent !== expansion.after.text) {
+      stop();
+      return;
+    }
+    el.focus({ preventScroll: true });
+    selectEditableText(el, offset, offset);
+    if (++frames < 2) requestAnimationFrame(restore);
+    else stop();
+  };
+  requestAnimationFrame(restore);
 }

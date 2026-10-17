@@ -7,6 +7,19 @@ function getTargetInfo(el) {
   return { isInput, isEditable: el.isContentEditable };
 }
 
+// Nested editors may dispatch input at the outer editing host even though the
+// selection belongs to a smaller editable field. Keep all offsets in that field.
+function getEditorTarget(target) {
+  if (!target?.isContentEditable) return target;
+  const selection = window.getSelection();
+  if (!selection?.rangeCount) return target;
+  const range = selection.getRangeAt(0);
+  const node = range.startContainer;
+  const element = node.nodeType === 1 ? node : node.parentElement;
+  const field = element?.closest('[contenteditable="true"], [contenteditable="plaintext-only"]');
+  return field && target.contains(field) && field.contains(range.endContainer) ? field : target;
+}
+
 function getCaretContext(el, info) {
   if (info.isInput) {
     return { textBefore: el.value.substring(0, el.selectionEnd), offset: el.selectionEnd };

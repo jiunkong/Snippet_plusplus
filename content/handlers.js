@@ -202,25 +202,33 @@ async function selectAndReplace(el, info, context, triggerLength, replacement, a
   let insertionStart = triggerStart;
   const before = getEditorSnapshot(el, info);
   before.caretOffset = context.textBefore.length;
+  // Emptying a host editor can end its editing session before the template's
+  // async work finishes. Keep a sole trigger until its replacement is ready.
+  const replaceTriggerOnInsert = info.isEditable && before.text === triggerText;
 
   // 1. DELETE TRIGGER SYNCHRONOUSLY (before async boundary)
-  if (info.isInput) {
-    el.setSelectionRange(triggerStart, el.selectionEnd);
-  } else if (info.isEditable) {
-    selection.removeAllRanges();
-    selection.addRange(context.range);
-    for (let i = 0; i < triggerLength; i++) {
-      selection.modify("extend", "backward", "character");
+  const selectTrigger = () => {
+    if (info.isInput) {
+      el.setSelectionRange(triggerStart, el.selectionEnd);
+    } else if (info.isEditable) {
+      selection.removeAllRanges();
+      selection.addRange(context.range);
+      for (let i = 0; i < triggerLength; i++) {
+        selection.modify("extend", "backward", "character");
+      }
     }
+  };
+  if (!replaceTriggerOnInsert) {
+    selectTrigger();
+    withInternalEdit(() => document.execCommand('delete', false, null));
   }
-  withInternalEdit(() => document.execCommand('delete', false, null));
 
   // 2. PROCESS TEMPLATE (may show prompt modal)
   let processedReplacement;
   try {
     processedReplacement = await processTemplate(replacement, args, templateContext);
   } catch (error) {
-    insertRestoredText(triggerText);
+    if (!replaceTriggerOnInsert) insertRestoredText(triggerText);
     if (error.name !== 'SnippetPromptCancelled') {
       await showSnippetError(error);
     }
@@ -229,12 +237,50 @@ async function selectAndReplace(el, info, context, triggerLength, replacement, a
   
   // 3. IF CANCELLED, JUST STOP
   if (processedReplacement === null) {
-    insertRestoredText(triggerText);
+    if (!replaceTriggerOnInsert) insertRestoredText(triggerText);
     return { cancelled: true };
+  }
+  if (replaceTriggerOnInsert) {
+    if (!editorMatchesSnapshot(el, info, before)) return { cancelled: true };
+    el.focus({ preventScroll: true });
+    // The input event may have caused the host to replace the original nodes.
+    // Rebuild the trigger range instead of extending a stale range backwards
+    // from the cell's start into the preceding cell.
+    if (!selectEditableText(el, 0, before.text.length)) return { cancelled: true };
+    // There is no text before a sole trigger for leading backspaces to erase.
+    processedReplacement = processedReplacement.replace(/^\u0008+/, '');
+    if (!processedReplacement.includes('\u0008')) {
+      // Host editors can discard custom spans (including hidden end markers)
+      // and reset DOM ranges. Insert native text with the first stop already
+      // consumed, then locate the caret in the host's resulting text nodes.
+      let text = processedReplacement.replace(CURSOR_REGEX, (_, tag) => {
+        const level = tag === 'cursor' || tag === '#cursor' ? '0' : tag.substring(1);
+        return `${VISUAL_OPEN}${level}${VISUAL_CLOSE}`;
+      });
+      const firstStop = findNextPlaceholder(text, 0, 0);
+      let plainCaretOffset = firstStop ? firstStop.index : text.length;
+      if (firstStop) text = text.slice(0, firstStop.index) + text.slice(firstStop.index + firstStop.length);
+      withInternalEdit(() => {
+        if (text.includes('\n')) {
+          // insertText splits multiline input into separate native operations;
+          // controlled editors can discard all but the first line. One HTML
+          // insertion with ordinary line breaks keeps it in a single edit.
+          const html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+          document.execCommand('insertHTML', false, html);
+        } else document.execCommand('insertText', false, text);
+      });
+      const afterInsert = getEditorSnapshot(el, info);
+      // Some editors retain BR nodes; others normalize them to newline text.
+      // Cursor offsets use textContent, which does not count BR nodes.
+      if (afterInsert.text !== text && afterInsert.text === text.replace(/\n/g, '')) {
+        plainCaretOffset = text.slice(0, plainCaretOffset).replace(/\n/g, '').length;
+      }
+      return { start: 0, hasPlaceholders: false, before, plainCaretOffset, afterInsert };
+    }
   }
 
   // --- Shift existing placeholders if enabled ---
-  if (config.shiftCursorLevels) {
+  if (config.shiftCursorLevels && !replaceTriggerOnInsert) {
     const newMaxLevel = getMaxCursorLevel(processedReplacement);
     if (newMaxLevel >= 0) {
       // Reserve every level used by the new snippet. Adding only the maximum
@@ -264,6 +310,8 @@ async function selectAndReplace(el, info, context, triggerLength, replacement, a
 
   // 4. INSERT REPLACEMENT WITH BACKSPACE SUPPORT
   const insertWithBackspaces = (content, isHTML = false) => {
+    // A sole trigger has no preceding text for leading backspaces to remove.
+    if (replaceTriggerOnInsert) content = content.replace(/^\u0008+/, '');
     const parts = content.split('\u0008');
     for (let i = 0; i < parts.length; i++) {
       if (i > 0) {
@@ -352,7 +400,7 @@ async function handleInput(event) {
     }
   }
 
-  const el   = event.target;
+  const el   = getEditorTarget(event.target);
   const info = getTargetInfo(el);
   
   // IGNORE input from our own prompt modal
@@ -402,7 +450,10 @@ async function handleInput(event) {
       placeExpansionCursor(el, info, result, fullText);
 
       triggerEffect(el, info);
-      recordExpansion(el, info, result.before, result.autoCursorId);
+      const expansion = recordExpansion(el, info, result.before, result.autoCursorId);
+      if (Number.isInteger(result.plainCaretOffset)) {
+        settleEditableExpansionCaret(el, result.plainCaretOffset, expansion);
+      }
 
       break;
     }
@@ -417,7 +468,7 @@ function handleKeyDown(event) {
     if (!event.repeat) reloadSnippetSettings();
     return;
   }
-  const el   = event.target;
+  const el   = getEditorTarget(event.target);
   const info = getTargetInfo(el);
   if (!info.isInput && !info.isEditable) return;
 
@@ -485,6 +536,11 @@ function isHotkeyPressed(event, hotkeyString) {
 }
 
 function placeExpansionCursor(el, info, result, fullText) {
+  if (info.isEditable && Number.isInteger(result.plainCaretOffset)) {
+    el.focus({ preventScroll: true });
+    selectEditableText(el, result.plainCaretOffset, result.plainCaretOffset);
+    return;
+  }
   // An auto cursor means the snippet has no explicit tab stop. Keep the
   // insertion caret at the hidden end marker instead of navigating to an
   // unrelated placeholder that was already in the editor.

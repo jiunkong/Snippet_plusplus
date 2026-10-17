@@ -35,6 +35,7 @@ function editorHarness(value, caret) {
     loadSettings() {},
     showSnippetError() {},
     getTargetInfo: () => ({ isInput: true, isEditable: false }),
+    getEditorTarget: target => target,
     processTemplate: async text => text,
     getMaxCursorLevel: () => -1,
     config: { shiftCursorLevels: false },
@@ -66,6 +67,213 @@ test('input expansion records the original trigger position and undo restores su
   assert.equal(el.value, 'prefix /hello suffix');
   assert.equal(el.selectionStart, 13);
   assert.equal(el.selectionEnd, 13);
+});
+
+function emptyEditableHarness(initial = '/hello', retainBreakNodes = false) {
+  const { el, context } = editorHarness('', 0);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'content/dom.js'), 'utf8'), context);
+  const info = { isInput: false, isEditable: true };
+  el.textContent = initial;
+  el.innerHTML = initial;
+  el.isConnected = true;
+  el.focus = () => { context.document.activeElement = el; };
+  const range = { start: initial.length, end: initial.length };
+  let currentRange = range;
+  const commands = [];
+  context.getTargetInfo = () => info;
+  context.window.getSelection = () => ({
+    removeAllRanges() {},
+    addRange(next) { currentRange = next; },
+    modify() { currentRange.start--; }
+  });
+  context.NodeFilter = { SHOW_TEXT: 4 };
+  context.document.createTreeWalker = () => {
+    let visited = false;
+    const node = { textContent: el.textContent };
+    return { nextNode: () => visited || !node.textContent ? null : ((visited = true), node) };
+  };
+  context.document.createRange = () => ({
+    setStart(_node, offset) { this.start = offset; },
+    setEnd(_node, offset) { this.end = offset; },
+    selectNodeContents() { this.start = 0; this.end = el.textContent.length; },
+    collapse() { this.end = this.start; }
+  });
+  context.document.execCommand = (command, _showUI, value) => {
+    commands.push(command);
+    if (context.document.activeElement !== el) return false;
+    const text = command === 'delete' ? '' : command === 'insertHTML'
+      ? value.replace(/<br>/g, retainBreakNodes ? '' : '\n').replace(/<[^>]*>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
+      : value;
+    el.textContent = el.textContent.slice(0, currentRange.start) + text + el.textContent.slice(currentRange.end);
+    el.innerHTML = el.textContent;
+    currentRange.start += text.length;
+    currentRange.end = currentRange.start;
+    // Model a host that exits editing as soon as its sole text is removed.
+    if (!el.textContent) context.document.activeElement = null;
+    return true;
+  };
+  context.selectPlaceholder = (_el, _info, match) => {
+    currentRange = { start: match.index, end: match.index + match.length };
+    return true;
+  };
+  return { el, context, info, commands, range, getRange: () => currentRange };
+}
+
+test('a sole contenteditable trigger is replaced without an empty-editor focus loss', async () => {
+  for (const replacement of ['a{{#0}}b', '{{#0}}tail', 'head{{#0}}', '\u0008a{{#0}}b']) {
+    const { el, context, info, commands, range, getRange } = emptyEditableHarness();
+    context.config.shiftCursorLevels = true;
+    context.processTemplate = async text => {
+      await Promise.resolve();
+      assert.equal(el.textContent, '/hello');
+      assert.equal(context.document.activeElement, el);
+      // The host replaced the text node; the old range now points to its start.
+      range.start = 0;
+      range.end = 0;
+      return text;
+    };
+    const result = await context.selectAndReplace(el, info, { textBefore: '/hello', range }, 6, replacement);
+    assert.deepEqual(commands, [replacement.includes('\n') ? 'insertHTML' : 'insertText']);
+    context.placeExpansionCursor(el, info, result, el.textContent);
+    const visibleReplacement = replacement.replace(/^\u0008+/, '');
+    assert.equal(el.textContent, visibleReplacement.replace('{{#0}}', ''));
+    assert.equal(context.document.activeElement, el);
+    assert.equal(getRange().start, visibleReplacement.indexOf('{{#0}}'));
+    assert.equal(getRange().end, getRange().start);
+  }
+});
+
+test('plain editable insertion consumes the lowest cursor level and preserves later stops', async () => {
+  for (const [replacement, expected, caret] of [
+    ['a{{#2}}b{{#0}}c{{#1}}', 'a⟦2⟧bc⟦1⟧', 5],
+    ['a{{cursor}}b', 'ab', 1], ['a{{#cursor}}b', 'ab', 1],
+    ['a⟦0⟧b⟦1⟧', 'ab⟦1⟧', 1],
+    ['한😀{{#0}}끝', '한😀끝', 3], ['one\n{{#0}}two', 'one\ntwo', 4],
+    ['<a>&\n{{#0}}b', '<a>&\nb', 5],
+    ['<hello>&text', '<hello>&text', 12], ['plain text', 'plain text', 10],
+    ['{{#0}}', '', 0]
+  ]) {
+    const { el, context, info, commands, range, getRange } = emptyEditableHarness();
+    const result = await context.selectAndReplace(el, info, { textBefore: '/hello', range }, 6, replacement);
+    // Model the host putting its selection back in the preceding cell.
+    context.document.activeElement = { previousCell: true };
+    context.placeExpansionCursor(el, info, result, el.textContent);
+    assert.equal(el.textContent, expected, replacement);
+    assert.equal(getRange().start, caret, replacement);
+    assert.equal(getRange().end, caret, replacement);
+    assert.equal(context.document.activeElement, el);
+    assert.deepEqual(commands, [replacement.includes('\n') ? 'insertHTML' : 'insertText']);
+    assert.equal(result.autoCursorId, undefined);
+    context.document.execCommand('insertText', false, 'X');
+    assert.equal(el.textContent, expected.slice(0, caret) + 'X' + expected.slice(caret), replacement);
+  }
+});
+
+test('multiline cursor offsets also work when the host keeps BR nodes', async () => {
+  const { el, context, info, range, getRange } = emptyEditableHarness('/hello', true);
+  const result = await context.selectAndReplace(el, info, { textBefore: '/hello', range }, 6, 'one\n{{#0}}two');
+  context.placeExpansionCursor(el, info, result, el.textContent);
+  assert.equal(el.textContent, 'onetwo');
+  assert.equal(getRange().start, 3);
+  assert.equal(getRange().end, 3);
+});
+
+test('editable caret survives host rendering without overriding subsequent user actions', async () => {
+  for (const interruption of [null, 'pointerdown', 'keydown', 'beforeinput', 'compositionstart', 'undo', 'edit', 'detach']) {
+    const { el, context, info, range, getRange } = emptyEditableHarness();
+    const frames = [];
+    const listeners = new Map();
+    context.requestAnimationFrame = callback => frames.push(callback);
+    context.document.addEventListener = (event, callback) => listeners.set(event, callback);
+    context.document.removeEventListener = event => listeners.delete(event);
+    const result = await context.selectAndReplace(el, info, { textBefore: '/hello', range }, 6, 'a{{#0}}b');
+    context.placeExpansionCursor(el, info, result, el.textContent);
+    const expansion = context.recordExpansion(el, info, result.before);
+    context.settleEditableExpansionCaret(el, result.plainCaretOffset, expansion);
+    const otherCell = {};
+    context.document.activeElement = otherCell;
+    if (listeners.has(interruption)) listeners.get(interruption)();
+    if (interruption === 'undo') vm.runInContext('lastExpansion = null;', context);
+    if (interruption === 'edit') el.textContent += '!';
+    if (interruption === 'detach') el.isConnected = false;
+    frames.shift()();
+    if (interruption) {
+      assert.equal(context.document.activeElement, otherCell, interruption);
+    } else {
+      assert.equal(context.document.activeElement, el);
+      assert.equal(getRange().start, 1);
+      context.document.activeElement = otherCell;
+      frames.shift()();
+      assert.equal(context.document.activeElement, el);
+      assert.equal(getRange().start, 1);
+    }
+    assert.equal(listeners.size, 0, interruption);
+    assert.equal(frames.length, 0, interruption);
+  }
+});
+
+test('the real input handler retains a sole-cell caret through rendering and undo', async () => {
+  for (const replacement of ['a{{#0}}b', 'plain text']) {
+    const { el, context, range, getRange } = emptyEditableHarness();
+    const frames = [];
+    context.requestAnimationFrame = callback => frames.push(callback);
+    context.document.removeEventListener = () => {};
+    context.getCaretContext = () => ({ textBefore: el.textContent, range });
+    context.triggerEffect = () => {};
+    el.closest = () => null;
+    context.runtimeReplacement = replacement;
+    vm.runInContext('let typingSeqLength = 5; let snippets = [{ isRegex: false, literalTrigger: "/hello", replacement: runtimeReplacement }];', context);
+    await context.handleInput({ target: el, inputType: 'insertText', data: 'o' });
+    const expected = replacement === 'plain text' ? 10 : 1;
+    assert.equal(getRange().start, expected);
+    context.document.activeElement = {};
+    while (frames.length) frames.shift()();
+    assert.equal(context.document.activeElement, el);
+    assert.equal(getRange().start, expected);
+    assert.equal(context.undoLastExpansion(), true);
+    assert.equal(el.textContent, '/hello');
+    assert.equal(getRange().start, 6);
+    assert.equal(getRange().end, 6);
+  }
+});
+
+test('a cancelled or failed sole-trigger template leaves the editable and focus intact', async () => {
+  for (const outcome of ['cancel', 'error', 'null']) {
+    const { el, context, info, commands, range } = emptyEditableHarness();
+    context.processTemplate = async () => {
+      if (outcome === 'null') return null;
+      const error = new Error('Template failed');
+      if (outcome === 'cancel') error.name = 'SnippetPromptCancelled';
+      throw error;
+    };
+    const result = await context.selectAndReplace(el, info, { textBefore: '/hello', range }, 6, 'ignored');
+    assert.equal(result.cancelled, true);
+    assert.equal(el.textContent, '/hello');
+    assert.equal(context.document.activeElement, el);
+    assert.deepEqual(commands, []);
+  }
+});
+
+test('sole-trigger expansion does not overwrite changes made while a template waits', async () => {
+  const { el, context, info, commands, range } = emptyEditableHarness();
+  context.processTemplate = async () => {
+    el.textContent += '!';
+    el.innerHTML = el.textContent;
+    return 'a{{#0}}b';
+  };
+  const result = await context.selectAndReplace(el, info, { textBefore: '/hello', range }, 6, 'ignored');
+  assert.equal(result.cancelled, true);
+  assert.equal(el.textContent, '/hello!');
+  assert.deepEqual(commands, []);
+});
+
+test('an editable with surrounding text keeps its existing replacement path', async () => {
+  const { el, context, info, commands, range } = emptyEditableHarness('prefix /hello');
+  const result = await context.selectAndReplace(el, info, { textBefore: 'prefix /hello', range }, 6, 'a{{#0}}b');
+  assert.deepEqual(commands, ['delete', 'insertHTML']);
+  context.placeExpansionCursor(el, info, result, el.textContent);
+  assert.equal(el.textContent, 'prefix ab');
+  assert.equal(context.document.activeElement, el);
 });
 
 test('undo restores the original caret when a shared suffix lies beyond the text change', async () => {

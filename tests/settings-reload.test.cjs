@@ -16,7 +16,7 @@ function harness() {
     },
     async loadSnippetLocale() {}, snippetMessage: key => key,
     showSnippetToast: (...args) => state.toasts.push(args),
-    getTargetInfo: () => ({}), console: { error() {} }
+    getTargetInfo: () => ({}), getEditorTarget: target => target, console: { error() {} }
   });
   for (const file of ['utils/config.js', 'utils/triggers.js', 'content/state.js', 'content/settings.js']) {
     vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context);
