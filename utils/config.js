@@ -1,6 +1,7 @@
+
 // Shared defaults for the options page and content script. Stored configs may
 // omit keys added by a newer extension version, so both callers merge with this.
-const DEFAULT_CONFIG = Object.freeze({
+export const DEFAULT_CONFIG = Object.freeze({
   nextCursor: 'Ctrl+Space',
   undoExpansion: 'Ctrl+Z',
   addSnippet: 'Alt+N',

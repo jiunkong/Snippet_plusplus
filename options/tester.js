@@ -1,15 +1,18 @@
+import { syncActiveGroupData } from './groups.js';
+import { moduleState as __state_options_state_js } from './state.js';
+import { t } from './i18n.js';
 // The tester runs the content engine in its own frame so settings inputs never
 // expand triggers. Send the current editor state, including unsaved changes.
-function sendSnippetTestState() {
+export function sendSnippetTestState() {
   syncActiveGroupData();
   const frame = document.getElementById('snippet-test-frame');
   const selected = document.getElementById('snippet-test-group').value;
   const index = Number(selected);
-  const groups = selected === 'all' ? snippetGroups : (snippetGroups[index] ? [snippetGroups[index]] : []);
-  frame.contentWindow?.postMessage({ type: 'snippetpp:test-state', config: currentConfig, snippetGroups: groups }, window.location.origin);
+  const groups = selected === 'all' ? __state_options_state_js.snippetGroups : (__state_options_state_js.snippetGroups[index] ? [__state_options_state_js.snippetGroups[index]] : []);
+  frame.contentWindow?.postMessage({ type: 'snippetpp:test-state', config: __state_options_state_js.currentConfig, snippetGroups: groups }, window.location.origin);
 }
 
-function refreshSnippetTester() {
+export function refreshSnippetTester() {
   const select = document.getElementById('snippet-test-group');
   const selected = select.value;
   select.innerHTML = '';
@@ -17,18 +20,18 @@ function refreshSnippetTester() {
   all.value = 'all';
   all.textContent = t('tester_all_groups');
   select.appendChild(all);
-  snippetGroups.forEach((group, index) => {
+  __state_options_state_js.snippetGroups.forEach((group, index) => {
     const option = document.createElement('option');
     option.value = String(index);
     option.textContent = group.name || t('default_group_name');
     select.appendChild(option);
   });
-  select.value = selected !== '' && (selected === 'all' || snippetGroups[Number(selected)]) ? selected : 'all';
+  select.value = selected !== '' && (selected === 'all' || __state_options_state_js.snippetGroups[Number(selected)]) ? selected : 'all';
   document.getElementById('snippet-test-frame').title = t('tester_title');
   sendSnippetTestState();
 }
 
-const snippetTestFrame = document.getElementById('snippet-test-frame');
+export const snippetTestFrame = document.getElementById('snippet-test-frame');
 snippetTestFrame.addEventListener('load', refreshSnippetTester);
 document.getElementById('snippet-test-group').addEventListener('change', sendSnippetTestState);
 document.getElementById('snippet-test-clear').addEventListener('click', () => {

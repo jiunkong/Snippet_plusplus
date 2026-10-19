@@ -1,30 +1,32 @@
+import { moduleState as __state_content_state_js } from './state.js';
+import { getEditorTarget, getTargetInfo } from './dom.js';
 // A single expansion is undoable only while the editor still contains the
 // exact result we inserted. This avoids deleting unrelated user text.
-function getEditorSnapshot(el, info) {
+export function getEditorSnapshot(el, info) {
   return info.isInput
     ? { text: el.value }
     : { text: el.textContent, html: el.innerHTML };
 }
 
-function editorMatchesSnapshot(el, info, snapshot) {
+export function editorMatchesSnapshot(el, info, snapshot) {
   const current = getEditorSnapshot(el, info);
   return current.text === snapshot.text && current.html === snapshot.html;
 }
 
-function withInternalEdit(action) {
-  isInternalEdit = true;
+export function withInternalEdit(action) {
+  __state_content_state_js.isInternalEdit = true;
   try {
     return action();
   } finally {
-    isInternalEdit = false;
+    __state_content_state_js.isInternalEdit = false;
   }
 }
 
-function insertRestoredText(text) {
+export function insertRestoredText(text) {
   return withInternalEdit(() => document.execCommand('insertText', false, text));
 }
 
-function getTextChange(before, after) {
+export function getTextChange(before, after) {
   let start = 0;
   while (start < before.length && start < after.length && before[start] === after[start]) start++;
 
@@ -38,14 +40,14 @@ function getTextChange(before, after) {
   return { start, removed: before.slice(start, beforeEnd), inserted: after.slice(start, afterEnd) };
 }
 
-function recordExpansion(el, info, before, autoCursorId) {
+export function recordExpansion(el, info, before, autoCursorId) {
   const after = getEditorSnapshot(el, info);
   if (before.text === after.text && before.html === after.html) return null;
-  lastExpansion = { el, before, after, autoCursorId, timestamp: Date.now() };
-  return lastExpansion;
+  __state_content_state_js.lastExpansion = { el, before, after, autoCursorId, timestamp: Date.now() };
+  return __state_content_state_js.lastExpansion;
 }
 
-function selectEditableText(el, start, end) {
+export function selectEditableText(el, start, end) {
   const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
   const nodes = [];
   let node;
@@ -79,19 +81,19 @@ function selectEditableText(el, start, end) {
   return true;
 }
 
-function undoLastExpansion() {
-  if (!lastExpansion) return false;
-  const expansion = lastExpansion;
+export function undoLastExpansion() {
+  if (!__state_content_state_js.lastExpansion) return false;
+  const expansion = __state_content_state_js.lastExpansion;
   const { el, before, after } = expansion;
   if (document.activeElement !== el && getEditorTarget(document.activeElement) !== el) return false;
   if (Date.now() - expansion.timestamp > 30000) {
-    lastExpansion = null;
+    __state_content_state_js.lastExpansion = null;
     return false;
   }
 
   const info = getTargetInfo(el);
   if (!editorMatchesSnapshot(el, info, after)) {
-    lastExpansion = null;
+    __state_content_state_js.lastExpansion = null;
     return false;
   }
 
@@ -118,13 +120,13 @@ function undoLastExpansion() {
   const caretOffset = before.caretOffset ?? change.start + change.removed.length;
   if (info.isInput) el.setSelectionRange(caretOffset, caretOffset);
   else selectEditableText(el, caretOffset, caretOffset);
-  lastExpansion = null;
+  __state_content_state_js.lastExpansion = null;
   return true;
 }
 
 // Some host editors restore their own selection during the next render. Resolve
 // the offset again against fresh text nodes, and stop as soon as the user acts.
-function settleEditableExpansionCaret(el, offset, expansion) {
+export function settleEditableExpansionCaret(el, offset, expansion) {
   if (!expansion || typeof requestAnimationFrame !== 'function') return;
   const events = ['pointerdown', 'keydown', 'beforeinput', 'compositionstart'];
   let stopped = false;
@@ -136,7 +138,7 @@ function settleEditableExpansionCaret(el, offset, expansion) {
   let frames = 0;
   const restore = () => {
     if (stopped) return;
-    if (lastExpansion !== expansion || !el.isConnected || el.textContent !== expansion.after.text) {
+    if (__state_content_state_js.lastExpansion !== expansion || !el.isConnected || el.textContent !== expansion.after.text) {
       stop();
       return;
     }

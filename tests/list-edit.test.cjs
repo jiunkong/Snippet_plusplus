@@ -1,9 +1,9 @@
 const { assertTemplateOutput } = require('./helpers/fragment.cjs');
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
+const fs = require('./helpers/source.cjs');
 const path = require('node:path');
-const vm = require('node:vm');
+const vm = require('./helpers/vm.cjs');
 const root = path.join(__dirname, '..');
 function engine() {
   const context = vm.createContext({ t: (key, values = []) => `${key}:${values.join(',')}` });
@@ -59,7 +59,7 @@ test('list editing validates targets, integer indexes and exact arity', () => {
     }
   }
   for (const expr of ['insertAt()', 'insertAt([], 0)', 'insertAt([], 0, 1, 2)', 'insertAt([], 0,)', 'removeAt([])', 'removeAt([], 0, 1)', 'removeAt([], 0,)']) {
-    assert.throws(() => ctx.evaluateExpression(expr, {}), error => error.messageKey === 'err_function_arguments');
+    assert.throws(() => ctx.evaluateExpression(expr, {}), error => error.messageKey === (expr.startsWith('insertAt') ? 'err_fn_three_args_exact' : 'err_fn_two_args_exact'));
   }
 });
 

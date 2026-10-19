@@ -1,8 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
+const fs = require('./helpers/source.cjs');
 const path = require('node:path');
-const vm = require('node:vm');
+const vm = require('./helpers/vm.cjs');
 const root = path.join(__dirname, '..');
 
 function dialogHarness() {
@@ -109,7 +109,7 @@ test('a second import cannot replace an active confirmation', async () => {
 
 test('options load the modal before import handlers and provide localized accessible controls', () => {
   const html = fs.readFileSync(path.join(root, 'options.html'), 'utf8');
-  assert.ok(html.indexOf('options/dialog.js') < html.indexOf('options/storage.js'));
+  assert.match(fs.rawReadFileSync(path.join(root, 'options/storage.js'), 'utf8'), /from ['"]\.\/dialog\.js['"]/);
   assert.match(html, /<dialog[^>]*aria-labelledby="import-confirm-title"[^>]*aria-describedby="import-confirm-message import-confirm-warning"/);
   for (const locale of ['ko', 'en']) {
     const catalog = JSON.parse(fs.readFileSync(path.join(root, `_locales/${locale}/messages.json`), 'utf8'));

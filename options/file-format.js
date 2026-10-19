@@ -1,10 +1,11 @@
+
 // SPPB envelope: magic (4 bytes), format version, file kind, reserved (2).
 // Version 1 payload is compact UTF-8 JSON compressed with gzip. The extension
 // version inside the payload remains independent of this envelope version.
-const SNIPPET_FILE_MAGIC = [0x53, 0x50, 0x50, 0x42];
-const SNIPPET_FILE_KINDS = Object.freeze({ settings: 1, group: 2 });
+export const SNIPPET_FILE_MAGIC = [0x53, 0x50, 0x50, 0x42];
+export const SNIPPET_FILE_KINDS = Object.freeze({ settings: 1, group: 2 });
 
-async function encodeSnippetExport(data, kind, format) {
+export async function encodeSnippetExport(data, kind, format) {
   if (!SNIPPET_FILE_KINDS[kind]) throw new Error('Unknown export kind');
   if (format === 'json') {
     return new Blob([JSON.stringify(data, null, 2)], { type: 'application/octet-stream' });
@@ -16,7 +17,7 @@ async function encodeSnippetExport(data, kind, format) {
   return new Blob([header, compressed], { type: 'application/octet-stream' });
 }
 
-async function decodeSnippetExport(buffer, kind) {
+export async function decodeSnippetExport(buffer, kind) {
   const bytes = new Uint8Array(buffer);
   const binary = SNIPPET_FILE_MAGIC.every((byte, index) => bytes[index] === byte);
   let text;

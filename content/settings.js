@@ -1,16 +1,22 @@
+import { loadSyncedState, SNIPPET_META_KEY, SNIPPET_CHUNK_PREFIX } from '../utils/sync.js';
+import { defaultConfig, defaultSnippetGroups, moduleState as __state_content_state_js } from './state.js';
+import { loadSnippetLocale, snippetMessage } from '../utils/i18n.js';
+import { prepareSnippetTemplate } from '../language-core/src/index.ts';
+import { compileTrigger } from '../utils/triggers.js';
+import { showSnippetToast } from './effects.js';
 // --- Settings: Storage Loading ---
 
-let settingsLoadVersion = 0;
+export let settingsLoadVersion = 0;
 
-function loadSettings(reportFailure = false) {
+export function loadSettings(reportFailure = false) {
   const version = ++settingsLoadVersion;
   return loadSyncedState(defaultConfig, defaultSnippetGroups).then(items => {
     if (version !== settingsLoadVersion) return false;
-    config = items.config;
-    loadSnippetLocale(config.uiLocale);
+    __state_content_state_js.config = items.config;
+    loadSnippetLocale(__state_content_state_js.config.uiLocale);
 
     const currentUrl = window.location.href;
-    snippets = [];
+    __state_content_state_js.snippets = [];
     if (Array.isArray(items.snippetGroups)) {
       items.snippetGroups.forEach(group => {
         if (!group || !Array.isArray(group.snippets)) return;
@@ -34,7 +40,7 @@ function loadSettings(reportFailure = false) {
         group.snippets.forEach(s => {
           if (!s || s.disabled === true || typeof s.trigger !== 'string' || !s.trigger) return;
           const compiled = compileTrigger(s.trigger);
-          snippets.push({
+          __state_content_state_js.snippets.push({
             ...s,
             groupSnippets: group.snippets,
             sourceSnippet: s,
@@ -47,7 +53,7 @@ function loadSettings(reportFailure = false) {
     }
 
     // Longer triggers take priority so they match before their prefixes
-    snippets.sort((a, b) => b.trigger.length - a.trigger.length);
+    __state_content_state_js.snippets.sort((a, b) => b.trigger.length - a.trigger.length);
     return true;
   }).catch(error => {
     if (reportFailure) throw error;
@@ -56,24 +62,25 @@ function loadSettings(reportFailure = false) {
   });
 }
 
-let settingsReloadTask = null;
+export let settingsReloadTask = null;
 
-function reloadSnippetSettings() {
+export function reloadSnippetSettings() {
   if (settingsReloadTask) return settingsReloadTask;
   settingsReloadTask = (async () => {
     // A storage-change load may supersede the explicit request; retry once to
     // make sure the success toast follows an applied, complete snapshot.
     if (!await loadSettings(true) && !await loadSettings(true)) throw new Error('Settings refresh superseded');
-    typingSeqLength = 0;
-    await loadSnippetLocale(config.uiLocale);
+    __state_content_state_js.typingSeqLength = 0;
+    await loadSnippetLocale(__state_content_state_js.config.uiLocale);
     showSnippetToast(snippetMessage('status_snippets_reloaded'), '#22c55e', 'success');
   })().catch(async () => {
-    await loadSnippetLocale(config.uiLocale);
+    await loadSnippetLocale(__state_content_state_js.config.uiLocale);
     showSnippetToast(snippetMessage('status_snippets_reload_failed'), '#f87171', true);
   }).finally(() => { settingsReloadTask = null; });
   return settingsReloadTask;
 }
 
+export function watchSnippetSettings() {
 // Watch for settings changes and hot-reload
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'sync' && Object.keys(changes).some(key =>
@@ -82,3 +89,11 @@ chrome.storage.onChanged.addListener((changes, area) => {
     loadSettings();
   }
 });
+
+}
+
+// Mutable module state is shared explicitly through accessors.
+export const moduleState = {
+  get settingsLoadVersion() { return settingsLoadVersion; }, set settingsLoadVersion(value) { settingsLoadVersion = value; },
+  get settingsReloadTask() { return settingsReloadTask; }, set settingsReloadTask(value) { settingsReloadTask = value; },
+};

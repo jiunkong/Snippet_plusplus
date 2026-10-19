@@ -248,6 +248,7 @@
   min-height: 120px;
   background: #0f172a;
   border-radius: 12px;
+  padding-bottom: 12px; /* Keep the resize handle below native scrollbars. */
 }
 
 .replacement-input {
@@ -259,8 +260,9 @@
   font-family: 'JetBrains Mono', 'Fira Code', 'Menlo', 'Monaco', 'Consolas', 'Cascadia Code', 'Courier New', monospace !important;
   font-size: 14px;
   line-height: 1.6;
-  white-space: pre-wrap;
-  word-wrap: break-word;
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow: auto;
   margin: 0;
   background: transparent !important;
   color: transparent !important;
@@ -287,8 +289,8 @@
   font-family: 'JetBrains Mono', 'Fira Code', 'Menlo', 'Monaco', 'Consolas', 'Cascadia Code', 'Courier New', monospace !important;
   font-size: 14px;
   line-height: 1.6;
-  white-space: pre-wrap;
-  word-wrap: break-word;
+  white-space: pre;
+  overflow-wrap: normal;
   margin: 0;
   background: #0f172a;
   color: var(--text-primary);
@@ -414,3 +416,80 @@
 #add-subgroup-btn { white-space: nowrap; flex-shrink: 0; }
 
 .snippet-subgroup.dragging { opacity: 0.45; border: 1px dashed var(--accent-color); }
+
+/* Variable type hover, shared by all snippet body editors. */
+.variable-type-tooltip {
+  position: fixed;
+  z-index: 10000;
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  max-width: min(480px, calc(100vw - 16px));
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  background: #1e293b;
+  color: var(--text-primary);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32), 0 0 0 1px rgba(15, 23, 42, 0.3);
+  font-family: 'JetBrains Mono', 'Fira Code', 'Menlo', 'Consolas', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  pointer-events: none;
+}
+.variable-type-tooltip[hidden] { display: none; }
+.variable-type-tooltip-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #93c5fd;
+}
+.variable-type-tooltip-separator,
+.variable-type-tooltip-union { color: var(--text-secondary); }
+.variable-type-tooltip-types {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.variable-type-tooltip-type {
+  padding: 0 6px;
+  border: 1px solid rgba(129, 140, 248, 0.22);
+  border-radius: 4px;
+  background: rgba(99, 102, 241, 0.12);
+  color: #c7d2fe;
+}
+
+.variable-type-tooltip.call-signature-tooltip {
+  /* Inherit display so this variant cannot override the [hidden] rule. */
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  max-width: min(560px, calc(100vw - 16px));
+  max-height: calc(100vh - 16px);
+  overflow: hidden;
+}
+.signature-tooltip-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; }
+.signature-tooltip-heading .variable-type-tooltip-name { font-weight: 600; }
+.signature-tooltip-kind,
+.signature-tooltip-empty { color: var(--text-secondary); font-size: 11px; }
+.signature-tooltip-kind { flex-shrink: 0; }
+.signature-tooltip-parameters { display: flex; flex-direction: column; gap: 7px; }
+.signature-tooltip-parameter { display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr); align-items: baseline; gap: 12px; }
+.signature-tooltip-parameter-name { color: #cbd5e1; overflow-wrap: anywhere; }
+.signature-tooltip-parameter dd { min-width: 0; }
+.signature-tooltip-rules { display: block; margin-top: 4px; color: var(--text-secondary); font-size: 10px; overflow-wrap: anywhere; }
+.signature-tooltip-return { display: flex; align-items: baseline; gap: 12px; padding-top: 9px; border-top: 1px solid var(--border-color); }
+.signature-tooltip-return-label { color: var(--text-secondary); font-size: 11px; }
+
+.variable-type-tooltip.call-signature-tooltip { pointer-events: auto; overflow-y: auto; }
+.signature-tooltip-content { display: flex; flex-direction: column; gap: 10px; }
+.signature-tooltip-navigation { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); }
+.signature-tooltip-count { min-width: 42px; text-align: center; font-size: 11px; }
+.signature-tooltip-arrow {
+  width: 26px; height: 24px; padding: 0; border: 1px solid var(--border-color); border-radius: 5px;
+  background: rgba(99, 102, 241, 0.08); color: var(--text-primary); font: inherit; font-size: 20px; line-height: 1; cursor: pointer;
+}
+.signature-tooltip-arrow:hover:not(:disabled) { background: rgba(99, 102, 241, 0.24); }
+.signature-tooltip-arrow:focus-visible { outline: 2px solid var(--accent-hover); outline-offset: 2px; }
+.signature-tooltip-arrow:disabled { opacity: 0.35; cursor: default; }
+.signature-tooltip-mismatch { color: #fbbf24; font-size: 11px; }

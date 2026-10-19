@@ -1,27 +1,34 @@
+import { scheduleGroupDiagnostics } from './group-diagnostics.js';
+import { t } from './i18n.js';
+import { moduleState as __state_options_state_js } from './state.js';
+import { renderSnippetsList } from './snippets.js';
+import { subgroupDefinitions, snippetSubgroupId, readSubgroupDefinitions } from './subgroups.js';
+import { debouncedSave } from './storage.js';
+import { showOptionsConfirmation } from './dialog.js';
 // --- Group Management ---
 
-function groupListLabel(group, index) {
+export function groupListLabel(group, index) {
   const name = group.name || `${t('groups.default_name')} ${index + 1}`;
   return `${name} (${group.snippets?.length || 0})`;
 }
 
-function renderGroupsList() {
+export function renderGroupsList() {
   const list = document.getElementById('groups-list');
   list.innerHTML = '';
-  snippetGroups.forEach((group, index) => {
+  __state_options_state_js.snippetGroups.forEach((group, index) => {
     const item = document.createElement('div');
-    item.className = `group-item ${index === activeGroupIndex ? 'active' : ''}`;
+    item.className = `group-item ${index === __state_options_state_js.activeGroupIndex ? 'active' : ''}`;
     item.textContent = groupListLabel(group, index);
     item.onclick = () => selectGroup(index);
     list.appendChild(item);
   });
 }
 
-function selectGroup(index) {
+export function selectGroup(index) {
   syncActiveGroupData();
   const search = document.getElementById('snippet-search');
   if (search) search.value = '';
-  activeGroupIndex = index;
+  __state_options_state_js.activeGroupIndex = index;
   renderGroupsList();
 
   const noGroup = document.getElementById('no-group-selected');
@@ -36,7 +43,7 @@ function selectGroup(index) {
   noGroup.style.display = 'none';
   editor.style.display = 'flex';
 
-  const group = snippetGroups[index];
+  const group = __state_options_state_js.snippetGroups[index];
   document.getElementById('active-group-name').value = group.name || "";
   renderDisabledSitesList(group.disabledSites || []);
   renderSnippetsList(group.snippets, subgroupDefinitions(group));
@@ -59,35 +66,36 @@ document.getElementById('site-mode-selector').onclick = (e) => {
   debouncedSave();
 };
 
-function addGroup() {
+export function addGroup() {
   syncActiveGroupData();
-  snippetGroups.push({ name: t('groups.default_name'), snippets: [], siteMode: 'blacklist' });
+  __state_options_state_js.snippetGroups.push({ name: t('groups.default_name'), snippets: [], siteMode: 'blacklist' });
   renderGroupsList();
-  selectGroup(snippetGroups.length - 1);
+  selectGroup(__state_options_state_js.snippetGroups.length - 1);
   debouncedSave();
 }
 
-async function deleteActiveGroup() {
-  if (activeGroupIndex === -1) return;
+export async function deleteActiveGroup() {
+  if (__state_options_state_js.activeGroupIndex === -1) return;
   syncActiveGroupData();
-  const target = snippetGroups[activeGroupIndex];
+  const target = __state_options_state_js.snippetGroups[__state_options_state_js.activeGroupIndex];
   if (!await showOptionsConfirmation({
     title: t('groups_delete_title'),
     message: t('groups_delete_message', { name: target.name || t('groups_default_name') }),
     acceptLabel: t('groups_delete_action'),
     danger: true
   })) return;
-  const prev = snippetGroups.indexOf(target);
+  const prev = __state_options_state_js.snippetGroups.indexOf(target);
   if (prev === -1) return;
-  snippetGroups.splice(prev, 1);
-  activeGroupIndex = -1;
+  __state_options_state_js.snippetGroups.splice(prev, 1);
+  __state_options_state_js.activeGroupIndex = -1;
   renderGroupsList();
-  selectGroup(snippetGroups.length > 0 ? Math.max(0, prev - 1) : -1);
+  selectGroup(__state_options_state_js.snippetGroups.length > 0 ? Math.max(0, prev - 1) : -1);
   debouncedSave();
 }
 
-function syncActiveGroupData() {
-  if (activeGroupIndex === -1) return;
+export function syncActiveGroupData() {
+  scheduleGroupDiagnostics();
+  if (__state_options_state_js.activeGroupIndex === -1) return;
   const name = document.getElementById('active-group-name').value;
   const disabledSites = Array.from(document.querySelectorAll('.site-input')).map(i => i.value.trim()).filter(v => v);
   const siteMode = document.querySelector('#site-mode-selector .mode-btn.active')?.dataset.mode || 'blacklist';
@@ -100,24 +108,24 @@ function syncActiveGroupData() {
     ...(snippetSubgroupId(row) ? { subgroupId: snippetSubgroupId(row) } : {})
   })).filter(s => s.trigger || s.name);
 
-  snippetGroups[activeGroupIndex].name = name;
-  snippetGroups[activeGroupIndex].disabledSites = disabledSites;
-  snippetGroups[activeGroupIndex].siteMode = siteMode;
-  snippetGroups[activeGroupIndex].snippets = snippets;
-  snippetGroups[activeGroupIndex].subgroups = readSubgroupDefinitions();
+  __state_options_state_js.snippetGroups[__state_options_state_js.activeGroupIndex].name = name;
+  __state_options_state_js.snippetGroups[__state_options_state_js.activeGroupIndex].disabledSites = disabledSites;
+  __state_options_state_js.snippetGroups[__state_options_state_js.activeGroupIndex].siteMode = siteMode;
+  __state_options_state_js.snippetGroups[__state_options_state_js.activeGroupIndex].snippets = snippets;
+  __state_options_state_js.snippetGroups[__state_options_state_js.activeGroupIndex].subgroups = readSubgroupDefinitions();
 
   const activeItem = document.querySelector('.group-item.active');
-  if (activeItem) activeItem.textContent = groupListLabel(snippetGroups[activeGroupIndex], activeGroupIndex);
+  if (activeItem) activeItem.textContent = groupListLabel(__state_options_state_js.snippetGroups[__state_options_state_js.activeGroupIndex], __state_options_state_js.activeGroupIndex);
 }
 
-function renderDisabledSitesList(sites) {
+export function renderDisabledSitesList(sites) {
   const list = document.getElementById('disabled-sites-list');
   list.innerHTML = '';
   const sitesArray = Array.isArray(sites) ? sites : (sites ? sites.split(',').map(s => s.trim()) : []);
   sitesArray.forEach(site => addDisabledSiteRow(site));
 }
 
-function addDisabledSiteRow(url) {
+export function addDisabledSiteRow(url) {
   const list = document.getElementById('disabled-sites-list');
   const row = document.createElement('div');
   row.className = 'site-row';

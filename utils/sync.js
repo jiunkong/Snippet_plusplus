@@ -1,10 +1,11 @@
+
 // Chrome Sync allows about 100 KB total, but only 8 KB per item. Store the
 // snippet list in versioned chunks and publish its manifest after all chunks
 // have been written, so readers never observe a partially saved list.
-const SNIPPET_META_KEY = 'snippetGroupsSync';
-const SNIPPET_CHUNK_PREFIX = 'snippetGroupsSync_';
+export const SNIPPET_META_KEY = 'snippetGroupsSync';
+export const SNIPPET_CHUNK_PREFIX = 'snippetGroupsSync_';
 
-function syncGet(keys) {
+export function syncGet(keys) {
   return new Promise((resolve, reject) => {
     chrome.storage.sync.get(keys, items => {
       const error = chrome.runtime.lastError;
@@ -13,7 +14,7 @@ function syncGet(keys) {
   });
 }
 
-function syncSet(items) {
+export function syncSet(items) {
   return new Promise((resolve, reject) => {
     chrome.storage.sync.set(items, () => {
       const error = chrome.runtime.lastError;
@@ -22,7 +23,7 @@ function syncSet(items) {
   });
 }
 
-function syncRemove(keys) {
+export function syncRemove(keys) {
   return new Promise((resolve, reject) => {
     chrome.storage.sync.remove(keys, () => {
       const error = chrome.runtime.lastError;
@@ -31,7 +32,7 @@ function syncRemove(keys) {
   });
 }
 
-function syncItemBytes(key, value) {
+export function syncItemBytes(key, value) {
   // Chromium's JSON writer escapes these characters even though JavaScript's
   // JSON.stringify leaves them literal. Quotas use Chromium's serialized size.
   const serialized = JSON.stringify(value).replace(/[<\u2028\u2029]/g, character => {
@@ -40,7 +41,7 @@ function syncItemBytes(key, value) {
   return new TextEncoder().encode(key + serialized).length;
 }
 
-function chunkSnippetData(serialized, revision) {
+export function chunkSnippetData(serialized, revision) {
   const limit = chrome.storage.sync.QUOTA_BYTES_PER_ITEM || 8192;
   const chunks = {};
   let offset = 0;
@@ -66,13 +67,27 @@ function chunkSnippetData(serialized, revision) {
   return chunks;
 }
 
-function chunkKeys(meta) {
+export function chunkKeys(meta) {
   if (!meta || typeof meta.revision !== 'string' || !Number.isInteger(meta.count) ||
       meta.count < 1 || meta.count > (chrome.storage.sync.MAX_ITEMS || 512)) return [];
   return Array.from({ length: meta.count }, (_, index) => `${SNIPPET_CHUNK_PREFIX}${meta.revision}_${index}`);
 }
 
-async function loadSyncedState(defaultConfig, defaultGroups) {
+// Compare the records actually read, including legacy data and settings. Missing
+// local Sync data is not evidence that this account has no remote data yet.
+export function syncedVersion(items) {
+  // Once a manifest exists, legacy data is no longer authoritative. Its
+  // best-effort cleanup must not invalidate an otherwise current version.
+  return JSON.stringify([items.config ?? null, items[SNIPPET_META_KEY] === undefined ? items.snippetGroups ?? null : null, items[SNIPPET_META_KEY] ?? null]);
+}
+
+export function syncConflict() {
+  const error = new Error('Synced data changed. Reload settings before saving.');
+  error.code = 'SYNC_CONFLICT';
+  return error;
+}
+
+export async function loadSyncedState(defaultConfig, defaultGroups) {
   const items = await syncGet(['config', 'snippetGroups', SNIPPET_META_KEY]);
   let config = { ...defaultConfig };
   if (items.config !== undefined) {
@@ -92,20 +107,31 @@ async function loadSyncedState(defaultConfig, defaultGroups) {
     if (keys.some(key => typeof parts[key] !== 'string')) throw new Error('Synced snippet list is incomplete.');
     const groups = JSON.parse(keys.map(key => parts[key]).join(''));
     if (!Array.isArray(groups)) throw new Error('Invalid synced snippet list.');
-    return { config, snippetGroups: groups };
+    const latest = await syncGet(['config', 'snippetGroups', SNIPPET_META_KEY]);
+    if (syncedVersion(latest) !== syncedVersion(items)) throw syncConflict();
+    return { config, snippetGroups: groups, syncVersion: syncedVersion(items) };
   }
 
-  return { config, snippetGroups: Array.isArray(items.snippetGroups) ? items.snippetGroups : defaultGroups };
+  return { config, snippetGroups: Array.isArray(items.snippetGroups) ? items.snippetGroups : structuredClone(defaultGroups), syncVersion: syncedVersion(items) };
 }
 
-let syncWriteQueue = Promise.resolve();
+export let syncWriteQueue = Promise.resolve();
 
-function saveSyncedState(config, snippetGroups) {
+export function saveSyncedState(config, snippetGroups, options = {}) {
   if (!Array.isArray(snippetGroups)) return Promise.reject(new Error('Invalid snippet list.'));
   const serializedConfig = JSON.stringify(config);
   const serializedGroups = JSON.stringify(snippetGroups);
   const write = syncWriteQueue.catch(() => {}).then(async () => {
-    const old = await syncGet([SNIPPET_META_KEY]);
+    if (options.skipUnchanged?.()) return;
+    const old = await syncGet(['config', 'snippetGroups', SNIPPET_META_KEY]);
+    const expected = options.expectedVersion?.();
+    if (expected !== undefined && syncedVersion(old) !== expected) throw syncConflict();
+    // Changing preferences must never publish the fallback example snippets.
+    if (typeof options.configOnly === 'function' ? options.configOnly() : options.configOnly) {
+      await syncSet({ config: serializedConfig });
+      options.onCommitted?.(syncedVersion({ ...old, config: serializedConfig }));
+      return;
+    }
     const revision = `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
     const chunks = chunkSnippetData(serializedGroups, revision);
     const meta = { revision, count: Object.keys(chunks).length };
@@ -119,7 +145,10 @@ function saveSyncedState(config, snippetGroups) {
 
     await syncSet(chunks);
     try {
+      const latest = await syncGet(['config', 'snippetGroups', SNIPPET_META_KEY]);
+      if (syncedVersion(latest) !== syncedVersion(old)) throw syncConflict();
       await syncSet({ config: serializedConfig, [SNIPPET_META_KEY]: meta });
+      options.onCommitted?.(syncedVersion({ config: serializedConfig, [SNIPPET_META_KEY]: meta }));
     } catch (error) {
       await syncRemove(Object.keys(chunks)).catch(() => {});
       throw error;
@@ -132,3 +161,8 @@ function saveSyncedState(config, snippetGroups) {
   syncWriteQueue = write;
   return write;
 }
+
+// Mutable module state is shared explicitly through accessors.
+export const moduleState = {
+  get syncWriteQueue() { return syncWriteQueue; }, set syncWriteQueue(value) { syncWriteQueue = value; },
+};

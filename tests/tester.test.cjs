@@ -1,9 +1,9 @@
 const { assertTemplateOutput } = require('./helpers/fragment.cjs');
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
+const fs = require('./helpers/source.cjs');
 const path = require('node:path');
-const vm = require('node:vm');
+const vm = require('./helpers/vm.cjs');
 const root = path.join(__dirname, '..');
 
 function runtimeHarness() {
@@ -103,9 +103,9 @@ test('test page loads the shared expansion engine in a separate document', () =>
   assert.match(options, /data-tab="tester"/);
   assert.match(options, /id="snippet-test-frame" src="tester.html"/);
   assert.doesNotMatch(options, /src="content\/handlers.js"/);
-  assert.ok(tester.indexOf('content/state.js') < tester.indexOf('options/tester-runtime.js'));
-  assert.ok(tester.indexOf('options/tester-runtime.js') < tester.indexOf('content/handlers.js'));
-  assert.ok(tester.indexOf('content/effects.js') < tester.indexOf('content/handlers.js'));
+  assert.match(tester, /<script defer src="bundles\/tester\.js"><\/script>/);
+  assert.match(fs.rawReadFileSync(path.join(root, 'entries/tester.js'), 'utf8'), /initializeHandlers\(\{ load: loadSettings/);
+  assert.match(fs.rawReadFileSync(path.join(root, 'content/handlers.js'), 'utf8'), /from '\.\/effects\.js'/);
   assert.doesNotMatch(tester, /src="content\/settings.js"/);
   for (const locale of ['ko', 'en']) {
     const catalog = JSON.parse(fs.readFileSync(path.join(root, '_locales', locale, 'messages.json'), 'utf8'));

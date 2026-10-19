@@ -1,8 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
+const fs = require('./helpers/source.cjs');
 const path = require('node:path');
-const vm = require('node:vm');
+const vm = require('./helpers/vm.cjs');
 
 const root = path.join(__dirname, '..');
 const context = vm.createContext({
@@ -338,4 +338,23 @@ test('bool is highlighted as a type cast and validates exactly one argument', ()
     assert.equal(context.updateHighlight({ value: source }, { innerHTML: '' }), 'err_fn_one_arg_exact:bool', source);
   }
   assert.equal(context.updateHighlight({ value: '{{bool($missing)}}' }, { innerHTML: '' }), 'err_undefined_variable:$missing');
+});
+
+test('bool and null categories are mapped by the host without highlighting quoted words', () => {
+  const source='{{true}} {{false}} {{null}} {{"true false null"}} {{42}}';
+  const analysis=context.analyze(source);
+  const html=context.renderHighlight(analysis);
+  assert.equal((html.match(/class="hl-bool"/g)||[]).length,2);
+  assert.equal((html.match(/class="hl-null"/g)||[]).length,1);
+  assert.equal(html.replace(/<[^>]*>/g,''),source);
+  assert.equal(vm.runInContext('TOKEN_CLASSES.bool',context),'hl-bool');
+  assert.equal(vm.runInContext('TOKEN_CLASSES.null',context),'hl-null');
+});
+
+test('nested literal newlines do not insert padding into the fragment source', () => {
+  const source='{{`first\n{{true}}\n`}}';
+  const analysis=context.analyze(source);
+  const html=context.renderHighlight(analysis);
+  assert.equal(html.replace(/<[^>]*>/g,''),source);
+  assert.equal((html.match(/class="hl-bool"/g)||[]).length,1);
 });

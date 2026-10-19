@@ -1,12 +1,22 @@
+import { scheduleGroupDiagnostics } from './group-diagnostics.js';
+import { showTypeTooltip, showSignatureTooltip, hideTypeTooltip, scheduleHideTypeTooltip } from './type-tooltip.js';
+import { createSubgroupSection, refreshSubgroupSelectors, updateSubgroupVisibility, revealSnippetSubgroup, moveSnippetToSubgroup, appendSnippetToContainer, findSubgroupSection, setSubgroupCollapsed } from './subgroups.js';
+import { updateAllHighlights, debouncedSave } from './storage.js';
+import { analyze, parseSnippetFunctionName } from '../language-core/src/index.ts';
+import { syncActiveGroupData } from './groups.js';
+import { moduleState as __state_options_state_js } from './state.js';
+import { compileTrigger } from '../utils/triggers.js';
+import { t } from './i18n.js';
+import { updateTriggerHighlight, updateHighlight, getHighlightAnalysis, getTriggerHighlightAnalysis } from './highlight.js';
 // --- Snippet Row UI, Drag-and-Drop, Conflict Detection ---
 
 // Auto-scroll state
-let scrollSpeed    = 0;
-let scrollInterval = null;
+export let scrollSpeed    = 0;
+export let scrollInterval = null;
 
 // Global resizer state
-let activeResizer = null;
-let startY, startHeight;
+export let activeResizer = null;
+export let startY, startHeight;
 
 window.addEventListener('mousemove', (e) => {
   if (!activeResizer) return;
@@ -22,7 +32,7 @@ window.addEventListener('mouseup', () => {
   }
 });
 
-function startAutoScroll() {
+export function startAutoScroll() {
   const scrollContainer = document.getElementById('group-editor-container');
   if (scrollInterval) return;
   scrollInterval = requestAnimationFrame(function scrollLoop() {
@@ -31,13 +41,13 @@ function startAutoScroll() {
   });
 }
 
-function stopAutoScroll() {
+export function stopAutoScroll() {
   cancelAnimationFrame(scrollInterval);
   scrollInterval = null;
   scrollSpeed = 0;
 }
 
-function getDragAfterElement(container, y) {
+export function getDragAfterElement(container, y) {
   return [...container.querySelectorAll(':scope > .snippet-row:not(.dragging)')].reduce((closest, child) => {
     const box    = child.getBoundingClientRect();
     const offset = y - box.top - box.height / 2;
@@ -45,7 +55,7 @@ function getDragAfterElement(container, y) {
   }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
-function renderSnippetsList(snippets, subgroups = []) {
+export function renderSnippetsList(snippets, subgroups = []) {
   const list = document.getElementById('snippets-list');
   list.innerHTML = '';
   const containers = new Map(subgroups.map(subgroup => [subgroup.id, createSubgroupSection(subgroup).querySelector('.subgroup-snippets')]));
@@ -56,7 +66,7 @@ function renderSnippetsList(snippets, subgroups = []) {
   updateAllHighlights();
 }
 
-function applySnippetSearch() {
+export function applySnippetSearch() {
   const search = document.getElementById('snippet-search');
   const query = (search?.value || '').trim().toLocaleLowerCase();
   let visibleCount = 0;
@@ -72,46 +82,14 @@ function applySnippetSearch() {
 
 // Textarea double-clicks select a word before the event fires. Resolve only
 // function names inside template expressions, excluding quoted/literal text.
-function snippetFunctionAtSelection(text, selectionStart, selectionEnd) {
-  let inTag = false;
-  let quote = null;
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    if (!inTag) {
-      if (text.slice(i, i + 2) === '{{' && text[i + 2] !== '{') {
-        inTag = true;
-        i++;
-      }
-      continue;
-    }
-    if (quote) {
-      if (char === '\\') i++;
-      else if (char === quote) quote = null;
-      continue;
-    }
-    if (char === '`') {
-      const literal = scanSnippetQuotedValue(text, i);
-      if (literal.error) return null;
-      if (selectionStart > i && selectionEnd < literal.end) {
-        return snippetFunctionAtSelection(text.slice(i + 1, literal.end - 1), selectionStart - i - 1, selectionEnd - i - 1);
-      }
-      i = literal.end - 1;
-      continue;
-    }
-    if (char === '"' || char === "'") { quote = char; continue; }
-    if (text.slice(i, i + 2) === '}}') { inTag = false; i++; continue; }
-    if (char !== '@') continue;
-    const call = parseSnippetCall(text, i);
-    if (call.error) continue;
-    const nameEnd = call.nameEnd;
-    if (selectionStart >= i && selectionStart < nameEnd && selectionEnd <= nameEnd) return call.name;
-    i = nameEnd - 1;
-  }
-  return null;
+export function snippetFunctionAtSelection(text, selectionStart, selectionEnd, analysis = analyze(text, { checkVariables: false })) {
+  const reference = analysis.references.find(ref => selectionStart >= ref.start && selectionStart < ref.end && selectionEnd <= ref.end);
+  return reference?.name ?? null;
 }
 
-function navigateToSnippetFunction(textarea, event) {
-  const name = snippetFunctionAtSelection(textarea.value, textarea.selectionStart, textarea.selectionEnd);
+export function navigateToSnippetFunction(textarea, event) {
+  const cached = getHighlightAnalysis(textarea);
+  const name = snippetFunctionAtSelection(textarea.value, textarea.selectionStart, textarea.selectionEnd, cached?.source === textarea.value ? cached : undefined);
   if (name === null) return false;
   const matches = Array.from(document.querySelectorAll('#snippets-list .snippet-row'))
     .filter(row => row.querySelector('.snippet-name-input').value === name);
@@ -119,20 +97,40 @@ function navigateToSnippetFunction(textarea, event) {
 
   event.preventDefault();
   const target = matches[0];
-  const search = document.getElementById('snippet-search');
-  if (search?.value) { search.value = ''; applySnippetSearch(); }
-  const wasCollapsed = target.classList.contains('collapsed');
-  const subgroupWasCollapsed = revealSnippetSubgroup(target);
-  target.classList.remove('collapsed');
+  revealSnippetRow(target);
   const body = target.querySelector('.replacement-input');
   body.focus({ preventScroll: true });
   body.setSelectionRange(0, 0);
   target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  if (wasCollapsed || subgroupWasCollapsed) { syncActiveGroupData(); debouncedSave(); }
   return true;
 }
 
-function updateSnippetFunctionCursor(textarea, highlightDiv, event) {
+function revealSnippetRow(row) {
+  const search = document.getElementById('snippet-search');
+  if (search?.value) { search.value = ''; applySnippetSearch(); }
+  const wasCollapsed = row.classList.contains('collapsed');
+  const subgroupWasCollapsed = revealSnippetSubgroup(row);
+  row.classList.remove('collapsed');
+  if (wasCollapsed || subgroupWasCollapsed) { syncActiveGroupData(); debouncedSave(); }
+}
+
+export function navigateToSnippetDiagnostic(row, diagnostic) {
+  if (!row.isConnected) return;
+  revealSnippetRow(row);
+  const input = row.querySelector(diagnostic.target === 'trigger' ? '.trigger-input' : '.replacement-input');
+  const start = Math.min(diagnostic.range.start, input.value.length);
+  const end = Math.max(start, Math.min(diagnostic.range.end, input.value.length));
+  input.focus({ preventScroll: true });
+  input.setSelectionRange(start, end);
+  if (diagnostic.target === 'body') {
+    const line = input.value.slice(0, start).split('\n').length - 1;
+    const lineHeight = parseFloat(getComputedStyle(input).lineHeight) || 22.4;
+    input.scrollTop = Math.max(0, line * lineHeight - input.clientHeight / 2);
+  }
+  input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+export function updateSnippetFunctionCursor(textarea, highlightDiv, event) {
   // The transparent textarea receives events above the highlight layer. Use
   // the rendered name's rectangles so wrapping and scrolling stay aligned.
   const nameSpan = Array.from(highlightDiv.querySelectorAll('.hl-fn-snippet, .hl-fn-err')).find(span =>
@@ -146,12 +144,47 @@ function updateSnippetFunctionCursor(textarea, highlightDiv, event) {
   textarea.style.cursor = matches.length === 1 ? 'pointer' : '';
 }
 
+// Hit-test the existing highlight layer instead of re-parsing textarea text or
+// estimating character widths. This also handles horizontal scrolling/Unicode.
+export function updateVariableTypeTooltip(textarea, highlightDiv, event) {
+  const analysis = getHighlightAnalysis(textarea);
+  if (analysis?.source !== textarea.value) { hideTypeTooltip(textarea); return; }
+  const bounds = textarea.getBoundingClientRect();
+  if (event.clientX < bounds.left + textarea.clientLeft || event.clientX >= bounds.left + textarea.clientLeft + textarea.clientWidth ||
+      event.clientY < bounds.top + textarea.clientTop || event.clientY >= bounds.top + textarea.clientTop + textarea.clientHeight) {
+    hideTypeTooltip(textarea); return;
+  }
+  // Variable spans take priority over a surrounding call. Call metadata uses
+  // name ranges only, so hovering an argument still shows that variable's type.
+  const hit = selector => {
+    for (const span of highlightDiv.querySelectorAll(selector)) {
+      const anchor = Array.from(span.getClientRects()).find(rect => event.clientX >= rect.left && event.clientX < rect.right &&
+        event.clientY >= rect.top && event.clientY < rect.bottom);
+      if (anchor) return { span, anchor };
+    }
+    return null;
+  };
+  const variableHit = hit('[data-variable-type-index]');
+  if (variableHit) {
+    const variable = analysis.variableTypes[Number(variableHit.span.dataset.variableTypeIndex)];
+    showTypeTooltip(textarea, variable, analysis.source.slice(variable.range.start, variable.range.end), variableHit.anchor);
+    return;
+  }
+  const callHit = hit('[data-call-signature-index]');
+  if (callHit) {
+    const signature = analysis.callSignatures[Number(callHit.span.dataset.callSignatureIndex)];
+    showSignatureTooltip(textarea, signature, callHit.anchor);
+    return;
+  }
+  scheduleHideTypeTooltip(textarea);
+}
+
 /**
  * Returns true if the regex matches any prefix of the literal string.
  * This catches cases where a regex trigger fires mid-sequence, preventing
  * the full literal trigger from ever being reached (e.g. ;;${sym:\w} blocks ;;ab).
  */
-function regexShadowsLiteral(regex, literal) {
+export function regexShadowsLiteral(regex, literal) {
   for (let i = 1; i <= literal.length; i++) {
     if (regex.test(literal.substring(0, i))) return true;
   }
@@ -162,7 +195,7 @@ function regexShadowsLiteral(regex, literal) {
  * Returns true if trigger pair (c1, c2) would shadow each other.
  * p1/p2 are the literal prefixes (text before first ${) for regex triggers.
  */
-function checkConflict(c1, p1, c2, p2) {
+export function checkConflict(c1, p1, c2, p2) {
   if (!c1.isRegex && !c2.isRegex) {
     // Literal vs Literal: conflict if one is a prefix of the other
     return c1.literal.startsWith(c2.literal) || c2.literal.startsWith(c1.literal);
@@ -179,16 +212,16 @@ function checkConflict(c1, p1, c2, p2) {
   }
 }
 
-function checkTriggerConflicts() {
-  if (activeGroupIndex === -1) return;
+export function checkTriggerConflicts() {
+  if (__state_options_state_js.activeGroupIndex === -1) return;
 
   const currentRows = Array.from(document.querySelectorAll('.snippet-row'));
 
   // For the active group, use DOM directly (avoids index mismatch from filter).
   // For other groups, use snippetGroups store.
   const otherGroupSnippets = [];
-  snippetGroups.forEach((group, gIdx) => {
-    if (gIdx === activeGroupIndex) return;
+  __state_options_state_js.snippetGroups.forEach((group, gIdx) => {
+    if (gIdx === __state_options_state_js.activeGroupIndex) return;
     (group.snippets || []).forEach(snip => {
       if (!snip.trigger || snip.disabled === true) return;
       const tRaw = snip.trigger.trim();
@@ -267,7 +300,7 @@ function checkTriggerConflicts() {
   });
 }
 
-function addSnippetRowUI(snippet = { trigger: '', replacement: '', name: '', collapsed: false }, container, deferRefresh = false) {
+export function addSnippetRowUI(snippet = { trigger: '', replacement: '', name: '', collapsed: false }, container, deferRefresh = false) {
   const list = container || document.getElementById('snippets-list');
   const row  = document.createElement('div');
   row.className = `snippet-row ${snippet.collapsed ? 'collapsed' : ''} ${snippet.disabled === true ? 'is-disabled' : ''}`;
@@ -302,7 +335,7 @@ function addSnippetRowUI(snippet = { trigger: '', replacement: '', name: '', col
         <label>${t('snippets_replacement_label')}</label>
         <div class="highlight-container">
           <div class="replacement-highlight"></div>
-          <textarea class="replacement-input" placeholder="${t('snippets_replacement_placeholder')}"></textarea>
+          <textarea class="replacement-input" wrap="off" placeholder="${t('snippets_replacement_placeholder')}"></textarea>
           <div class="resizer-bar" title="Drag to resize height"></div>
         </div>
         <div class="error-msg-container" style="display: none;"></div>
@@ -352,28 +385,55 @@ function addSnippetRowUI(snippet = { trigger: '', replacement: '', name: '', col
   };
 
   const runUpdate = () => {
-    const triggerError = updateTriggerHighlight(triggerInput, triggerHighlight);
+    hideTypeTooltip(textarea);
+    updateTriggerHighlight(triggerInput, triggerHighlight);
     // Read the active group's rows so unsaved name/trigger edits are included.
     const library = Array.from(document.querySelectorAll('#snippets-list .snippet-row')).map(item => ({
       name: item.querySelector('.snippet-name-input').value,
       trigger: item.querySelector('.trigger-input').value.trim()
     }));
-    const replacementError = updateHighlight(textarea, highlightDiv, triggerInput.value, library, nameInput.value);
+    updateHighlight(textarea, highlightDiv, triggerInput.value, library, nameInput.value);
+    highlightDiv.scrollTop = textarea.scrollTop;
+    highlightDiv.scrollLeft = textarea.scrollLeft;
     
-    const finalError = triggerError || replacementError;
-
-    if (finalError) { 
-      errorDiv.textContent = finalError; 
-      errorDiv.style.display = 'block'; 
-    } else { 
-      errorDiv.style.display = 'none'; 
+    const diagnostics = [
+      ...(getTriggerHighlightAnalysis(triggerInput)?.diagnostics || []).map(diagnostic => ({ ...diagnostic, target: 'trigger' })),
+      ...(getHighlightAnalysis(textarea)?.diagnostics || []).map(diagnostic => ({
+        ...diagnostic, target: 'body'
+      }))
+    ];
+    row.snippetDiagnostics = diagnostics;
+    scheduleGroupDiagnostics();
+    errorDiv.replaceChildren();
+    errorDiv.classList.add('diagnostic-list');
+    errorDiv.classList.toggle('has-errors', diagnostics.some(item => item.severity === 'error'));
+    errorDiv.classList.toggle('has-warnings', diagnostics.some(item => item.severity === 'warning'));
+    for (const diagnostic of diagnostics) {
+      const item = document.createElement('div');
+      item.className = `diagnostic-message diagnostic-${diagnostic.severity}`;
+      const label = document.createElement('span');
+      label.className = 'diagnostic-label';
+      label.textContent = t(`diagnostic_${diagnostic.severity}`);
+      const message = document.createElement('span');
+      message.textContent = t(diagnostic.code, diagnostic.args);
+      item.append(label, message);
+      errorDiv.appendChild(item);
     }
+    errorDiv.style.display = diagnostics.length ? 'block' : 'none';
   };
 
   row.updateValidation = runUpdate;
+  row.navigateToDiagnostic = diagnostic => navigateToSnippetDiagnostic(row, diagnostic);
   textarea.addEventListener('dblclick', event => navigateToSnippetFunction(textarea, event));
-  textarea.addEventListener('mousemove', event => updateSnippetFunctionCursor(textarea, highlightDiv, event));
-  textarea.addEventListener('mouseleave', () => { textarea.style.cursor = ''; });
+  textarea.addEventListener('mousemove', event => {
+    updateSnippetFunctionCursor(textarea, highlightDiv, event);
+    updateVariableTypeTooltip(textarea, highlightDiv, event);
+  });
+  textarea.addEventListener('input', () => {
+    hideTypeTooltip(textarea);
+  });
+  textarea.addEventListener('scroll', () => hideTypeTooltip(textarea));
+  textarea.addEventListener('mouseleave', () => { textarea.style.cursor = ''; scheduleHideTypeTooltip(textarea); });
 
   triggerInput.oninput = () => {
     row.querySelector('.collapsed-trigger-display').textContent = triggerInput.value;
@@ -493,14 +553,19 @@ function addSnippetRowUI(snippet = { trigger: '', replacement: '', name: '', col
   };
   textarea.onscroll = () => {
     highlightDiv.scrollTop = textarea.scrollTop;
+    highlightDiv.scrollLeft = textarea.scrollLeft;
     textarea.style.cursor = '';
   };
 
   triggerInput.onscroll = () => { triggerHighlight.scrollLeft = triggerInput.scrollLeft; };
 
   new ResizeObserver(() => {
-    highlightDiv.style.width  = textarea.offsetWidth  + 'px';
-    highlightDiv.style.height = textarea.offsetHeight + 'px';
+    // Both layers have a 1px border. Match the actual text viewport, excluding
+    // native scrollbars, so the right/bottom scroll limits stay aligned.
+    highlightDiv.style.width  = (textarea.clientWidth + 2) + 'px';
+    highlightDiv.style.height = (textarea.clientHeight + 2) + 'px';
+    highlightDiv.scrollTop = textarea.scrollTop;
+    highlightDiv.scrollLeft = textarea.scrollLeft;
   }).observe(textarea);
 
   // --- Custom Resizer Logic ---
@@ -560,7 +625,7 @@ function addSnippetRowUI(snippet = { trigger: '', replacement: '', name: '', col
   return row;
 }
 
-function addSnippetRow(subgroupId = '') {
+export function addSnippetRow(subgroupId = '') {
   const search = document.getElementById('snippet-search');
   if (search?.value) {
     search.value = '';
@@ -578,3 +643,12 @@ function addSnippetRow(subgroupId = '') {
   input.focus();
   newRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
+
+// Mutable module state is shared explicitly through accessors.
+export const moduleState = {
+  get scrollSpeed() { return scrollSpeed; }, set scrollSpeed(value) { scrollSpeed = value; },
+  get scrollInterval() { return scrollInterval; }, set scrollInterval(value) { scrollInterval = value; },
+  get activeResizer() { return activeResizer; }, set activeResizer(value) { activeResizer = value; },
+  get startY() { return startY; }, set startY(value) { startY = value; },
+  get startHeight() { return startHeight; }, set startHeight(value) { startHeight = value; },
+};

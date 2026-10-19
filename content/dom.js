@@ -1,6 +1,8 @@
+import { VISUAL_CURSOR_REGEX, VISUAL_OPEN, VISUAL_CLOSE } from '../utils/constants.js';
+import { SnippetFragment } from '../language-core/src/index.ts';
 // --- DOM Utilities: Target Detection, Caret Context, Placeholder Navigation ---
 
-function getTargetInfo(el) {
+export function getTargetInfo(el) {
   const VALID_INPUT_TYPES = new Set(['text', 'search', 'email', 'url', 'tel']);
   const isInput = el.tagName === 'TEXTAREA' ||
     (el.tagName === 'INPUT' && VALID_INPUT_TYPES.has(el.type));
@@ -9,7 +11,7 @@ function getTargetInfo(el) {
 
 // Nested editors may dispatch input at the outer editing host even though the
 // selection belongs to a smaller editable field. Keep all offsets in that field.
-function getEditorTarget(target) {
+export function getEditorTarget(target) {
   if (!target?.isContentEditable) return target;
   const selection = window.getSelection();
   if (!selection?.rangeCount) return target;
@@ -20,7 +22,7 @@ function getEditorTarget(target) {
   return field && target.contains(field) && field.contains(range.endContainer) ? field : target;
 }
 
-function getCaretContext(el, info) {
+export function getCaretContext(el, info) {
   if (info.isInput) {
     return { textBefore: el.value.substring(0, el.selectionEnd), offset: el.selectionEnd };
   }
@@ -47,7 +49,7 @@ function getCaretContext(el, info) {
  * Finds the next rendered placeholder (⟦n⟧) to jump to.
  * Priority: same level after cursor → next higher level → wrap to min level.
  */
-function findNextPlaceholder(text, currentStart, currentEnd) {
+export function findNextPlaceholder(text, currentStart, currentEnd) {
   const matches = [];
 
   const getLevel = (tag) => {
@@ -86,7 +88,7 @@ function findNextPlaceholder(text, currentStart, currentEnd) {
   return [...matches].sort((a, b) => a.level !== b.level ? a.level - b.level : a.index - b.index)[0];
 }
 
-function selectPlaceholder(el, info, targetMatch) {
+export function selectPlaceholder(el, info, targetMatch) {
   if (!targetMatch) return false;
 
   if (info.isInput) {
@@ -132,7 +134,7 @@ function selectPlaceholder(el, info, targetMatch) {
   return false;
 }
 
-function placeCaretAtAutoCursor(el, autoCursorId) {
+export function placeCaretAtAutoCursor(el, autoCursorId) {
   const marker = el.querySelector(`[data-spp-auto-cursor="${autoCursorId}"]`);
   if (!marker) return false;
 
@@ -148,7 +150,7 @@ function placeCaretAtAutoCursor(el, autoCursorId) {
 /**
  * Mirrors element styles to a hidden div for accurate caret position calculation.
  */
-function getCaretCoordinates(element, position) {
+export function getCaretCoordinates(element, position) {
   const style = window.getComputedStyle(element);
   const div   = document.createElement('div');
 
@@ -185,7 +187,7 @@ function getCaretCoordinates(element, position) {
 /**
  * Returns the maximum cursor level found in the given text.
  */
-function getMaxCursorLevel(text) {
+export function getMaxCursorLevel(text) {
   if (text instanceof SnippetFragment) return text.maxCursorLevel;
   let max = -1;
   // Check visual tags ⟦1⟧
@@ -196,7 +198,7 @@ function getMaxCursorLevel(text) {
   return max;
 }
 
-function getSelectionOffsets(el) {
+export function getSelectionOffsets(el) {
   const selection = window.getSelection();
   if (!selection || selection.rangeCount === 0) return null;
   const range = selection.getRangeAt(0);
@@ -215,7 +217,7 @@ function getSelectionOffsets(el) {
   }
 }
 
-function restoreSelectionOffsets(el, start, end) {
+export function restoreSelectionOffsets(el, start, end) {
   const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
   let total = 0;
   let lastNode = null;
@@ -246,7 +248,7 @@ function restoreSelectionOffsets(el, start, end) {
 /**
  * Increments existing placeholder levels by the given offset.
  */
-function shiftVisualPlaceholders(target, offset) {
+export function shiftVisualPlaceholders(target, offset) {
   if (offset <= 0) return target;
 
   if (typeof target === 'string') {

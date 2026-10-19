@@ -2,7 +2,7 @@
 
 ## Project overview
 
-Snippet++ is a Chrome Manifest V3 extension that expands typed triggers into snippets in input, textarea, and contenteditable fields. The options page manages snippet groups, triggers, replacement templates, hotkeys, language, and sync settings. The extension uses plain JavaScript, HTML, and CSS; it has no package manifest or build step.
+Snippet++ is a Chrome Manifest V3 extension that expands typed triggers into snippets in input, textarea, and contenteditable fields. The options page manages snippet groups, triggers, replacement templates, hotkeys, language, and sync settings. The extension uses JavaScript ES modules, HTML and CSS. The portable TypeScript language core is a Git submodule in `language-core/`. esbuild packages the extension in `dist/`.
 
 Snippets support regular-expression captures, variables and expressions, integer ranges, conditional blocks, loops, built-in functions, and calls to other snippets in the same group. Cursor placeholders control where typing continues after expansion. Subgroups organize snippets with folding and drag-and-drop ordering. The options page also provides a localized syntax guide and an isolated test tab that runs the real expansion engine against current edits.
 
@@ -10,21 +10,24 @@ Settings sync through Chrome Sync and can be exported as a full configuration (`
 
 ## Repository layout
 
-- `manifest.json`: extension permissions, service worker, options page, and ordered content-script list.
+- `manifest.json`: source extension manifest; loads generated bundles from `dist/bundles/`.
+- `language-core/`: independent SnippetScript TypeScript repository; analyzer, AST, fragments, diagnostics and execution.
+- `entries/`, `scripts/build.mjs`: ES module bootstrap and extension packaging.
 - `background.js`: opens the options page from the toolbar action.
-- `utils/`: shared defaults, trigger compilation, and Chrome Sync persistence.
-- `content/`: editor detection, settings, template evaluation, placeholder handling, expansion, effects, and event handlers.
+- `utils/`: shared defaults, core trigger adapters, and Chrome Sync persistence.
+- `content/`: browser host capabilities, editor detection, settings, execution adapter, placeholder handling, expansion, effects, and event handlers.
 - `options/`: options-page state, persistence, localization, hotkeys, groups and subgroups, snippet editing, highlighting, syntax-guide navigation, and test-tab integration.
-- `options.html`, `tester.html`: settings UI and isolated test document; each declares its classic-script loading order.
+- `options.html`, `tester.html`: settings UI and isolated test document; each loads its generated bundle.
 - `styles/`, `content.css`, `options.css`: extension and options-page styles.
 - `_locales/{en,ko}/messages.json`: Chrome extension message catalogs.
 - `tests/*.test.cjs`: Node.js built-in test-runner tests using `node:test` and VM/browser API harnesses.
 
 ## Working conventions
 
-- Preserve the classic-script architecture. Files share top-level declarations and globals; avoid converting individual files to ES modules unless all script loading and callers are updated together.
-- Script order is part of the runtime contract. If adding or moving a shared helper, update both `manifest.json`'s `content_scripts[0].js` and the script list in `options.html` where relevant. Dependencies must load before consumers.
-- Keep snippet expansion and template evaluation safe. Do not introduce `eval` or `new Function`; expressions are handled by `content/evaluator.js`.
+- Use explicit ES module imports and exports. Mutable cross-module state is exposed through the owning module's `moduleState` accessors. Keep initialization in the entrypoint or explicit setup functions.
+- Do not reintroduce duplicate language parsers in the extension. Highlighting consumes core token categories/ranges and diagnostics; execution consumes the same analyzed AST. Colors, CSS and localization belong to the host.
+- Keep snippet execution safe. Do not introduce `eval` or `new Function`. Browser functions are implemented by `content/browser-host.js` and invoked through the core host interface.
+- Keep `language-core/` independently buildable and testable. Commit/push core changes before recording its gitlink in the extension. Do not edit generated `dist/` files.
 - Treat Chrome Sync persistence in `utils/sync.js` as a versioned chunk-and-manifest protocol. Maintain compatibility with legacy `snippetGroups` data and avoid publishing a manifest until all new chunks are written.
 - Keep the export codec in `options/file-format.js` compatible with existing files. Binary exports use an `SPPB` header with an independent format version and file kind, followed by gzip-compressed UTF-8 JSON. Do not confuse the binary format version with the extension version in the payload. Preserve JSON export/import and detect the format by contents, not filename extensions.
 - Keep user-facing strings localized. Add or update matching keys in both English and Korean catalogs, and use the existing options localization helpers where applicable.
@@ -41,10 +44,14 @@ Settings sync through Chrome Sync and can be exported as a full configuration (`
 
 ## Verification
 
-Run the full test suite with:
+Initialize the submodule and dependencies, then run the full suite:
 
 ```sh
-node --test tests/*.test.cjs
+git submodule update --init --recursive
+npm ci
+npm test
 ```
 
-There is no `npm test` script or build command. For extension changes, also inspect the modified manifest and options-page script order and load the unpacked extension in Chrome when browser-level verification is needed.
+`npm run build` checks core types, compiles the standalone core, bundles extension entrypoints and copies static assets into `dist/`. `npm run dev` watches changes. Load `dist/` as the unpacked extension in Chrome when browser-level verification is needed. Core tests also run independently with `npm ci && npm test` inside `language-core/`.
+
+Extension VM tests use the real built core through `tests/helpers/source.cjs`; preserve their injectable editor/Chrome fixtures. Tests that inspect ESM dependencies use `rawReadFileSync`. Keep browser integration checks for content scripts, the options page and isolated tester, including cursor placement, undo and prompt cancellation.

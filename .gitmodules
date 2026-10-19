@@ -1,0 +1,3 @@
+[submodule "language-core"]
+	path = language-core
+	url = https://github.com/jiunkong/SnippetScript.git

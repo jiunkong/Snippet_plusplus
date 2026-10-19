@@ -1,34 +1,38 @@
+import { moduleState as __state_options_state_js } from './state.js';
+import { debouncedSave, saveOptions } from './storage.js';
+import { addSnippetRow } from './snippets.js';
+import { addSubgroup } from './subgroups.js';
 // --- Hotkey Recording & Global Keyboard Shortcuts ---
 
-function initHotkeyButtons() {
+export function initHotkeyButtons() {
   document.querySelectorAll('.record-btn').forEach(btn => {
     btn.onclick = () => {
-      if (recordingTarget) stopRecording();
+      if (__state_options_state_js.recordingTarget) stopRecording();
       else startRecording(btn);
     };
   });
 }
 
-function startRecording(btn) {
-  recordingTarget = btn.dataset.key;
+export function startRecording(btn) {
+  __state_options_state_js.recordingTarget = btn.dataset.key;
   btn.textContent = 'Cancel';
   btn.classList.add('recording');
-  document.getElementById(`hotkey-display-${recordingTarget}`).textContent = 'Press keys...';
+  document.getElementById(`hotkey-display-${__state_options_state_js.recordingTarget}`).textContent = 'Press keys...';
   window.addEventListener('keydown', handleKeyCapture);
 }
 
-function stopRecording() {
-  if (!recordingTarget) return;
-  const btn = document.querySelector(`.record-btn[data-key="${recordingTarget}"]`);
+export function stopRecording() {
+  if (!__state_options_state_js.recordingTarget) return;
+  const btn = document.querySelector(`.record-btn[data-key="${__state_options_state_js.recordingTarget}"]`);
   btn.textContent = 'Change';
   btn.classList.remove('recording');
-  document.getElementById(`hotkey-display-${recordingTarget}`).textContent = currentConfig[recordingTarget] || 'None';
+  document.getElementById(`hotkey-display-${__state_options_state_js.recordingTarget}`).textContent = __state_options_state_js.currentConfig[__state_options_state_js.recordingTarget] || 'None';
   window.removeEventListener('keydown', handleKeyCapture);
-  recordingTarget = null;
+  __state_options_state_js.recordingTarget = null;
   debouncedSave();
 }
 
-function handleKeyCapture(e) {
+export function handleKeyCapture(e) {
   e.preventDefault();
   if (['Control', 'Alt', 'Shift', 'Meta'].includes(e.key)) return;
 
@@ -43,12 +47,12 @@ function handleKeyCapture(e) {
   else if (key === 'Unidentified' && e.code) key = e.code.replace(/^(Key|Digit)/, '');
   else if (key.length === 1) key = key.toUpperCase();
 
-  currentConfig[recordingTarget] = [...modifiers, key].join('+');
+  __state_options_state_js.currentConfig[__state_options_state_js.recordingTarget] = [...modifiers, key].join('+');
   stopRecording();
 }
 
 window.addEventListener('keydown', (e) => {
-  if (recordingTarget || e.target?.closest('dialog[open]')) return;
+  if (__state_options_state_js.recordingTarget || e.target?.closest('dialog[open]')) return;
 
   const matchShortcut = (hotkeyStr) => {
     if (!hotkeyStr) return false;
@@ -73,7 +77,7 @@ window.addEventListener('keydown', (e) => {
   }
 
   // Toggle Fold (Alt+L)
-  if (matchShortcut(currentConfig.toggleFold)) {
+  if (matchShortcut(__state_options_state_js.currentConfig.toggleFold)) {
     const row = document.activeElement?.closest('.snippet-row');
     if (row) {
       e.preventDefault();
@@ -83,9 +87,9 @@ window.addEventListener('keydown', (e) => {
   }
 
   // Add Snippet (Alt+N)
-  if (matchShortcut(currentConfig.addSnippet)) {
+  if (matchShortcut(__state_options_state_js.currentConfig.addSnippet)) {
     const snippetsTab = document.getElementById('snippets-tab');
-    if (snippetsTab.classList.contains('active') && activeGroupIndex !== -1) {
+    if (snippetsTab.classList.contains('active') && __state_options_state_js.activeGroupIndex !== -1) {
       e.preventDefault();
       addSnippetRow();
       return;
@@ -93,9 +97,9 @@ window.addEventListener('keydown', (e) => {
   }
 
   // Add Subgroup (Alt+G)
-  if (matchShortcut(currentConfig.addSubgroup)) {
+  if (matchShortcut(__state_options_state_js.currentConfig.addSubgroup)) {
     const snippetsTab = document.getElementById('snippets-tab');
-    if (snippetsTab.classList.contains('active') && activeGroupIndex !== -1) {
+    if (snippetsTab.classList.contains('active') && __state_options_state_js.activeGroupIndex !== -1) {
       e.preventDefault();
       addSubgroup();
       return;

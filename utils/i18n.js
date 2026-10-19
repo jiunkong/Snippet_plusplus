@@ -1,13 +1,14 @@
+import { moduleState as __state_content_state_js } from '../content/state.js';
 // Content scripts use the selected options language for user-facing errors.
 // Chrome's built-in i18n API always uses the browser language.
-const snippetLocaleCatalogs = new Map();
-const snippetLocaleLoads = new Map();
+export const snippetLocaleCatalogs = new Map();
+export const snippetLocaleLoads = new Map();
 
-function currentSnippetLocale() {
-  return typeof config !== 'undefined' ? config.uiLocale : 'system';
+export function currentSnippetLocale() {
+  return typeof __state_content_state_js.config !== 'undefined' ? __state_content_state_js.config.uiLocale : 'system';
 }
 
-function loadSnippetLocale(locale = currentSnippetLocale()) {
+export function loadSnippetLocale(locale = currentSnippetLocale()) {
   if (locale !== 'ko' && locale !== 'en') return Promise.resolve(null);
   if (!snippetLocaleLoads.has(locale)) {
     const load = (async () => {
@@ -25,13 +26,13 @@ function loadSnippetLocale(locale = currentSnippetLocale()) {
   return snippetLocaleLoads.get(locale);
 }
 
-function snippetMessage(key, substitutions = [], locale = currentSnippetLocale()) {
+export function snippetMessage(key, substitutions = [], locale = currentSnippetLocale()) {
   const message = snippetLocaleCatalogs.get(locale)?.[key]?.message;
   if (message) return message.replace(/\$(\d+)/g, (match, index) => String(substitutions[Number(index) - 1] ?? match));
   return typeof chrome !== 'undefined' && chrome.i18n ? chrome.i18n.getMessage(key, substitutions.map(String)) : '';
 }
 
-function createSnippetError(key, values = [], fallback = '') {
+export function createSnippetError(key, values = [], fallback = '') {
   const error = new Error(snippetMessage(key, values) || fallback || `${key}: ${values.join(', ')}`);
   error.messageKey = key;
   error.messageValues = values;

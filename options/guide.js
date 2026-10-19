@@ -1,5 +1,8 @@
+import { FUNCTIONS } from '../language-core/src/index.ts';
+import { t } from './i18n.js';
+import { updateTriggerHighlight, updateHighlight } from './highlight.js';
 // Read-only examples share the body editor's tokenizer and token colors.
-function highlightGuideExamples() {
+export function highlightGuideExamples() {
   document.querySelectorAll('#guide-tab code[data-guide-language]').forEach(code => {
     const value = code.textContent;
     if (code.dataset.guideLanguage === 'trigger') {
@@ -11,7 +14,54 @@ function highlightGuideExamples() {
   });
 }
 
-function initGuideNavigation() {
+// Keep signatures tied to the same metadata used by execution and hovers.
+export function renderGuideFunctionReference() {
+  const body = document.getElementById('guide-function-reference');
+  if (!body) return;
+  const fragment = document.createDocumentFragment();
+  const formatTypes = types => types === 'any' ? 'any' : types.join(' | ');
+  for (const [name, spec] of Object.entries(FUNCTIONS).sort(([a], [b]) => a.localeCompare(b))) {
+    for (const overload of spec.overloads) {
+      const row = document.createElement('tr');
+      const heading = document.createElement('th');
+      heading.scope = 'row';
+      const label = document.createElement('code');
+      label.textContent = name + '()';
+      heading.appendChild(label);
+      const parameters = document.createElement('td');
+      const values = [...overload.parameters.map((parameter, index) => ({ ...parameter, optional: index >= overload.min })),
+        ...(overload.restParameter ? [{ ...overload.restParameter, rest: true }] : [])];
+      for (const parameter of values) {
+        const line = document.createElement('code');
+        line.className = 'guide-parameter-type';
+        const types = parameter.elementTypes ? `list<${formatTypes(parameter.elementTypes)}>` : formatTypes(parameter.types);
+        line.textContent = `${parameter.rest ? '...' : ''}${parameter.name}${parameter.optional ? '?' : ''}: ${types}`;
+        parameters.appendChild(line);
+        if (parameter.requiredElementTypes?.length) {
+          const rules = document.createElement('small');
+          rules.className = 'guide-parameter-rules';
+          rules.textContent = 'contains<' + parameter.requiredElementTypes.join(' | ') + '>';
+          parameters.appendChild(rules);
+        }
+      }
+      if (!values.length) {
+        const empty = document.createElement('span');
+        empty.dataset.i18n = 'guide_doc_no_parameters';
+        empty.textContent = t('guide_doc_no_parameters');
+        parameters.appendChild(empty);
+      }
+      const result = document.createElement('td');
+      const types = document.createElement('code');
+      types.textContent = overload.returnElementTypes ? `list<${formatTypes(overload.returnElementTypes)}>` : formatTypes(overload.returnTypes);
+      result.appendChild(types);
+      row.append(heading, parameters, result);
+      fragment.appendChild(row);
+    }
+  }
+  body.replaceChildren(fragment);
+}
+
+export function initGuideNavigation() {
   const guide = document.getElementById('guide-tab');
   const links = [...guide.querySelectorAll('.guide-toc a')];
   const targets = links.map(link => document.getElementById(link.hash.slice(1)));
@@ -48,4 +98,5 @@ function initGuideNavigation() {
 }
 
 highlightGuideExamples();
+renderGuideFunctionReference();
 initGuideNavigation();

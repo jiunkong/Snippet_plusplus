@@ -1,5 +1,6 @@
+import { MIN_SNIPPET_TIMEOUT_MS, MAX_SNIPPET_TIMEOUT_MS, normalizeSnippetTimeout } from '../language-core/src/index.ts';
 // Pointer scrubbing keeps normal click-to-edit and keyboard number input intact.
-function initTimeoutScrubber(input, { controlId = 'snippet-timeout-scrubber',
+export function initTimeoutScrubber(input, { controlId = 'snippet-timeout-scrubber',
   min = MIN_SNIPPET_TIMEOUT_MS / 100, max = MAX_SNIPPET_TIMEOUT_MS / 100,
   scale = 10, normalize = value => normalizeSnippetTimeout(value * 1000) / 100 } = {}) {
   const control = document.getElementById(controlId);

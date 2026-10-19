@@ -89,6 +89,20 @@
   font-weight: 700;
 }
 
+.hl-parenthesis,
+.hl-op-arithmetic {
+  color: #ffffff !important;
+}
+
+.hl-op-arithmetic {
+  font-weight: 700;
+}
+
+.hl-op-range {
+  color: #2dd4bf !important;
+  font-weight: 700;
+}
+
 .hl-list {
   color: #a3e635 !important; /* Lime: list brackets and element separators */
   font-weight: 700;
@@ -99,11 +113,25 @@
   font-weight: 700;
 }
 
+.hl-string-escape {
+  color: #fbbf24 !important;
+  font-weight: 700;
+}
+
 /* Expression — Arguments, Variables, Logic (soft lavender) */
 .expr-badge {
   background: rgba(217, 70, 239, 0.15);
   border-bottom: 2px solid #d946ef;
   font-weight: 400;
+}
+
+/* The enclosing region paints whitespace too; avoid layering badge fills. */
+.expr-badge .expr-badge,
+.expr-badge .keyword-badge,
+.expr-badge .syntax-badge,
+.cursor-expr-badge .cursor-badge,
+.cursor-expr-badge .cursor-syntax-badge {
+  background: transparent;
 }
 
 /* Error (red + wavy underline) */
@@ -170,4 +198,43 @@
   user-select: none;
   pointer-events: none;
   margin-right: 4px; /* Give some space before the real break */
+}
+
+/* Language categories are mapped here, outside the portable analyzer. */
+.hl-bool { color: #c4b5fd; font-weight: 700; }
+.hl-null { color: #94a3b8; font-weight: 700; }
+
+/* Static type warnings are visible without blocking execution. */
+.warning-badge {
+  border-radius: 2px;
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+  border-bottom: 2px solid #f59e0b;
+  text-decoration: underline wavy #f59e0b;
+}
+.error-msg-container.diagnostic-list::before { content: none; }
+.error-msg-container.diagnostic-list {
+  background: rgba(245, 158, 11, 0.08);
+  border-left-color: #f59e0b;
+}
+.error-msg-container.diagnostic-list.has-errors {
+  background: rgba(239, 68, 68, 0.08);
+  border-left-color: #ef4444;
+}
+.diagnostic-message {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  overflow-wrap: anywhere;
+}
+.diagnostic-message + .diagnostic-message { margin-top: 6px; }
+.diagnostic-error { color: #fca5a5; }
+.diagnostic-warning { color: #fbbf24; }
+.diagnostic-label {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
 }

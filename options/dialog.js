@@ -1,5 +1,6 @@
+import { t } from './i18n.js';
 // Styled HTML dialog keeps focus inside the modal and makes the page inert.
-function showOptionsConfirmation({ title, message, warning = '', acceptLabel = t('import_dialog_accept'), danger = false, exportFormat = false }) {
+export function showOptionsConfirmation({ title, message, warning = '', acceptLabel = t('import_dialog_accept'), danger = false, exportFormat = false }) {
   const dialog = document.getElementById('import-confirm-dialog');
   if (dialog.open) return Promise.resolve(false);
   const cancel = document.getElementById('import-confirm-cancel');
@@ -50,11 +51,11 @@ function showOptionsConfirmation({ title, message, warning = '', acceptLabel = t
   });
 }
 
-function showImportConfirmation(options) {
+export function showImportConfirmation(options) {
   return showOptionsConfirmation(options);
 }
 
-function showExportFormat() {
+export function showExportFormat() {
   return showOptionsConfirmation({
     title: t('export_dialog_title'), message: t('export_dialog_description'),
     acceptLabel: t('export_dialog_accept'), exportFormat: true

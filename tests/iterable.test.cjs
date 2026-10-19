@@ -1,9 +1,9 @@
 const { assertTemplateOutput } = require('./helpers/fragment.cjs');
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
+const fs = require('./helpers/source.cjs');
 const path = require('node:path');
-const vm = require('node:vm');
+const vm = require('./helpers/vm.cjs');
 const root = path.join(__dirname, '..');
 function engine() {
   const context = vm.createContext({ t: (key, values = []) => `${key}:${values.join(',')}` });
@@ -136,7 +136,7 @@ test('includes requires an iterable and two arguments, including explicit undefi
     assert.throws(() => ctx.evaluateExpression(source, {}), error => error.messageKey === 'err_includes_iterable_target', source);
   }
   for (const source of ['includes()', 'includes([])', 'includes([], 1, 2)', 'includes(,1)', 'includes([],)', 'includes([], 1,)']) {
-    assert.throws(() => ctx.evaluateExpression(source, {}), error => error.messageKey === 'err_function_arguments', source);
+    assert.throws(() => ctx.evaluateExpression(source, {}), error => error.messageKey === 'err_fn_two_args_exact', source);
   }
   assert.equal(ctx.evaluateExpression('includes([undefined], undefined)', {}), true);
   assert.throws(() => ctx.evaluateExpression('includes([], $missing)', {}), error => error.messageKey === 'err_undefined_variable');

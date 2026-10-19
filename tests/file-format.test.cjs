@@ -1,8 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
+const fs = require('./helpers/source.cjs');
 const path = require('node:path');
-const vm = require('node:vm');
+const vm = require('./helpers/vm.cjs');
 const { gunzipSync } = require('node:zlib');
 const root = path.join(__dirname, '..');
 function codec() {
@@ -70,7 +70,7 @@ test('damaged, truncated, future-version and wrong-kind binary files fail decodi
 
 test('options load the codec before storage handlers and localize all export controls', () => {
   const html = fs.readFileSync(path.join(root, 'options.html'), 'utf8');
-  assert.ok(html.indexOf('options/file-format.js') < html.indexOf('options/storage.js'));
+  assert.match(fs.rawReadFileSync(path.join(root, 'options/storage.js'), 'utf8'), /from ['"]\.\/file-format\.js['"]/);
   for (const locale of ['ko', 'en']) {
     const catalog = JSON.parse(fs.readFileSync(path.join(root, `_locales/${locale}/messages.json`), 'utf8'));
     for (const key of ['export_dialog_title', 'export_dialog_description', 'export_dialog_accept', 'export_format_label', 'export_format_binary', 'export_format_json', 'status_export_failed']) {

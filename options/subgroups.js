@@ -1,6 +1,11 @@
+import { t } from './i18n.js';
+import { applySnippetSearch, addSnippetRow, startAutoScroll, stopAutoScroll } from './snippets.js';
+import { syncActiveGroupData } from './groups.js';
+import { debouncedSave } from './storage.js';
+import { moduleState as __state_options_state_js } from './state.js';
 // Subgroups organize the existing flat snippet list; expansion and @function
 // lookup still share the parent group's full library.
-function subgroupDefinitions(group) {
+export function subgroupDefinitions(group) {
   const seen = new Set();
   return (Array.isArray(group?.subgroups) ? group.subgroups : []).filter(subgroup => {
     if (!subgroup || typeof subgroup.id !== 'string' || !subgroup.id || seen.has(subgroup.id)) return false;
@@ -13,12 +18,12 @@ function subgroupDefinitions(group) {
   }));
 }
 
-function subgroupSections() {
+export function subgroupSections() {
   return Array.from(document.querySelectorAll('#snippets-list .snippet-subgroup'))
     .filter(section => typeof section.dataset?.subgroupId === 'string');
 }
 
-function readSubgroupDefinitions() {
+export function readSubgroupDefinitions() {
   return subgroupSections().map(section => ({
     id: section.dataset.subgroupId,
     name: section.querySelector('.subgroup-name-input').value,
@@ -26,19 +31,19 @@ function readSubgroupDefinitions() {
   }));
 }
 
-function findSubgroupSection(id) {
+export function findSubgroupSection(id) {
   return subgroupSections().find(section => section.dataset.subgroupId === id);
 }
 
-function snippetSubgroupId(row) {
+export function snippetSubgroupId(row) {
   return row.closest?.('.snippet-subgroup')?.dataset.subgroupId || '';
 }
 
-function subgroupOptionHtml(value) {
+export function subgroupOptionHtml(value) {
   return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-function refreshSubgroupSelectors() {
+export function refreshSubgroupSelectors() {
   const definitions = readSubgroupDefinitions();
   const options = `<option value="">${subgroupOptionHtml(t('subgroups_ungrouped'))}</option>` + definitions.map(subgroup =>
     `<option value="${subgroupOptionHtml(subgroup.id)}">${subgroupOptionHtml(subgroup.name || t('subgroups_default_name'))}</option>`
@@ -51,7 +56,7 @@ function refreshSubgroupSelectors() {
   });
 }
 
-function updateSubgroupVisibility(query = '') {
+export function updateSubgroupVisibility(query = '') {
   subgroupSections().forEach(section => {
     const rows = Array.from(section.querySelectorAll('.snippet-row'));
     const hasMatch = rows.some(row => !row.hidden);
@@ -63,24 +68,24 @@ function updateSubgroupVisibility(query = '') {
   });
 }
 
-function setSubgroupCollapsed(section, collapsed, syncState = true) {
+export function setSubgroupCollapsed(section, collapsed, syncState = true) {
   section.classList.toggle('collapsed', collapsed);
   applySnippetSearch();
   if (syncState) syncActiveGroupData();
 }
 
-function revealSnippetSubgroup(row) {
+export function revealSnippetSubgroup(row) {
   const section = row.closest?.('.snippet-subgroup');
   if (!section || !section.classList.contains('collapsed')) return false;
   setSubgroupCollapsed(section, false, false);
   return true;
 }
 
-function appendSnippetToContainer(row, container) {
+export function appendSnippetToContainer(row, container) {
   container.appendChild(row);
 }
 
-function reorderSubgroup(section, y) {
+export function reorderSubgroup(section, y) {
   const root = document.getElementById('snippets-list');
   const after = subgroupSections().filter(item => item !== section && !item.hidden).reduce((closest, item) => {
     const box = item.querySelector('.subgroup-header').getBoundingClientRect();
@@ -91,7 +96,7 @@ function reorderSubgroup(section, y) {
   root.insertBefore(section, after || firstSnippet || null);
 }
 
-function moveSnippetToSubgroup(row, id) {
+export function moveSnippetToSubgroup(row, id) {
   const section = findSubgroupSection(id);
   const container = section ? section.querySelector('.subgroup-snippets') : document.getElementById('snippets-list');
   appendSnippetToContainer(row, container);
@@ -102,7 +107,7 @@ function moveSnippetToSubgroup(row, id) {
   debouncedSave();
 }
 
-function createSubgroupSection(subgroup) {
+export function createSubgroupSection(subgroup) {
   const section = document.createElement('section');
   section.className = `snippet-subgroup${subgroup.collapsed ? ' collapsed' : ''}`;
   section.draggable = true;
@@ -161,8 +166,8 @@ function createSubgroupSection(subgroup) {
   return section;
 }
 
-function addSubgroup() {
-  if (activeGroupIndex === -1) return;
+export function addSubgroup() {
+  if (__state_options_state_js.activeGroupIndex === -1) return;
   const search = document.getElementById('snippet-search');
   if (search) search.value = '';
   const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID()

@@ -1,8 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
+const fs = require('./helpers/source.cjs');
 const path = require('node:path');
-const vm = require('node:vm');
+const vm = require('./helpers/vm.cjs');
 
 const root = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'options.html'), 'utf8');
@@ -21,15 +21,13 @@ test('language selector exposes browser, Korean, and English choices', () => {
   for (const locale of ['system', 'ko', 'en']) assert.match(html, new RegExp(`value="${locale}"`));
 });
 
-test('shared config and expansion helpers load before their callers', () => {
-  const contentScripts = manifest.content_scripts[0].js;
-  assert.ok(contentScripts.indexOf('utils/config.js') < contentScripts.indexOf('content/state.js'));
-  assert.ok(contentScripts.indexOf('utils/sync.js') < contentScripts.indexOf('content/settings.js'));
-  assert.ok(contentScripts.indexOf('content/expansion.js') < contentScripts.indexOf('content/handlers.js'));
-  assert.ok(html.indexOf('utils/config.js') < html.indexOf('options/state.js'));
-  assert.ok(html.indexOf('utils/sync.js') < html.indexOf('options/storage.js'));
-  assert.ok(html.indexOf('options/subgroups.js') < html.indexOf('options/snippets.js'));
-  assert.ok(html.indexOf('options/snippets.js') < html.indexOf('options/main.js'));
+test('extension entrypoints use bundles and explicit module dependencies', () => {
+  assert.deepEqual(manifest.content_scripts[0].js, ['bundles/content.js']);
+  assert.equal(manifest.background.service_worker, 'bundles/background.js');
+  assert.match(html, /<script defer src="bundles\/options\.js"><\/script>/);
+  assert.match(fs.rawReadFileSync(path.join(root, 'content/state.js'), 'utf8'), /from '\.\.\/utils\/config\.js'/);
+  assert.match(fs.rawReadFileSync(path.join(root, 'options/storage.js'), 'utf8'), /from '\.\.\/utils\/sync\.js'/);
+  assert.match(fs.rawReadFileSync(path.join(root, 'options/main.js'), 'utf8'), /from '\.\/snippets\.js'/);
 });
 
 test('snippet search filters the active list by snippet name', () => {
@@ -201,6 +199,7 @@ test('double-click navigation reveals a filtered collapsed target and focuses it
     querySelectorAll: () => rows,
     getElementById: id => id === 'snippet-search' ? search : empty
   }, {
+    getHighlightAnalysis: () => undefined,
     syncActiveGroupData() { syncs++; }, debouncedSave() { saves++; }
   });
   const text = '{{upper(@hello<2>("Guest"))}}';

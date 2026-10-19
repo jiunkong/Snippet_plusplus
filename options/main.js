@@ -1,6 +1,11 @@
+import { restoreOptions, exportSettings, importSettings, debouncedSave, exportActiveGroup, importGroup } from './storage.js';
+import { addGroup, deleteActiveGroup, syncActiveGroupData, addDisabledSiteRow } from './groups.js';
+import { addSnippetRow, applySnippetSearch, moduleState as __state_options_snippets_js, startAutoScroll, getDragAfterElement, stopAutoScroll } from './snippets.js';
+import { addSubgroup, reorderSubgroup, setSubgroupCollapsed, appendSnippetToContainer } from './subgroups.js';
+import { refreshSnippetTester } from './tester.js';
 // --- Main Entry Point: Event Binding & Initialization ---
 
-const snippetsList = document.getElementById('snippets-list');
+export const snippetsList = document.getElementById('snippets-list');
 
 document.addEventListener('DOMContentLoaded', restoreOptions);
 
@@ -43,9 +48,9 @@ snippetsList.addEventListener('dragover', e => {
   const scrollContainer = document.getElementById('group-editor-container');
   const rect      = scrollContainer.getBoundingClientRect();
   const threshold = 80;
-  if      (e.clientY < rect.top    + threshold) scrollSpeed = -Math.max(3, (rect.top    + threshold - e.clientY) / 4);
-  else if (e.clientY > rect.bottom - threshold) scrollSpeed =  Math.max(3, (e.clientY - rect.bottom + threshold) / 4);
-  else scrollSpeed = 0;
+  if      (e.clientY < rect.top    + threshold) __state_options_snippets_js.scrollSpeed = -Math.max(3, (rect.top    + threshold - e.clientY) / 4);
+  else if (e.clientY > rect.bottom - threshold) __state_options_snippets_js.scrollSpeed =  Math.max(3, (e.clientY - rect.bottom + threshold) / 4);
+  else __state_options_snippets_js.scrollSpeed = 0;
 
   startAutoScroll();
 

@@ -1,10 +1,11 @@
+
 // The browser locale is fixed for chrome.i18n. Load packaged message catalogs
 // when the user chooses a language for the options page.
-let selectedMessages = null;
-let selectedLocale = 'system';
-let localeLoadVersion = 0;
+export let selectedMessages = null;
+export let selectedLocale = 'system';
+export let localeLoadVersion = 0;
 
-function t(key, params = {}) {
+export function t(key, params = {}) {
   const i18nKey = key.replace(/\./g, '_');
   const substitutions = Array.isArray(params) ? params : [];
   let value = selectedMessages?.[i18nKey]?.message ||
@@ -22,7 +23,7 @@ function t(key, params = {}) {
   return value;
 }
 
-function applyTranslations() {
+export function applyTranslations() {
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const value = t(el.getAttribute('data-i18n'));
     if (!value) return;
@@ -34,7 +35,7 @@ function applyTranslations() {
     : selectedLocale;
 }
 
-async function loadLocale(locale, notify = true) {
+export async function loadLocale(locale, notify = true) {
   const version = ++localeLoadVersion;
   let nextLocale = locale === 'ko' || locale === 'en' ? locale : 'system';
   let nextMessages = null;
@@ -55,3 +56,10 @@ async function loadLocale(locale, notify = true) {
   document.body.classList.remove('i18n-loading');
   if (notify && typeof window.onLocaleChange === 'function') window.onLocaleChange();
 }
+
+// Mutable module state is shared explicitly through accessors.
+export const moduleState = {
+  get selectedMessages() { return selectedMessages; }, set selectedMessages(value) { selectedMessages = value; },
+  get selectedLocale() { return selectedLocale; }, set selectedLocale(value) { selectedLocale = value; },
+  get localeLoadVersion() { return localeLoadVersion; }, set localeLoadVersion(value) { localeLoadVersion = value; },
+};

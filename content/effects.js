@@ -1,9 +1,13 @@
+import { DEFAULT_TOAST_DURATION_SECONDS, validateToastDuration } from '../language-core/src/index.ts';
+import { currentSnippetLocale, loadSnippetLocale, snippetMessage, createSnippetError } from '../utils/i18n.js';
+import { moduleState as __state_content_state_js } from './state.js';
+import { getCaretCoordinates } from './dom.js';
 // --- Visual Effects: Flash & Ripple Particles ---
 
-let snippetToast = null;
-let snippetToastTimer = null;
+export let snippetToast = null;
+export let snippetToastTimer = null;
 
-async function showSnippetError(error) {
+export async function showSnippetError(error) {
   const locale = currentSnippetLocale();
   await loadSnippetLocale(locale);
   let detail = (error?.messageKey && snippetMessage(error.messageKey, error.messageValues, locale))
@@ -22,7 +26,8 @@ async function showSnippetError(error) {
   showSnippetToast(message, '#f87171', true);
 }
 
-function showSnippetToast(message, color, tone = 'default') {
+export function showSnippetToast(message, color, tone = 'default', durationSeconds = DEFAULT_TOAST_DURATION_SECONDS) {
+  validateToastDuration(durationSeconds);
   const isError = tone === true || tone === 'error';
   const accent = String(color ?? '').trim();
   if (!accent || !CSS.supports('color', accent) || /^(inherit|initial|unset|revert|revert-layer|currentcolor)$/i.test(accent) || /\b(?:var|env)\s*\(/i.test(accent)) {
@@ -54,11 +59,11 @@ function showSnippetToast(message, color, tone = 'default') {
     snippetToast.host.remove();
     snippetToast = null;
     snippetToastTimer = null;
-  }, 6000);
+  }, Math.max(1, Math.round(durationSeconds * 1000)));
 }
 
-function triggerEffect(el, info) {
-  if (config?.showParticles === false) return;
+export function triggerEffect(el, info) {
+  if (__state_content_state_js.config?.showParticles === false) return;
 
   if (info.isInput) {
     el.classList.add('ss-replacement-flash');
@@ -81,7 +86,7 @@ function triggerEffect(el, info) {
   }
 }
 
-function showRipple(x, y) {
+export function showRipple(x, y) {
   const container = document.createElement('div');
   container.className = 'ss-ripple-container';
   container.style.left = `${x}px`;
@@ -105,3 +110,9 @@ function showRipple(x, y) {
   document.body.appendChild(container);
   setTimeout(() => container.remove(), 800);
 }
+
+// Mutable module state is shared explicitly through accessors.
+export const moduleState = {
+  get snippetToast() { return snippetToast; }, set snippetToast(value) { snippetToast = value; },
+  get snippetToastTimer() { return snippetToastTimer; }, set snippetToastTimer(value) { snippetToastTimer = value; },
+};

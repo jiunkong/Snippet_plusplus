@@ -1,8 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
+const fs = require('./helpers/source.cjs');
 const path = require('node:path');
-const vm = require('node:vm');
+const vm = require('./helpers/vm.cjs');
 
 const root = path.join(__dirname, '..');
 const page = fs.readFileSync(path.join(root, 'options.html'), 'utf8');
@@ -66,7 +66,7 @@ test('guide contents target every section once and all example toggles start clo
   assert.deepEqual(links, targets);
   assert.equal(new Set(targets).size, targets.length);
   assert.doesNotMatch(page, /<details class="guide-example"[^>]*\bopen(?:\s|>)/);
-  assert.ok(page.indexOf('options/highlight.js') < page.indexOf('options/guide.js'));
+  assert.match(fs.rawReadFileSync(path.join(root, 'options/guide.js'), 'utf8'), /from ['"]\.\/highlight\.js['"]/);
   for (const locale of ['ko', 'en']) {
     const catalog = JSON.parse(fs.readFileSync(path.join(root, `_locales/${locale}/messages.json`), 'utf8'));
     for (const [, key] of page.matchAll(/data-i18n="(guide_[^"]+)"/g)) assert.ok(catalog[key]?.message, `${locale}: ${key}`);

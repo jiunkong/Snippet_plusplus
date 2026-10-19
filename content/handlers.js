@@ -1,6 +1,13 @@
+import { getEditorSnapshot, withInternalEdit, insertRestoredText, editorMatchesSnapshot, selectEditableText, recordExpansion, settleEditableExpansionCaret, undoLastExpansion } from './expansion.js';
+import { processTemplate } from './template.js';
+import { showSnippetError, triggerEffect } from './effects.js';
+import { SnippetFragment } from '../language-core/src/index.ts';
+import { VISUAL_OPEN, VISUAL_CLOSE } from '../utils/constants.js';
+import { findNextPlaceholder, shiftVisualPlaceholders, getCaretContext, getEditorTarget, getTargetInfo, selectPlaceholder, placeCaretAtAutoCursor } from './dom.js';
+import { moduleState as __state_content_state_js } from './state.js';
 // --- Replacement Engine ---
 
-function showSnippetPrompt(message) {
+export function showSnippetPrompt(message, signal) {
   const activeEl = document.activeElement;
   let savedRange = null;
   let savedSelection = { start: 0, end: 0 };
@@ -43,7 +50,11 @@ function showSnippetPrompt(message) {
     const confirmBtn = overlay.querySelector('.spp-prompt-btn-confirm');
     const cancelBtn = overlay.querySelector('.spp-prompt-btn-cancel');
 
+    let finished = false;
     const finish = (val) => {
+      if (finished) return;
+      finished = true;
+      signal?.removeEventListener('abort', onAbort);
       document.body.removeChild(overlay);
       
       // 2. RESTORE SELECTION / FOCUS
@@ -62,7 +73,12 @@ function showSnippetPrompt(message) {
       setTimeout(() => resolve(val || ""), 20);
     };
 
+    const onAbort = () => finish('');
+    signal?.addEventListener('abort', onAbort, { once: true });
+    if (signal?.aborted) onAbort();
+
     setTimeout(() => {
+      if (finished) return;
       input.focus();
       input.select();
     }, 100);
@@ -90,7 +106,7 @@ function showSnippetPrompt(message) {
   });
 }
 
-function showSnippetChoice(title, options) {
+export function showSnippetChoice(title, options, signal) {
   const activeEl = document.activeElement;
   let savedRange = null;
   let savedSelection = { start: 0, end: 0 };
@@ -142,7 +158,11 @@ function showSnippetChoice(title, options) {
     const items = overlay.querySelectorAll('.spp-choice-item');
     const cancelBtn = overlay.querySelector('.spp-prompt-btn-cancel');
 
+    let finished = false;
     const finish = (val) => {
+      if (finished) return;
+      finished = true;
+      signal?.removeEventListener('abort', onAbort);
       document.body.removeChild(overlay);
       if (activeEl) {
         activeEl.focus();
@@ -185,6 +205,10 @@ function showSnippetChoice(title, options) {
       originalFinish(val);
     };
 
+    const onAbort = () => finishWithCleanup('');
+    signal?.addEventListener('abort', onAbort, { once: true });
+    if (signal?.aborted) onAbort();
+
     items.forEach(item => {
       item.onclick = () => finishWithCleanup(item.dataset.value);
       item.onmouseenter = () => updateActive(parseInt(item.dataset.index));
@@ -195,7 +219,7 @@ function showSnippetChoice(title, options) {
   });
 }
 
-async function selectAndReplace(el, info, context, triggerLength, replacement, args = {}, templateContext) {
+export async function selectAndReplace(el, info, context, triggerLength, replacement, args = {}, templateContext) {
   const selection = window.getSelection();
   const triggerText = context.textBefore.slice(-triggerLength);
   const triggerStart = context.textBefore.length - triggerLength;
@@ -286,7 +310,7 @@ async function selectAndReplace(el, info, context, triggerLength, replacement, a
   }
 
   // --- Shift existing placeholders if enabled ---
-  if (config.shiftCursorLevels && !replaceTriggerOnInsert) {
+  if (__state_content_state_js.config.shiftCursorLevels && !replaceTriggerOnInsert) {
     const newMaxLevel = processedReplacement.maxCursorLevel;
     if (newMaxLevel >= 0) {
       // Reserve every level used by the new snippet. Adding only the maximum
@@ -373,20 +397,20 @@ async function selectAndReplace(el, info, context, triggerLength, replacement, a
 }
 
 // --- Input Handler ---
-async function handleInput(event) {
-  if (isInternalEdit) return;
+export async function handleInput(event) {
+  if (__state_content_state_js.isInternalEdit) return;
   // Support for IME (Korean) and prevent aggressive reset
   if (event.inputType === 'insertText' || event.inputType === 'insertCompositionText') {
     if (event.data) {
-      typingSeqLength += event.data.length;
+      __state_content_state_js.typingSeqLength += event.data.length;
     }
   } else if (event.inputType === 'deleteContentBackward') {
-    typingSeqLength = Math.max(0, typingSeqLength - 1);
+    __state_content_state_js.typingSeqLength = Math.max(0, __state_content_state_js.typingSeqLength - 1);
   } else if (event.inputType === 'formatBold' || event.inputType === 'formatItalic') {
     // Ignore formatting events
   } else {
     if (event.inputType && (event.inputType.includes('delete') || event.inputType.includes('paste'))) {
-       typingSeqLength = 0;
+       __state_content_state_js.typingSeqLength = 0;
     }
   }
 
@@ -402,9 +426,9 @@ async function handleInput(event) {
   if (!context) return;
 
   // Any later edit invalidates the saved transaction.
-  if (lastExpansion && lastExpansion.el === el) lastExpansion = null;
+  if (__state_content_state_js.lastExpansion && __state_content_state_js.lastExpansion.el === el) __state_content_state_js.lastExpansion = null;
 
-  for (const snippet of snippets) {
+  for (const snippet of __state_content_state_js.snippets) {
     let match         = null;
     let triggerLength = 0;
 
@@ -418,8 +442,8 @@ async function handleInput(event) {
       }
     }
 
-    if (match && typingSeqLength >= triggerLength) {
-      typingSeqLength = 0;
+    if (match && __state_content_state_js.typingSeqLength >= triggerLength) {
+      __state_content_state_js.typingSeqLength = 0;
       const result = await selectAndReplace(el, info, context, triggerLength, snippet.replacement, match.groups || {}, {
         snippets: snippet.groupSnippets || [],
         stack: snippet.sourceSnippet ? [snippet.sourceSnippet] : []
@@ -451,18 +475,18 @@ async function handleInput(event) {
 }
 
 // --- Keydown Handler (Hotkey Navigation) ---
-function handleKeyDown(event) {
-  if (!event.isComposing && isHotkeyPressed(event, config.reloadSnippets) && typeof reloadSnippetSettings === 'function') {
+export function handleKeyDown(event) {
+  if (!event.isComposing && isHotkeyPressed(event, __state_content_state_js.config.reloadSnippets) && typeof reloadSettings === 'function') {
     event.preventDefault();
     event.stopPropagation();
-    if (!event.repeat) reloadSnippetSettings();
+    if (!event.repeat) reloadSettings();
     return;
   }
   const el   = getEditorTarget(event.target);
   const info = getTargetInfo(el);
   if (!info.isInput && !info.isEditable) return;
 
-  if (isHotkeyPressed(event, config.nextCursor)) {
+  if (isHotkeyPressed(event, __state_content_state_js.config.nextCursor)) {
     let foundPlaceholder = null;
 
     if (info.isInput) {
@@ -497,7 +521,7 @@ function handleKeyDown(event) {
 
   // Ctrl+Z also undoes the most recent snippet expansion, even for users
   // whose saved custom undo hotkey still uses the previous default.
-  if (isHotkeyPressed(event, config.undoExpansion) || isHotkeyPressed(event, 'Ctrl+Z')) {
+  if (isHotkeyPressed(event, __state_content_state_js.config.undoExpansion) || isHotkeyPressed(event, 'Ctrl+Z')) {
     if (undoLastExpansion()) {
       event.preventDefault();
       event.stopPropagation();
@@ -507,7 +531,7 @@ function handleKeyDown(event) {
 }
 
 // --- Hotkey Matching ---
-function isHotkeyPressed(event, hotkeyString) {
+export function isHotkeyPressed(event, hotkeyString) {
   if (!hotkeyString) return false;
   const parts    = hotkeyString.toLowerCase().split('+').map(p => p.trim());
   const needsCtrl  = parts.includes('ctrl');
@@ -525,7 +549,7 @@ function isHotkeyPressed(event, hotkeyString) {
   return keyPart && (event.key.toLowerCase() === keyPart || event.code?.toLowerCase() === `key${keyPart}`);
 }
 
-function placeExpansionCursor(el, info, result, fullText) {
+export function placeExpansionCursor(el, info, result, fullText) {
   if (info.isEditable && Number.isInteger(result.plainCaretOffset)) {
     el.focus({ preventScroll: true });
     selectEditableText(el, result.plainCaretOffset, result.plainCaretOffset);
@@ -546,14 +570,18 @@ function placeExpansionCursor(el, info, result, fullText) {
   }
 }
 
-// --- Initialization ---
-loadSettings();
+// Host bootstraps provide the appropriate settings source.
+export let reloadSettings = async () => {};
+export function initializeHandlers({ load = () => {}, reload = async () => {} } = {}) {
+  reloadSettings = reload;
+  load();
+  document.addEventListener('mousedown', () => { __state_content_state_js.typingSeqLength = 0; });
+  document.addEventListener('keydown', event => { if (event.key.startsWith('Arrow')) __state_content_state_js.typingSeqLength = 0; });
+  document.addEventListener('input', handleInput, true);
+  document.addEventListener('keydown', handleKeyDown, true);
+}
 
-// Interruption detection: reset typing sequence on mouse click or arrow keys
-document.addEventListener('mousedown', () => { typingSeqLength = 0; });
-document.addEventListener('keydown', (e) => {
-  if (e.key.startsWith('Arrow')) typingSeqLength = 0;
-});
-
-document.addEventListener('input',   handleInput,   true);
-document.addEventListener('keydown', handleKeyDown, true);
+// Mutable module state is shared explicitly through accessors.
+export const moduleState = {
+  get reloadSettings() { return reloadSettings; }, set reloadSettings(value) { reloadSettings = value; },
+};

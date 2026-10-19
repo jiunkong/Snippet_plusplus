@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_app_name__",
-  "version": "1.4.0",
+  "version": "2.0.0",
   "description": "__MSG_app_description__",
   "default_locale": "ko",
   "permissions": [
@@ -11,7 +11,7 @@
     "downloads"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "bundles/background.js"
   },
   "content_scripts": [
     {
@@ -23,21 +23,7 @@
         "styles/prompt.css"
       ],
       "js": [
-        "utils/constants.js",
-        "utils/config.js",
-        "utils/sync.js",
-        "utils/i18n.js",
-        "utils/triggers.js",
-        "content/fragment.js",
-        "content/evaluator.js",
-        "content/template-parser.js",
-        "content/state.js",
-        "content/settings.js",
-        "content/template.js",
-        "content/dom.js",
-        "content/expansion.js",
-        "content/effects.js",
-        "content/handlers.js"
+        "bundles/content.js"
       ],
       "run_at": "document_idle"
     }

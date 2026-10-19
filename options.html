@@ -251,6 +251,14 @@
                   </div>
                 </div>
 
+                <details id="group-diagnostics" class="group-diagnostics">
+                  <summary>
+                    <span class="group-diagnostics-title" data-i18n="group_diagnostics_title">오류 및 경고</span>
+                    <span id="group-diagnostics-counts" class="group-diagnostics-counts" aria-live="polite" aria-atomic="true"></span>
+                  </summary>
+                  <ul id="group-diagnostics-list" class="group-diagnostics-list"></ul>
+                </details>
+
                 <div class="disabled-sites-section">
                   <div class="section-header">
                     <div class="site-mode-selector" id="site-mode-selector">
@@ -306,7 +314,7 @@
                 <article class="guide-item">
                   <h3 data-i18n="guide_doc_plain_title">텍스트와 태그</h3>
                   <code class="guide-syntax">text {{expression}}</code>
-                  <p class="guide-desc" data-i18n="guide_doc_plain_desc">일반 텍스트는 그대로 삽입됩니다. 태그 안의 계산 결과는 텍스트로 바뀌어 삽입됩니다.</p>
+                  <p class="guide-desc" data-i18n="guide_doc_plain_desc">일반 텍스트는 그대로 삽입됩니다. {{…}} 안의 표현식 결과를 삽입하며, fragment의 실제 커서는 유지됩니다. null과 undefined는 아무 텍스트도 삽입하지 않습니다.</p>
                   <details class="guide-example">
                     <summary data-i18n="guide_doc_example">예제 보기</summary>
                     <div class="guide-example-content">
@@ -324,7 +332,7 @@
                 <article class="guide-item">
                   <h3 data-i18n="guide_doc_strings_title">문자열과 함수 인수</h3>
                   <code class="guide-syntax">&quot;text&quot; · &#x27;text&#x27; · function(arg1, arg2)</code>
-                  <p class="guide-desc" data-i18n="guide_doc_strings_desc">문자열은 큰따옴표 또는 작은따옴표로 감쌉니다. 함수의 인수는 쉼표로 구분합니다. 따옴표는 반드시 닫아야 하며, 문자열 안의 같은 따옴표 앞에는 역슬래시(\)를 붙입니다.</p>
+                  <p class="guide-desc" data-i18n="guide_doc_strings_desc">문자열은 큰따옴표 또는 작은따옴표로 감쌉니다. 문자열 안의 \"와 \'는 따옴표 한 문자, \\는 역슬래시 한 문자, \n은 줄바꿈, \t는 탭으로 변환됩니다. \d처럼 그 외의 이스케이프는 그대로 유지합니다. 함수 인수는 쉼표로 구분하고 따옴표는 반드시 닫아야 합니다.</p>
                   <details class="guide-example">
                     <summary data-i18n="guide_doc_example">예제 보기</summary>
                     <div class="guide-example-content">
@@ -337,6 +345,164 @@
                 </article>
               </div>
             </section>
+            <section class="guide-card" id="guide-types" aria-labelledby="guide-types-title">
+              <h2 id="guide-types-title" data-i18n="guide_doc_types_title">타입과 명시적 변환</h2>
+              <p class="guide-section-intro" data-i18n="guide_doc_types_intro">값의 타입과 변환 규칙을 먼저 알아두면 함수 인수와 커서 표현식을 정확하게 작성할 수 있습니다.</p>
+              <div class="guide-section">
+                <article class="guide-item">
+                  <h3 data-i18n="guide_doc_type_overview_title">사용할 수 있는 타입</h3>
+                  <div class="guide-table-scroll">
+                    <table class="guide-reference-table">
+                      <thead>
+                        <tr>
+                          <th data-i18n="guide_doc_type_column">타입</th>
+                          <th data-i18n="guide_doc_value_column">예시</th>
+                          <th data-i18n="guide_doc_meaning_column">의미</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <th scope="row">
+                            <code>string</code>
+                          </th>
+                          <td>
+                            <code>&quot;text&quot;</code>
+                          </td>
+                          <td data-i18n="guide_doc_type_string">따옴표로 감싼 텍스트·캡처 값</td>
+                        </tr>
+                        <tr>
+                          <th scope="row">
+                            <code>number</code>
+                          </th>
+                          <td>
+                            <code>123 · 1.5</code>
+                          </td>
+                          <td data-i18n="guide_doc_type_number">정수·소수</td>
+                        </tr>
+                        <tr>
+                          <th scope="row">
+                            <code>bool</code>
+                          </th>
+                          <td>
+                            <code>true · false</code>
+                          </td>
+                          <td data-i18n="guide_doc_type_bool">참·거짓</td>
+                        </tr>
+                        <tr>
+                          <th scope="row">
+                            <code>fragment</code>
+                          </th>
+                          <td>
+                            <code>`text{{#1}}`</code>
+                          </td>
+                          <td data-i18n="guide_doc_type_fragment">텍스트와 실제 커서를 함께 담는 값</td>
+                        </tr>
+                        <tr>
+                          <th scope="row">
+                            <code>list</code>
+                          </th>
+                          <td>
+                            <code>[1, &quot;a&quot;]</code>
+                          </td>
+                          <td data-i18n="guide_doc_type_list">여러 타입의 원소를 담는 순서 있는 목록</td>
+                        </tr>
+                        <tr>
+                          <th scope="row">
+                            <code>range</code>
+                          </th>
+                          <td>
+                            <code>1~3</code>
+                          </td>
+                          <td data-i18n="guide_doc_type_range">양 끝을 포함하는 정수 범위</td>
+                        </tr>
+                        <tr>
+                          <th scope="row">
+                            <code>null</code>
+                          </th>
+                          <td>
+                            <code>null</code>
+                          </td>
+                          <td data-i18n="guide_doc_type_null">명시적으로 비어 있는 값</td>
+                        </tr>
+                        <tr>
+                          <th scope="row">
+                            <code>undefined</code>
+                          </th>
+                          <td>
+                            <code>{{set $value}}</code>
+                          </td>
+                          <td data-i18n="guide_doc_type_undefined">선언만 한 변수·toast()의 반환값</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <p class="guide-desc" data-i18n="guide_doc_type_overview_desc">any는 매개변수에서 모든 타입을 허용한다는 뜻이며 실제 값의 타입이 아닙니다. unknown은 분석기가 타입을 확정하지 못했다는 표시입니다. string | number는 두 타입 중 하나가 될 수 있다는 추론 결과입니다.</p>
+                </article>
+                <article class="guide-item">
+                  <h3 data-i18n="guide_doc_type_value_title">값의 타입 확인</h3>
+                  <code class="guide-syntax">type(value)</code>
+                  <p class="guide-desc" data-i18n="guide_doc_type_value_desc">type(value)는 string, number, bool, fragment, list, range, null, undefined 중 타입 이름을 string으로 반환합니다. 캡처 변수와 스니펫 호출 매개변수는 string으로 시작하지만 set으로 다시 대입하면 타입이 바뀔 수 있습니다. 스니펫 호출의 반환값은 fragment입니다. 선언하지 않은 변수는 오류이며, 선언만 한 변수의 값은 undefined입니다.</p>
+                  <details class="guide-example">
+                    <summary data-i18n="guide_doc_example">예제 보기</summary>
+                    <div class="guide-example-content">
+                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
+                      <pre><code data-guide-language="template">{{type('42')}}
+{{type(num('42'))}}
+{{type(true)}}
+{{type(2~5)}}
+{{type(null)}}
+{{type(undefined)}}</code></pre>
+                      <div class="guide-code-label" data-i18n="guide_doc_result">결과</div>
+                      <pre><code>string
+number
+bool
+range
+null
+undefined</code></pre>
+                    </div>
+                  </details>
+                </article>
+                <article class="guide-item">
+                  <h3 data-i18n="guide_doc_cast_value_title">값의 형식 바꾸기</h3>
+                  <code class="guide-syntax">str(value) · num(value) · int(value)</code>
+                  <p class="guide-desc" data-i18n="guide_doc_cast_value_desc">str(value)는 string을 반환하며 fragment의 커서는 {{#번호}} 텍스트가 됩니다. num(value)는 숫자로 변환하고, int(value)는 텍스트 앞부분을 정수로 읽습니다. 예를 들어 int(&quot;10.5&quot;)는 10입니다. num·int에서 변환에 실패하면 0입니다. 이 함수들은 명시적 변환이므로 모든 타입을 인수로 받습니다.</p>
+                  <details class="guide-example">
+                    <summary data-i18n="guide_doc_example">예제 보기</summary>
+                    <div class="guide-example-content">
+                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
+                      <pre><code data-guide-language="template">{{int(&#x27;10.5&#x27;) + 1}}</code></pre>
+                      <div class="guide-code-label" data-i18n="guide_doc_result">결과</div>
+                      <pre><code>11</code></pre>
+                    </div>
+                  </details>
+                </article>
+                <article class="guide-item">
+                  <h3 data-i18n="guide_doc_bool_cast_title">bool로 변환하기</h3>
+                  <code class="guide-syntax">bool(value)</code>
+                  <p class="guide-desc" data-i18n="guide_doc_bool_cast_desc">bool(value)는 if와 같은 기준으로 참·거짓을 판정합니다. false, 숫자 0, NaN, null, undefined, 빈 문자열, 정확히 "false" 또는 "0"인 문자열은 false입니다. fragment는 문자열 표현으로 판정하므로 빈 fragment는 false, 커서만 있는 fragment는 true입니다. 빈 list와 range를 포함한 나머지 값은 true입니다. 반환값의 type()은 "bool"입니다.</p>
+                  <details class="guide-example">
+                    <summary data-i18n="guide_doc_example">예제 보기</summary>
+                    <div class="guide-example-content">
+                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
+                      <pre><code data-guide-language="template">{{bool("false")}} / {{bool(42)}} / {{bool(``)}} / {{bool(`{{#1}}`)}} / {{type(bool("yes"))}}</code></pre>
+                      <div class="guide-code-label" data-i18n="guide_doc_result">결과</div>
+                      <pre><code>false / true / false / true / bool</code></pre>
+                    </div>
+                  </details>
+                </article>
+                <article class="guide-item">
+                  <h3 data-i18n="guide_doc_strict_title">함수 인수는 자동 변환하지 않음</h3>
+                  <p class="guide-desc" data-i18n="guide_doc_strict_arguments_desc">함수 인수는 다른 타입으로 자동 변환되지 않습니다. 예를 들어 substr(1234, 1, 2) 대신 substr(str(1234), 1, 2)를 사용합니다. 캡처 변수는 string이므로 숫자 매개변수에는 num()이나 int()로 변환해서 전달합니다. join()의 리스트에는 string 또는 fragment만 넣을 수 있습니다.</p>
+                  <details class="guide-example">
+                    <summary data-i18n="guide_doc_example">예제 보기</summary>
+                    <div class="guide-example-content"><pre><code data-guide-language="template">{{substr(str(12345), 1, 2)}}</code></pre>
+                      <div class="guide-code-label" data-i18n="guide_doc_result">결과</div>
+                      <pre><code>23</code></pre>
+                    </div>
+                  </details>
+                </article>
+              </div>
+            </section>
             <section class="guide-card" id="guide-capture" aria-labelledby="guide-capture-title">
               <h2 id="guide-capture-title" data-i18n="guide_doc_capture_title">트리거에서 변수 받기</h2>
               <p class="guide-section-intro" data-i18n="guide_doc_capture_intro">입력한 텍스트의 일부를 변수에 담아 본문에서 재사용할 수 있습니다.</p>
@@ -344,7 +510,8 @@
                 <article class="guide-item">
                   <h3 data-i18n="guide_doc_capture_value_title">캡처와 변수 사용</h3>
                   <code class="guide-syntax">${name:regex:flags} → {{$name}}</code>
-                  <p class="guide-desc" data-i18n="guide_doc_capture_value_desc">트리거에 변수 이름과 정규표현식을 적고, 본문에서는 $이름으로 읽습니다. 플래그는 생략할 수 있습니다. 예를 들어 \d+는 한 자리 이상의 숫자를 받습니다.</p>
+                  <p class="guide-desc" data-i18n="guide_doc_capture_value_desc">트리거에는 ${name:regex:flags}, 본문에는 $name을 사용합니다. 숫자 모양으로 캡처해도 초기 타입은 string입니다. num() 또는 int()로 명시적으로 변환해 계산하세요. 플래그는 생략할 수 있고 ${name}은 공백이 아닌 텍스트를 캡처합니다.</p>
+                  <p class="guide-desc" data-i18n="guide_doc_capture_escape_desc">정규표현식의 중괄호 문자는 \{와 \}로 이스케이프합니다.</p>
                   <details class="guide-example">
                     <summary data-i18n="guide_doc_example">예제 보기</summary>
                     <div class="guide-example-content">
@@ -395,8 +562,8 @@
                 </article>
                 <article class="guide-item">
                   <h3 data-i18n="guide_doc_operators_title">계산과 비교</h3>
-                  <code class="guide-syntax">+  -  *  /  % · ==  !=  &gt;  &gt;=  &lt;  &lt;= · &amp;&amp;  ||  !</code>
-                  <p class="guide-desc" data-i18n="guide_doc_operators_desc">괄호로 계산 순서를 정합니다. 비교에는 ==를 사용하고, 여러 조건은 &amp;&amp;(그리고), ||(또는)로 연결합니다. 조건 ? 참일_때 : 거짓일_때 형식도 사용할 수 있습니다. 문자열에 0 이상의 정수를 곱하면 반복합니다. "ab" * 3 또는 3 * "ab"의 결과는 "ababab"입니다. 0번 반복하면 빈 문자열이 되며, *=에도 적용됩니다.</p>
+                  <code class="guide-syntax">+  -  *  /  % · ==  !=  &gt;  &gt;=  &lt;  &lt;= · &amp;&amp;  ||</code>
+                  <p class="guide-desc" data-i18n="guide_doc_operators_desc">괄호로 계산 순서를 정합니다. 비교는 ==·!=·&gt;·&gt;=·&lt;·&lt;=, 논리 연산은 &amp;&amp;·||를 사용하며 결과는 bool입니다. 논리 부정 연산자 !는 지원하지 않습니다. bool 값의 반대 여부는 == false로 비교하세요. 조건 ? 참일_때 : 거짓일_때에서 선택한 식만 실행하며 &amp;&amp;·||도 필요할 때만 오른쪽 식을 실행합니다. 문자열·fragment는 0 이상의 정수와 *로 반복할 수 있습니다. 함수 인수와 달리 연산자·조건식은 자체 규칙을 사용하므로 숫자 계산은 num()·int()로 타입을 명확히 하세요.</p>
                   <details class="guide-example">
                     <summary data-i18n="guide_doc_example">예제 보기</summary>
                     <div class="guide-example-content">
@@ -410,7 +577,7 @@
                 <article class="guide-item">
                   <h3 data-i18n="guide_doc_range_value_title">정수 범위(range)</h3>
                   <code class="guide-syntax">start~end</code>
-                  <p class="guide-desc" data-i18n="guide_doc_range_value_desc">양 끝을 포함하는 정수 범위입니다. 2~5는 2, 3, 4, 5를 뜻하며 5~2처럼 역순도 가능합니다. 양 끝에 변수나 계산식을 쓰고, 범위를 변수에 저장하거나 random(), for, 스니펫 함수에 전달할 수 있습니다.</p>
+                  <p class="guide-desc" data-i18n="guide_doc_range_value_desc">양 끝을 포함하는 정수 범위입니다. 2~5는 2, 3, 4, 5이며 5~2는 역순입니다. 양 끝에 number 변수나 계산식을 쓸 수 있고, 변수에 저장하거나 random()과 for에서 사용할 수 있습니다. 스니펫 호출 인수는 string만 허용하므로 range를 직접 전달할 수 없습니다.</p>
                   <details class="guide-example">
                     <summary data-i18n="guide_doc_example">예제 보기</summary>
                     <div class="guide-example-content">
@@ -424,61 +591,6 @@
                 <article class="guide-item">
                   <h3 data-i18n="guide_doc_iterable_title">반복 가능한 값(iterable)</h3>
                   <p class="guide-desc" data-i18n="guide_doc_iterable_desc">list, string, fragment는 iterable입니다. for로 원소를 순회하고 insertAt·removeAt으로 편집한 새 값을 만듭니다. range는 읽기 전용입니다. string은 유니코드 문자 단위이며, fragment는 유니코드 문자와 커서를 각각 원소 하나로 셉니다. type()은 list, string, fragment, range를 반환합니다.</p>
-                </article>
-                <article class="guide-item">
-                  <h3 data-i18n="guide_doc_fragment_title">스니펫 결과인 fragment</h3>
-                  <p class="guide-desc" data-i18n="guide_doc_fragment_desc">스니펫 호출은 텍스트와 커서 노드를 담은 fragment를 반환합니다. 변수와 매개변수로 전달해도 유지됩니다. +로 합치거나 *로 반복해도 커서가 보존됩니다. 문자열 조작 함수는 fragment도 지원하며 len·인덱스·for는 유니코드 문자와 커서를 각각 하나로 셉니다. str은 커서 문법까지 포함한 일반 문자열로 명시적으로 변환합니다.</p>
-                  <details class="guide-example" data-guide-snippets="[{&quot;name&quot;:&quot;field&quot;,&quot;trigger&quot;:&quot;/field&quot;,&quot;replacement&quot;:&quot;ab{{#1}}cd&quot;}]">
-                    <summary data-i18n="guide_doc_example">예제 보기</summary>
-                    <div class="guide-example-content">
-                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
-                      <pre><code data-guide-language="template">{{set $f = @field()}}{{type($f)}} / {{len($f)}} / {{str($f)}}</code></pre>
-                      <div class="guide-code-label" data-i18n="guide_doc_result">결과</div>
-                      <pre><code>fragment / 5 / ab{{#1}}cd</code></pre>
-                    </div>
-                  </details>
-                </article>
-                <article class="guide-item">
-                  <h3 data-i18n="guide_doc_fragment_literal_title">fragment 리터럴</h3>
-                  <code class="guide-syntax">`text{{#1}}`</code>
-                  <p class="guide-desc" data-i18n="guide_doc_fragment_literal_desc">백틱(`)으로 스니펫 본문을 감싸 fragment를 만듭니다. 본문과 같은 {{...}} 문법으로 커서 태그, 계산식, 변수, 분기·반복, 스니펫 호출을 사용할 수 있습니다. 현재 변수를 읽으며 리터럴 안의 대입은 바깥 변수에 영향을 주지 않습니다. 텍스트에서 \`은 백틱, \\는 역슬래시를 나타냅니다. 줄바꿈은 유지됩니다. 따옴표 문자열은 일반 텍스트이며 str(fragment)는 커서 문법까지 텍스트로 변환합니다.</p>
-                  <details class="guide-example">
-                    <summary data-i18n="guide_doc_example">예제 보기</summary>
-                    <div class="guide-example-content">
-                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
-                      <pre><code data-guide-language="template">{{set $f = `ab{{#1}}cd`}}{{type($f)}} / {{len($f)}} / {{hasCursor($f)}} / {{str($f)}}</code></pre>
-                      <div class="guide-code-label" data-i18n="guide_doc_result">결과</div>
-                      <pre><code>fragment / 5 / true / ab{{#1}}cd</code></pre>
-                    </div>
-                  </details>
-                </article>
-                <article class="guide-item">
-                  <h3 data-i18n="guide_doc_is_cursor_title">커서인지 확인하기</h3>
-                  <code class="guide-syntax">isCursor(value)</code>
-                  <p class="guide-desc" data-i18n="guide_doc_is_cursor_desc">isCursor(value)는 커서 노드 하나만 담은 fragment이면 true를 반환합니다. 일반 텍스트, 문자열의 커서 문법, 빈 fragment, 텍스트가 섞인 값, 커서가 여러 개인 값은 false입니다. fragment 반복문의 value나 인덱스로 가져온 원소를 검사할 때 사용합니다.</p>
-                  <details class="guide-example" data-guide-snippets="[{&quot;name&quot;:&quot;field&quot;,&quot;trigger&quot;:&quot;/field&quot;,&quot;replacement&quot;:&quot;ab{{#1}}cd&quot;}]">
-                    <summary data-i18n="guide_doc_example">예제 보기</summary>
-                    <div class="guide-example-content">
-                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
-                      <pre><code data-guide-language="template">{{for @field()}}{{if isCursor(value)}}[cursor]{{else}}{{value}}{{endif}}{{endfor}}</code></pre>
-                      <div class="guide-code-label" data-i18n="guide_doc_result">결과</div>
-                      <pre><code>ab[cursor]cd</code></pre>
-                    </div>
-                  </details>
-                </article>
-                <article class="guide-item">
-                  <h3 data-i18n="guide_doc_has_cursor_title">커서가 포함되어 있는지 확인하기</h3>
-                  <code class="guide-syntax">hasCursor(fragment)</code>
-                  <p class="guide-desc" data-i18n="guide_doc_has_cursor_desc">hasCursor(fragment)는 실제 커서 노드가 하나라도 있으면 true입니다. 텍스트가 섞이거나 커서가 여러 개여도 됩니다. 빈 fragment, 일반 텍스트, fragment가 아닌 값은 false입니다. 문자열의 커서 문법과 str(fragment)는 일반 텍스트입니다. isCursor(value)는 커서 노드 하나만 담긴 경우에만 true라는 차이가 있습니다.</p>
-                  <details class="guide-example" data-guide-snippets="[{&quot;name&quot;:&quot;field&quot;,&quot;trigger&quot;:&quot;/field&quot;,&quot;replacement&quot;:&quot;ab{{#1}}cd&quot;}]">
-                    <summary data-i18n="guide_doc_example">예제 보기</summary>
-                    <div class="guide-example-content">
-                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
-                      <pre><code data-guide-language="template">{{set $f = @field()}}{{isCursor($f)}} / {{hasCursor($f)}} / {{hasCursor(str($f))}}</code></pre>
-                      <div class="guide-code-label" data-i18n="guide_doc_result">결과</div>
-                      <pre><code>false / true / false</code></pre>
-                    </div>
-                  </details>
                 </article>
                 <article class="guide-item">
                   <h3 data-i18n="guide_doc_list_value_title">리스트 저장과 사용</h3>
@@ -526,7 +638,7 @@
                 <article class="guide-item">
                   <h3 data-i18n="guide_doc_list_insert_at_title">인덱스로 원소 삽입</h3>
                   <code class="guide-syntax">insertAt(iterable, index, value)</code>
-                  <p class="guide-desc" data-i18n="guide_doc_list_insert_at_desc">list·string·fragment의 index 앞에 값을 삽입합니다. list에는 원소 하나를, fragment에는 텍스트나 fragment 내용을 커서와 함께 넣습니다. string에 fragment를 삽입해도 fragment가 됩니다. len(target)은 맨 뒤, -1은 마지막 원소 앞입니다. 정수 인덱스만 허용하며 범위 밖이면 그대로입니다. string은 유니코드 문자 단위, fragment는 커서도 원소 하나로 셉니다. 읽기 전용 range에는 사용할 수 없습니다.</p>
+                  <p class="guide-desc" data-i18n="guide_doc_list_insert_at_desc">list·string·fragment의 정수 index 앞에 값을 삽입합니다. list에는 모든 타입의 원소 하나를 넣을 수 있지만 string·fragment 대상에는 string 또는 fragment만 넣을 수 있습니다. string에 fragment를 넣으면 결과도 fragment입니다. len(target)은 맨 뒤, -1은 마지막 원소 앞이며 범위 밖이면 그대로입니다. 원본은 바뀌지 않고 range에는 사용할 수 없습니다.</p>
                   <details class="guide-example">
                     <summary data-i18n="guide_doc_example">예제 보기</summary>
                     <div class="guide-example-content">
@@ -579,6 +691,81 @@ AB</code></pre>
                 <aside class="guide-note" data-i18n="guide_doc_scope">변수의 범위: 바깥에서 만든 변수는 블록 안에서도 수정할 수 있습니다. if·for·switch 블록 안에서 처음 만든 변수는 그 블록이 끝나면 사라집니다.</aside>
               </div>
             </section>
+            <section class="guide-card" id="guide-fragments" aria-labelledby="guide-fragments-title">
+              <h2 id="guide-fragments-title" data-i18n="guide_doc_fragments_title">fragment와 커서 보존</h2>
+              <p class="guide-section-intro" data-i18n="guide_doc_fragments_intro">커서를 포함한 본문을 값으로 다룰 때는 string 대신 fragment를 사용합니다.</p>
+              <div class="guide-section">
+                <article class="guide-item">
+                  <h3 data-i18n="guide_doc_fragment_title">스니펫 결과인 fragment</h3>
+                  <p class="guide-desc" data-i18n="guide_doc_fragment_desc">fragment는 일반 텍스트와 실제 커서를 함께 보관하는 값입니다. 백틱 리터럴과 스니펫 호출이 fragment를 만듭니다. 변수에 저장하거나 +로 연결하고 *로 반복해도 커서가 보존됩니다. len(), 인덱스 접근, for는 유니코드 문자와 커서를 각각 원소 하나로 셉니다. str()은 커서 문법까지 일반 문자열로 바꾸며, 스니펫 호출의 매개변수에는 string으로 변환해서 전달해야 합니다.</p>
+                  <details class="guide-example" data-guide-snippets="[{&quot;name&quot;:&quot;field&quot;,&quot;trigger&quot;:&quot;/field&quot;,&quot;replacement&quot;:&quot;ab{{#1}}cd&quot;}]">
+                    <summary data-i18n="guide_doc_example">예제 보기</summary>
+                    <div class="guide-example-content">
+                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
+                      <pre><code data-guide-language="template">{{set $f = @field()}}{{type($f)}} / {{len($f)}} / {{str($f)}}</code></pre>
+                      <div class="guide-code-label" data-i18n="guide_doc_result">결과</div>
+                      <pre><code>fragment / 5 / ab{{#1}}cd</code></pre>
+                    </div>
+                  </details>
+                </article>
+                <article class="guide-item">
+                  <h3 data-i18n="guide_doc_fragment_literal_title">fragment 리터럴</h3>
+                  <code class="guide-syntax">`text{{#1}}`</code>
+                  <p class="guide-desc" data-i18n="guide_doc_fragment_literal_desc">백틱(`) 안에 본문 문법을 적어 fragment를 만듭니다. {{…}}, 커서 태그, 분기·반복, 스니펫 호출을 사용할 수 있으며 안쪽 대입은 바깥 변수에 영향을 주지 않습니다. 백틱 본문에서는 \`과 \\만 각각 백틱·역슬래시로 변환됩니다. \n과 \t는 그대로이며 실제 줄바꿈은 유지됩니다. 태그 내부의 따옴표 문자열에는 문자열 이스케이프 규칙이 적용됩니다.</p>
+                  <details class="guide-example">
+                    <summary data-i18n="guide_doc_example">예제 보기</summary>
+                    <div class="guide-example-content">
+                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
+                      <pre><code data-guide-language="template">{{set $f = `ab{{#1}}cd`}}{{type($f)}} / {{len($f)}} / {{hasCursor($f)}} / {{str($f)}}</code></pre>
+                      <div class="guide-code-label" data-i18n="guide_doc_result">결과</div>
+                      <pre><code>fragment / 5 / true / ab{{#1}}cd</code></pre>
+                    </div>
+                  </details>
+                </article>
+                <article class="guide-item">
+                  <h3 data-i18n="guide_doc_fragment_cast_title">문자열을 fragment로 변환하기</h3>
+                  <code class="guide-syntax">fragment(value)</code>
+                  <p class="guide-desc" data-i18n="guide_doc_fragment_cast_desc">fragment(value)는 문자열을 백틱 리터럴과 같은 본문 문법으로 해석합니다. 커서 태그, 계산식, 변수, 분기·반복을 사용할 수 있습니다. 이미 fragment이면 그대로 반환합니다. 현재 변수를 읽으며 안쪽의 대입은 바깥 변수에 영향을 주지 않습니다. 그 외 값은 먼저 텍스트로 바꾸고 null과 undefined는 빈 텍스트로 처리합니다.</p>
+                  <details class="guide-example">
+                    <summary data-i18n="guide_doc_example">예제 보기</summary>
+                    <div class="guide-example-content">
+                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
+                      <pre><code data-guide-language="template">{{set $text = "ab{{#1}}cd", $f = fragment($text)}}{{type($f)}} / {{len($f)}} / {{hasCursor($f)}}</code></pre>
+                      <div class="guide-code-label" data-i18n="guide_doc_result">결과</div>
+                      <pre><code>fragment / 5 / true</code></pre>
+                    </div>
+                  </details>
+                </article>
+                <article class="guide-item">
+                  <h3 data-i18n="guide_doc_is_cursor_title">커서인지 확인하기</h3>
+                  <code class="guide-syntax">isCursor(fragment)</code>
+                  <p class="guide-desc" data-i18n="guide_doc_is_cursor_desc">isCursor(fragment)는 커서 하나로만 구성된 fragment이면 true를 반환합니다. 텍스트가 섞이거나 커서가 여러 개이면 false입니다. 빈 fragment나 텍스트만 있는 fragment도 false입니다. 인수는 fragment만 허용하며 string 등 다른 타입은 오류입니다. fragment 반복문의 value나 인덱스로 읽은 원소를 검사할 때 사용합니다.</p>
+                  <details class="guide-example" data-guide-snippets="[{&quot;name&quot;:&quot;field&quot;,&quot;trigger&quot;:&quot;/field&quot;,&quot;replacement&quot;:&quot;ab{{#1}}cd&quot;}]">
+                    <summary data-i18n="guide_doc_example">예제 보기</summary>
+                    <div class="guide-example-content">
+                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
+                      <pre><code data-guide-language="template">{{for @field()}}{{if isCursor(value)}}[cursor]{{else}}{{value}}{{endif}}{{endfor}}</code></pre>
+                      <div class="guide-code-label" data-i18n="guide_doc_result">결과</div>
+                      <pre><code>ab[cursor]cd</code></pre>
+                    </div>
+                  </details>
+                </article>
+                <article class="guide-item">
+                  <h3 data-i18n="guide_doc_has_cursor_title">커서가 포함되어 있는지 확인하기</h3>
+                  <code class="guide-syntax">hasCursor(fragment)</code>
+                  <p class="guide-desc" data-i18n="guide_doc_has_cursor_desc">hasCursor(fragment)는 실제 커서가 하나라도 포함되면 true, 없으면 false입니다. 텍스트가 섞이거나 커서가 여러 개여도 true입니다. 인수는 fragment만 허용합니다. isCursor()는 커서 하나로만 구성됐는지를 확인한다는 차이가 있습니다. 문자열이나 str(fragment)를 검사하려면 먼저 fragment()로 명시적으로 변환해야 하며, 이 변환은 텍스트를 본문 문법으로 다시 해석합니다.</p>
+                  <details class="guide-example" data-guide-snippets="[{&quot;name&quot;:&quot;field&quot;,&quot;trigger&quot;:&quot;/field&quot;,&quot;replacement&quot;:&quot;ab{{#1}}cd&quot;}]">
+                    <summary data-i18n="guide_doc_example">예제 보기</summary>
+                    <div class="guide-example-content">
+                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
+                      <pre><code data-guide-language="template">{{set $f = @field()}}{{isCursor($f)}} / {{hasCursor($f)}} / {{hasCursor(`plain text`)}}</code></pre>
+                      <div class="guide-code-label" data-i18n="guide_doc_result">결과</div>
+                      <pre><code>false / true / false</code></pre>
+                    </div>
+                  </details>
+                </article>
+              </div>
+            </section>
             <section class="guide-card" id="guide-cursors" aria-labelledby="guide-cursors-title">
               <h2 id="guide-cursors-title" data-i18n="guide_doc_cursors_title">커서 위치 지정</h2>
               <p class="guide-section-intro" data-i18n="guide_doc_cursors_intro">치환한 뒤 입력을 이어갈 위치와 이동 순서를 지정합니다. 다음·이전 위치로 이동하는 키는 일반 설정의 단축키를 따릅니다.</p>
@@ -586,7 +773,7 @@ AB</code></pre>
                 <article class="guide-item">
                   <h3 data-i18n="guide_doc_cursor_positions_title">고정 커서 위치</h3>
                   <code class="guide-syntax">{{#0}} · {{#1}} · {{cursor}}</code>
-                  <p class="guide-desc" data-i18n="guide_doc_cursor_positions_desc">작은 번호부터 이동하며 같은 번호는 같은 단계입니다. {{cursor}}와 {{#cursor}}는 0번 별칭입니다. 본문에 직접 작성한 태그만 커서를 만듭니다. 문자열·캡처·입력창·붙여넣기 값 안의 커서 문법은 일반 텍스트입니다.</p>
+                  <p class="guide-desc" data-i18n="guide_doc_cursor_positions_desc">작은 번호부터 이동하며 같은 번호는 같은 단계입니다. {{cursor}}와 {{#cursor}}는 0번 별칭입니다. 본문·백틱 리터럴·fragment()로 해석한 본문의 커서 태그가 실제 커서를 만듭니다. 일반 문자열·캡처·prompt()·paste() 값 안의 커서 문법은 그대로는 텍스트입니다.</p>
                   <details class="guide-example">
                     <summary data-i18n="guide_doc_example">예제 보기</summary>
                     <div class="guide-example-content">
@@ -600,7 +787,7 @@ Email: {{#1}}</code></pre>
                 <article class="guide-item">
                   <h3 data-i18n="guide_doc_cursor_dynamic_title">계산한 커서 위치</h3>
                   <code class="guide-syntax">{{# expression}}</code>
-                  <p class="guide-desc" data-i18n="guide_doc_cursor_dynamic_desc">0 이상의 정수가 되는 변수나 계산식으로 커서 번호를 지정합니다.</p>
+                  <p class="guide-desc" data-i18n="guide_doc_cursor_dynamic_desc">커서 번호는 0 이상의 안전한 정수인 number여야 합니다. string은 자동 변환하지 않으므로 캡처한 숫자는 num() 또는 int()로 변환해서 사용하세요.</p>
                   <details class="guide-example">
                     <summary data-i18n="guide_doc_example">예제 보기</summary>
                     <div class="guide-example-content">
@@ -619,7 +806,7 @@ Email: {{#1}}</code></pre>
                 <article class="guide-item">
                   <h3 data-i18n="guide_doc_if_branch_title">if · elif · else</h3>
                   <code class="guide-syntax">{{if condition}}…{{elif condition}}…{{else}}…{{endif}}</code>
-                  <p class="guide-desc" data-i18n="guide_doc_if_branch_desc">if 조건부터 확인하고 처음 참이 되는 본문을 사용합니다. elif와 else는 필요할 때만 추가합니다.</p>
+                  <p class="guide-desc" data-i18n="guide_doc_if_branch_desc">if부터 조건을 확인하고 처음 참이 되는 본문을 사용합니다. elif와 else는 선택 사항입니다. if·elif에는 조건식이 필요하며 {{if }}처럼 비워둘 수 없습니다. 조건 판정은 bool()과 같은 기준이고, 선택되지 않은 본문은 실행하지 않습니다.</p>
                   <details class="guide-example">
                     <summary data-i18n="guide_doc_example">예제 보기</summary>
                     <div class="guide-example-content">
@@ -702,7 +889,7 @@ Review\
                   </details>
                 </article>
                 <article class="guide-item">
-                  <h3 data-i18n="guide_doc_loop_iterable_title">리스트와 문자열 순회</h3>
+                  <h3 data-i18n="guide_doc_loop_iterable_title">list·string·fragment 순회</h3>
                   <code class="guide-syntax">{{for iterable}}…{{index}}…{{value}}…{{endfor}}</code>
                   <p class="guide-desc" data-i18n="guide_doc_loop_iterable_desc">iterable 반복에서 index는 0부터 시작하는 위치, value는 현재 원소입니다. fragment는 유니코드 문자 또는 커서 하나를 담은 fragment를 반환하므로 value를 출력하면 커서가 보존됩니다. 중첩 반복 후에는 바깥 index·value로 돌아옵니다. value는 $value와 별개입니다. 숫자 횟수 반복에서만 value와 index가 같습니다. 숫자 텍스트를 횟수로 쓰려면 num()이나 int()로 변환하세요.</p>
                   <details class="guide-example">
@@ -753,8 +940,8 @@ Review\
                 </article>
                 <article class="guide-item">
                   <h3 data-i18n="guide_doc_text_extract_title">길이·자르기·바꾸기</h3>
-                  <code class="guide-syntax">len(text) · substr(text, start, length) · replace(text, old, new)</code>
-                  <p class="guide-desc" data-i18n="guide_doc_text_extract_desc">len은 길이, substr은 지정 위치부터 원하는 길이의 값을 반환합니다. fragment는 유니코드 문자와 커서를 각각 원소 하나로 셉니다. substr·replace는 남아 있는 커서를 보존한 fragment를 반환합니다. replace는 처음 일치한 부분을 바꾸며 fragment의 대체 내용은 그대로 삽입합니다.</p>
+                  <code class="guide-syntax">len(text) · substr(text, start[, length]) · replace(text, old, new)</code>
+                  <p class="guide-desc" data-i18n="guide_doc_text_extract_desc">len은 iterable 길이를 number로 반환합니다. substr은 string 또는 fragment에서 number 시작 위치와 선택적인 길이를 받습니다. string의 substr 위치는 UTF-16 단위이며 fragment는 유니코드 문자와 커서를 각각 하나로 셉니다. replace는 처음 일치한 부분을 바꿉니다. fragment가 관련된 자르기·바꾸기는 커서를 보존합니다. 다른 타입은 자동 변환하지 않습니다.</p>
                   <details class="guide-example">
                     <summary data-i18n="guide_doc_example">예제 보기</summary>
                     <div class="guide-example-content">
@@ -782,7 +969,7 @@ Review\
                 <article class="guide-item">
                   <h3 data-i18n="guide_doc_join_title">리스트를 텍스트로 합치기</h3>
                   <code class="guide-syntax">join(list, separator)</code>
-                  <p class="guide-desc" data-i18n="guide_doc_join_desc">list 원소 사이에 구분자를 넣어 합칩니다. 원소나 구분자가 fragment이면 커서를 보존한 fragment를, 그 외에는 string을 반환합니다. null과 undefined 원소는 빈 텍스트가 됩니다.</p>
+                  <p class="guide-desc" data-i18n="guide_doc_join_desc">string 또는 fragment 원소만 담은 list와 string 또는 fragment 구분자를 받습니다. 원소 사이에 구분자를 넣어 합치며 원소나 구분자가 fragment이면 커서를 보존한 fragment, 아니면 string을 반환합니다. number·null·undefined 등은 자동 변환하지 않으므로 리스트에 넣기 전에 str()로 변환하세요.</p>
                   <details class="guide-example">
                     <summary data-i18n="guide_doc_example">예제 보기</summary>
                     <div class="guide-example-content">
@@ -796,7 +983,7 @@ Review\
                 <article class="guide-item">
                   <h3 data-i18n="guide_doc_includes_title">값이 포함되어 있는지 확인하기</h3>
                   <code class="guide-syntax">includes(iterable, value)</code>
-                  <p class="guide-desc" data-i18n="guide_doc_includes_desc">includes(iterable, value)는 텍스트에서 부분 문자열 또는 부분 fragment를 찾습니다. fragment의 실제 커서와 문자열의 커서 문법은 구분합니다. list는 타입 변환 없이 원소 전체를 값으로 비교하며 중첩 list·range·fragment도 비교합니다. range는 방향과 관계없이 정수가 양 끝 사이에 있는지 확인합니다. 빈 텍스트는 모든 텍스트에 포함됩니다. 텍스트 검색에서 다른 검색 값은 텍스트로 변환합니다.</p>
+                  <p class="guide-desc" data-i18n="guide_doc_includes_desc">string·fragment에서는 부분 텍스트를 검색하며 검색 값도 string 또는 fragment여야 합니다. 실제 커서와 문자열의 커서 문법은 구별합니다. list에서는 타입 변환 없이 원소 전체를 비교하므로 모든 타입을 검색할 수 있습니다. range에서는 number를 받아 양 끝 사이의 정수인지 확인합니다. 빈 텍스트는 모든 텍스트에 포함되며, 다른 타입을 텍스트로 자동 변환하지 않습니다.</p>
                   <details class="guide-example" data-guide-snippets="[{&quot;name&quot;:&quot;field&quot;,&quot;trigger&quot;:&quot;/field&quot;,&quot;replacement&quot;:&quot;ab{{#1}}cd&quot;}]">
                     <summary data-i18n="guide_doc_example">예제 보기</summary>
                     <div class="guide-example-content">
@@ -824,79 +1011,13 @@ Review\
               </div>
             </section>
             <section class="guide-card" id="guide-numbers" aria-labelledby="guide-numbers-title">
-              <h2 id="guide-numbers-title" data-i18n="guide_doc_numbers_title">타입과 숫자 다루기</h2>
-              <p class="guide-section-intro" data-i18n="guide_doc_numbers_intro">값의 타입을 확인하고, 숫자로 변환하거나 계산할 수 있습니다. 캡처한 숫자 문자열을 계산할 때는 먼저 숫자로 변환하세요.</p>
+              <h2 id="guide-numbers-title" data-i18n="guide_doc_numbers_title">숫자와 무작위 값</h2>
+              <p class="guide-section-intro" data-i18n="guide_doc_numbers_intro">number 값을 계산하거나, 후보·정수 범위에서 무작위 값을 고릅니다.</p>
               <div class="guide-section">
-                <article class="guide-item">
-                  <h3 data-i18n="guide_doc_type_value_title">값의 타입 확인</h3>
-                  <code class="guide-syntax">type(value)</code>
-                  <p class="guide-desc" data-i18n="guide_doc_type_value_desc">값의 타입을 string, fragment, number, bool, range, list, null, undefined 중 하나로 반환합니다. 스니펫 호출은 fragment를 반환합니다. 캡처 변수는 string이며 num()이나 int()로 변환하면 number가 됩니다. 정의하지 않은 변수는 오류입니다.</p>
-                  <details class="guide-example">
-                    <summary data-i18n="guide_doc_example">예제 보기</summary>
-                    <div class="guide-example-content">
-                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
-                      <pre><code data-guide-language="template">{{type('42')}}
-{{type(num('42'))}}
-{{type(true)}}
-{{type(2~5)}}
-{{type(null)}}
-{{type(undefined)}}</code></pre>
-                      <div class="guide-code-label" data-i18n="guide_doc_result">결과</div>
-                      <pre><code>string
-number
-bool
-range
-null
-undefined</code></pre>
-                    </div>
-                  </details>
-                </article>
-                <article class="guide-item">
-                  <h3 data-i18n="guide_doc_fragment_cast_title">문자열을 fragment로 변환하기</h3>
-                  <code class="guide-syntax">fragment(value)</code>
-                  <p class="guide-desc" data-i18n="guide_doc_fragment_cast_desc">fragment(value)는 문자열을 백틱 리터럴과 같은 본문 문법으로 해석합니다. 커서 태그, 계산식, 변수, 분기·반복을 사용할 수 있습니다. 이미 fragment이면 그대로 반환합니다. 현재 변수를 읽으며 안쪽의 대입은 바깥 변수에 영향을 주지 않습니다. 그 외 값은 먼저 텍스트로 바꾸고 null과 undefined는 빈 텍스트로 처리합니다.</p>
-                  <details class="guide-example">
-                    <summary data-i18n="guide_doc_example">예제 보기</summary>
-                    <div class="guide-example-content">
-                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
-                      <pre><code data-guide-language="template">{{set $text = "ab{{#1}}cd", $f = fragment($text)}}{{type($f)}} / {{len($f)}} / {{hasCursor($f)}}</code></pre>
-                      <div class="guide-code-label" data-i18n="guide_doc_result">결과</div>
-                      <pre><code>fragment / 5 / true</code></pre>
-                    </div>
-                  </details>
-                </article>
-                <article class="guide-item">
-                  <h3 data-i18n="guide_doc_bool_cast_title">bool로 변환하기</h3>
-                  <code class="guide-syntax">bool(value)</code>
-                  <p class="guide-desc" data-i18n="guide_doc_bool_cast_desc">bool(value)는 if와 같은 기준으로 참·거짓을 판정합니다. false, 숫자 0, NaN, null, undefined, 빈 문자열, 정확히 "false" 또는 "0"인 문자열은 false입니다. fragment는 문자열 표현으로 판정하므로 빈 fragment는 false, 커서만 있는 fragment는 true입니다. 빈 list와 range를 포함한 나머지 값은 true입니다. 반환값의 type()은 "bool"입니다.</p>
-                  <details class="guide-example">
-                    <summary data-i18n="guide_doc_example">예제 보기</summary>
-                    <div class="guide-example-content">
-                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
-                      <pre><code data-guide-language="template">{{bool("false")}} / {{bool(42)}} / {{bool(``)}} / {{bool(`{{#1}}`)}} / {{type(bool("yes"))}}</code></pre>
-                      <div class="guide-code-label" data-i18n="guide_doc_result">결과</div>
-                      <pre><code>false / true / false / true / bool</code></pre>
-                    </div>
-                  </details>
-                </article>
-                <article class="guide-item">
-                  <h3 data-i18n="guide_doc_cast_value_title">값의 형식 바꾸기</h3>
-                  <code class="guide-syntax">str(value) · num(value) · int(value)</code>
-                  <p class="guide-desc" data-i18n="guide_doc_cast_value_desc">str은 문자열로 바꿉니다. fragment의 커서 노드는 {{#번호}} 문법까지 일반 문자열로 변환하며 다시 커서로 해석하지 않습니다. num은 숫자로, int는 소수점 아래를 버린 정수로 바꿉니다.</p>
-                  <details class="guide-example">
-                    <summary data-i18n="guide_doc_example">예제 보기</summary>
-                    <div class="guide-example-content">
-                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
-                      <pre><code data-guide-language="template">{{int(&#x27;10.5&#x27;) + 1}}</code></pre>
-                      <div class="guide-code-label" data-i18n="guide_doc_result">결과</div>
-                      <pre><code>11</code></pre>
-                    </div>
-                  </details>
-                </article>
                 <article class="guide-item">
                   <h3 data-i18n="guide_doc_math_value_title">반올림과 최솟값·최댓값</h3>
                   <code class="guide-syntax">round(n) · ceil(n) · floor(n) · min(a, b, …) · max(a, b, …)</code>
-                  <p class="guide-desc" data-i18n="guide_doc_math_value_desc">round는 반올림, ceil은 올림, floor는 내림입니다. min과 max는 전달한 값 중 가장 작거나 큰 값을 고릅니다.</p>
+                  <p class="guide-desc" data-i18n="guide_doc_math_value_desc">round는 반올림, ceil은 올림, floor는 내림입니다. min과 max는 하나 이상의 number 인수 중 가장 작거나 큰 값을 반환합니다. 모든 인수는 number여야 하므로 숫자 문자열은 num() 또는 int()로 먼저 변환하세요.</p>
                   <details class="guide-example">
                     <summary data-i18n="guide_doc_example">예제 보기</summary>
                     <div class="guide-example-content">
@@ -910,7 +1031,7 @@ undefined</code></pre>
                 <article class="guide-item">
                   <h3 data-i18n="guide_doc_random_value_title">범위나 목록에서 무작위 선택</h3>
                   <code class="guide-syntax">random(start~end) · random(a, b, …)</code>
-                  <p class="guide-desc" data-i18n="guide_doc_random_value_desc">range를 전달하면 양 끝을 포함한 무작위 정수를 반환합니다. 여러 인수를 전달하면 그중 하나를 고릅니다.</p>
+                  <p class="guide-desc" data-i18n="guide_doc_random_value_desc">range를 전달하면 양 끝을 포함한 무작위 정수를 반환합니다. 여러 인수를 전달하면 그중 하나를 고릅니다. 리스트를 하나의 인수로 넣으면 원소를 뽑는 대신 리스트 자체를 반환합니다.</p>
                   <details class="guide-example">
                     <summary data-i18n="guide_doc_example">예제 보기</summary>
                     <div class="guide-example-content">
@@ -935,106 +1056,7 @@ undefined</code></pre>
                 </article>
               </div>
             </section>
-            <section class="guide-card" id="guide-system" aria-labelledby="guide-system-title">
-              <h2 id="guide-system-title" data-i18n="guide_doc_system_title">날짜·페이지·클립보드</h2>
-              <p class="guide-section-intro" data-i18n="guide_doc_system_intro">현재 시각이나 치환을 실행하는 페이지의 정보를 가져옵니다.</p>
-              <div class="guide-section">
-                <article class="guide-item">
-                  <h3 data-i18n="guide_doc_date_value_title">날짜와 시간</h3>
-                  <code class="guide-syntax">date(format) · time(format) · datetime(format)</code>
-                  <p class="guide-desc" data-i18n="guide_doc_date_value_desc">형식을 생략하면 기본 형식을 사용합니다. YYYY·MM·DD는 날짜, HH·mm·ss는 시각, ddd·dddd는 요일입니다. 대소문자를 구분합니다.</p>
-                  <details class="guide-example">
-                    <summary data-i18n="guide_doc_example">예제 보기</summary>
-                    <div class="guide-example-content">
-                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
-                      <pre><code data-guide-language="template">{{date(&#x27;YYYY/MM/DD&#x27;)}} {{time(&#x27;HH:mm&#x27;)}}</code></pre>
-                      <p class="guide-example-note" data-i18n="guide_doc_date_note">실행한 시점의 날짜와 시각을 표시합니다.</p>
-                    </div>
-                  </details>
-                </article>
-                <article class="guide-item">
-                  <h3 data-i18n="guide_doc_page_value_title">현재 페이지 정보</h3>
-                  <code class="guide-syntax">url() · domain() · title()</code>
-                  <p class="guide-desc" data-i18n="guide_doc_page_value_desc">현재 페이지의 전체 주소, 도메인, 제목을 가져옵니다.</p>
-                  <details class="guide-example">
-                    <summary data-i18n="guide_doc_example">예제 보기</summary>
-                    <div class="guide-example-content">
-                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
-                      <pre><code data-guide-language="template">{{title()}}
-{{url()}}</code></pre>
-                    </div>
-                  </details>
-                </article>
-                <article class="guide-item">
-                  <h3 data-i18n="guide_doc_paste_value_title">클립보드에서 붙여넣기</h3>
-                  <code class="guide-syntax">paste()</code>
-                  <p class="guide-desc" data-i18n="guide_doc_paste_value_desc">클립보드의 텍스트를 가져와 삽입합니다.</p>
-                  <details class="guide-example">
-                    <summary data-i18n="guide_doc_example">예제 보기</summary>
-                    <div class="guide-example-content">
-                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
-                      <pre><code data-guide-language="template">Pasted: {{paste()}}</code></pre>
-                    </div>
-                  </details>
-                </article>
-                <article class="guide-item">
-                  <h3 data-i18n="guide_doc_copy_value_title">클립보드에 복사하기</h3>
-                  <code class="guide-syntax">copy(value)</code>
-                  <p class="guide-desc" data-i18n="guide_doc_copy_value_desc">값을 문자열로 바꾸어 클립보드에 복사합니다. 변수·계산식·스니펫 함수의 결과도 전달할 수 있으며, 본문에는 아무것도 삽입하지 않습니다.</p>
-                  <details class="guide-example">
-                    <summary data-i18n="guide_doc_example">예제 보기</summary>
-                    <div class="guide-example-content">
-                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
-                      <pre><code data-guide-language="template">{{copy('Hello, Guest!')}}</code></pre>
-                      <p class="guide-example-note" data-i18n="guide_doc_copy_note">클립보드에 Hello, Guest!를 복사합니다. {{copy(upper('hello'))}}처럼 계산한 값을 복사할 수도 있습니다.</p>
-                    </div>
-                  </details>
-                </article>
-              </div>
-            </section>
-            <section class="guide-card" id="guide-interaction" aria-labelledby="guide-interaction-title">
-              <h2 id="guide-interaction-title" data-i18n="guide_doc_interaction_title">입력받기·알림 표시</h2>
-              <p class="guide-section-intro" data-i18n="guide_doc_interaction_intro">치환 중에 값을 입력받거나 토스트 알림을 표시할 수 있습니다.</p>
-              <div class="guide-section">
-                <article class="guide-item">
-                  <h3 data-i18n="guide_doc_prompt_value_title">텍스트 입력받기</h3>
-                  <code class="guide-syntax">prompt(message)</code>
-                  <p class="guide-desc" data-i18n="guide_doc_prompt_value_desc">입력창을 띄우고 사용자가 입력한 값을 반환합니다. 취소하면 치환을 중단하고 원래 트리거를 복원합니다.</p>
-                  <details class="guide-example">
-                    <summary data-i18n="guide_doc_example">예제 보기</summary>
-                    <div class="guide-example-content">
-                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
-                      <pre><code data-guide-language="template">Hello, {{prompt(&#x27;Name&#x27;)}}!</code></pre>
-                    </div>
-                  </details>
-                </article>
-                <article class="guide-item">
-                  <h3 data-i18n="guide_doc_choice_value_title">목록에서 선택받기</h3>
-                  <code class="guide-syntax">choice(title, option1, option2, …)</code>
-                  <p class="guide-desc" data-i18n="guide_doc_choice_value_desc">선택 메뉴를 띄우고 고른 항목을 반환합니다. 숫자키 1~9로도 선택할 수 있습니다.</p>
-                  <details class="guide-example">
-                    <summary data-i18n="guide_doc_example">예제 보기</summary>
-                    <div class="guide-example-content">
-                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
-                      <pre><code data-guide-language="template">Priority: {{choice(&#x27;Priority&#x27;, &#x27;Low&#x27;, &#x27;Normal&#x27;, &#x27;High&#x27;)}}</code></pre>
-                    </div>
-                  </details>
-                </article>
-                <article class="guide-item">
-                  <h3 data-i18n="guide_doc_toast_value_title">토스트 알림</h3>
-                  <code class="guide-syntax">toast(message, color)</code>
-                  <p class="guide-desc" data-i18n="guide_doc_toast_value_desc">메시지와 CSS 색상으로 6초간 알림을 표시합니다. 본문에는 아무것도 삽입하지 않습니다. 색상은 #22c55e, red, rgb(...) 등을 사용할 수 있고, 새 알림은 이전 알림을 대체합니다.</p>
-                  <details class="guide-example">
-                    <summary data-i18n="guide_doc_example">예제 보기</summary>
-                    <div class="guide-example-content">
-                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
-                      <pre><code data-guide-language="template">{{toast(&#x27;Done&#x27;, &#x27;#22c55e&#x27;)}}</code></pre>
-                      <p class="guide-example-note" data-i18n="guide_doc_toast_note">Done 알림이 초록색 강조로 표시됩니다.</p>
-                    </div>
-                  </details>
-                </article>
-              </div>
-            </section>
+
             <section class="guide-card" id="guide-calls" aria-labelledby="guide-calls-title">
               <h2 id="guide-calls-title" data-i18n="guide_doc_calls_title">다른 스니펫을 함수로 호출하기</h2>
               <p class="guide-section-intro" data-i18n="guide_doc_calls_intro">같은 그룹에 있는 스니펫의 본문을 재사용합니다. 서브그룹이 달라도 호출할 수 있습니다.</p>
@@ -1042,7 +1064,7 @@ undefined</code></pre>
                 <article class="guide-item">
                   <h3 data-i18n="guide_doc_snippet_call_title">이름으로 호출하고 인수 전달</h3>
                   <code class="guide-syntax">{{@hello(&#x27;Guest&#x27;)}}</code>
-                  <p class="guide-desc" data-i18n="guide_doc_snippet_call_desc">@ 뒤에 스니펫 이름을 적습니다. 호출할 스니펫의 트리거에 정의한 캡처 변수가 왼쪽부터 매개변수가 되며, 인수 개수가 일치해야 합니다. 이름이 없거나 중복되면 오류입니다. 본문의 함수 이름을 더블클릭하면 해당 스니펫으로 이동합니다.</p>
+                  <p class="guide-desc" data-i18n="guide_doc_snippet_call_desc">@ 뒤에 스니펫 이름을 적습니다. 호출할 스니펫의 트리거에 정의한 캡처 변수가 왼쪽부터 매개변수가 되며, 인수 개수가 일치해야 합니다. 모든 인수는 string이어야 하며, 다른 타입은 str()로 명시적으로 변환해야 합니다. 이름이 없거나 중복되면 오류입니다. 본문의 함수 이름을 더블클릭하면 해당 스니펫으로 이동합니다.</p>
                   <details class="guide-example" data-guide-snippets="[{&quot;name&quot;: &quot;hello&quot;, &quot;trigger&quot;: &quot;/hello ${name:\\w+}&quot;, &quot;replacement&quot;: &quot;Hello, {{$name}}!&quot;}]">
                     <summary data-i18n="guide_doc_example">예제 보기</summary>
                     <div class="guide-example-content">
@@ -1102,6 +1124,106 @@ undefined</code></pre>
                 <aside class="guide-note" data-i18n="guide_doc_call_scope">호출한 스니펫은 전달받은 인수로 별도의 변수 범위를 사용합니다. 호출자의 변수를 자동으로 공유하지 않으며, 재귀 호출은 허용하지 않습니다.</aside>
               </div>
             </section>
+            <section class="guide-card" id="guide-system" aria-labelledby="guide-system-title">
+              <h2 id="guide-system-title" data-i18n="guide_doc_system_title">날짜·페이지·클립보드</h2>
+              <p class="guide-section-intro" data-i18n="guide_doc_system_intro">현재 시각이나 치환을 실행하는 페이지의 정보를 가져옵니다.</p>
+              <div class="guide-section">
+                <article class="guide-item">
+                  <h3 data-i18n="guide_doc_date_value_title">날짜와 시간</h3>
+                  <code class="guide-syntax">date([format]) · time([format]) · datetime([format])</code>
+                  <p class="guide-desc" data-i18n="guide_doc_date_value_desc">형식을 생략하면 기본 형식을 사용합니다. YYYY·MM·DD는 날짜, HH·mm·ss는 시각, ddd·dddd는 요일입니다. 대소문자를 구분합니다.</p>
+                  <details class="guide-example">
+                    <summary data-i18n="guide_doc_example">예제 보기</summary>
+                    <div class="guide-example-content">
+                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
+                      <pre><code data-guide-language="template">{{date(&#x27;YYYY/MM/DD&#x27;)}} {{time(&#x27;HH:mm&#x27;)}}</code></pre>
+                      <p class="guide-example-note" data-i18n="guide_doc_date_note">실행한 시점의 날짜와 시각을 표시합니다.</p>
+                    </div>
+                  </details>
+                </article>
+                <article class="guide-item">
+                  <h3 data-i18n="guide_doc_page_value_title">현재 페이지 정보</h3>
+                  <code class="guide-syntax">url() · domain() · title()</code>
+                  <p class="guide-desc" data-i18n="guide_doc_page_value_desc">현재 페이지의 전체 주소, 도메인, 제목을 가져옵니다.</p>
+                  <details class="guide-example">
+                    <summary data-i18n="guide_doc_example">예제 보기</summary>
+                    <div class="guide-example-content">
+                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
+                      <pre><code data-guide-language="template">{{title()}}
+{{url()}}</code></pre>
+                    </div>
+                  </details>
+                </article>
+                <article class="guide-item">
+                  <h3 data-i18n="guide_doc_paste_value_title">클립보드에서 붙여넣기</h3>
+                  <code class="guide-syntax">paste()</code>
+                  <p class="guide-desc" data-i18n="guide_doc_paste_value_desc">클립보드의 텍스트를 가져와 삽입합니다.</p>
+                  <details class="guide-example">
+                    <summary data-i18n="guide_doc_example">예제 보기</summary>
+                    <div class="guide-example-content">
+                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
+                      <pre><code data-guide-language="template">Pasted: {{paste()}}</code></pre>
+                    </div>
+                  </details>
+                </article>
+                <article class="guide-item">
+                  <h3 data-i18n="guide_doc_copy_value_title">클립보드에 복사하기</h3>
+                  <code class="guide-syntax">copy(value)</code>
+                  <p class="guide-desc" data-i18n="guide_doc_copy_value_desc">string 또는 fragment를 클립보드에 복사하고 빈 문자열을 반환합니다. fragment의 커서는 {{#번호}} 형태의 텍스트로 기록됩니다. 숫자 등 다른 타입은 str()로 명시적으로 변환하세요. 클립보드 쓰기에 실패하면 오류가 발생합니다.</p>
+                  <details class="guide-example">
+                    <summary data-i18n="guide_doc_example">예제 보기</summary>
+                    <div class="guide-example-content">
+                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
+                      <pre><code data-guide-language="template">{{copy('Hello, Guest!')}}</code></pre>
+                      <p class="guide-example-note" data-i18n="guide_doc_copy_note">클립보드에 Hello, Guest!를 복사합니다. {{copy(upper('hello'))}}처럼 계산한 값을 복사할 수도 있습니다.</p>
+                    </div>
+                  </details>
+                </article>
+              </div>
+            </section>
+            <section class="guide-card" id="guide-interaction" aria-labelledby="guide-interaction-title">
+              <h2 id="guide-interaction-title" data-i18n="guide_doc_interaction_title">입력받기·알림 표시</h2>
+              <p class="guide-section-intro" data-i18n="guide_doc_interaction_intro">치환 중에 값을 입력받거나 토스트 알림을 표시할 수 있습니다.</p>
+              <div class="guide-section">
+                <article class="guide-item">
+                  <h3 data-i18n="guide_doc_prompt_value_title">텍스트 입력받기</h3>
+                  <code class="guide-syntax">prompt(message)</code>
+                  <p class="guide-desc" data-i18n="guide_doc_prompt_value_desc">입력창을 띄우고 사용자가 입력한 값을 반환합니다. 취소하면 치환을 중단하고 원래 트리거를 복원합니다.</p>
+                  <details class="guide-example">
+                    <summary data-i18n="guide_doc_example">예제 보기</summary>
+                    <div class="guide-example-content">
+                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
+                      <pre><code data-guide-language="template">Hello, {{prompt(&#x27;Name&#x27;)}}!</code></pre>
+                    </div>
+                  </details>
+                </article>
+                <article class="guide-item">
+                  <h3 data-i18n="guide_doc_choice_value_title">목록에서 선택받기</h3>
+                  <code class="guide-syntax">choice(title, option1, option2, …)</code>
+                  <p class="guide-desc" data-i18n="guide_doc_choice_value_desc">선택 메뉴를 띄우고 고른 항목을 반환합니다. 숫자키 1~9로도 선택할 수 있습니다.</p>
+                  <details class="guide-example">
+                    <summary data-i18n="guide_doc_example">예제 보기</summary>
+                    <div class="guide-example-content">
+                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
+                      <pre><code data-guide-language="template">Priority: {{choice(&#x27;Priority&#x27;, &#x27;Low&#x27;, &#x27;Normal&#x27;, &#x27;High&#x27;)}}</code></pre>
+                    </div>
+                  </details>
+                </article>
+                <article class="guide-item">
+                  <h3 data-i18n="guide_doc_toast_value_title">토스트 알림</h3>
+                  <code class="guide-syntax">toast(message, color[, seconds])</code>
+                  <p class="guide-desc" data-i18n="guide_doc_toast_value_desc">메시지와 CSS 색상으로 알림을 표시합니다. 세 번째 인수로 표시 시간(초)을 지정하며 생략하면 6초입니다. undefined를 반환하며 본문에는 아무것도 삽입하지 않습니다. 색상은 #22c55e, red, rgb(...) 등을 사용할 수 있고, 새 알림은 이전 알림을 대체합니다.</p>
+                  <details class="guide-example">
+                    <summary data-i18n="guide_doc_example">예제 보기</summary>
+                    <div class="guide-example-content">
+                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
+                      <pre><code data-guide-language="template">{{toast(&#x27;Done&#x27;, &#x27;#22c55e&#x27;, 3)}}</code></pre>
+                      <p class="guide-example-note" data-i18n="guide_doc_toast_note">Done 알림이 초록색 강조로 3초간 표시됩니다.</p>
+                    </div>
+                  </details>
+                </article>
+              </div>
+            </section>
             <section class="guide-card" id="guide-formatting" aria-labelledby="guide-formatting-title">
               <h2 id="guide-formatting-title" data-i18n="guide_doc_formatting_title">줄바꿈·이전 문자 삭제</h2>
               <p class="guide-section-intro" data-i18n="guide_doc_formatting_intro">본문의 공백과 줄바꿈은 기본적으로 그대로 삽입됩니다.</p>
@@ -1137,47 +1259,65 @@ Hello, {{$name}}!</code></pre>
                 </article>
               </div>
             </section>
+            <section class="guide-card" id="guide-diagnostics" aria-labelledby="guide-diagnostics-title">
+              <h2 id="guide-diagnostics-title" data-i18n="guide_doc_diagnostics_title">타입 추론·오류·경고</h2>
+              <p class="guide-section-intro" data-i18n="guide_doc_diagnostics_intro">실행 전에 문제를 확인하고, 그룹 요약이나 툴팁에서 필요한 위치와 타입을 찾습니다.</p>
+              <div class="guide-section">
+                <article class="guide-item">
+                  <h3 data-i18n="guide_doc_inference_title">위치에 따라 달라지는 추론 타입</h3>
+                  <p class="guide-desc" data-i18n="guide_doc_inference_desc">변수 툴팁은 해당 위치에서 가능한 타입을 보여줍니다. 재대입·분기·반복에 따라 타입이 달라질 수 있습니다. 함수 이름에 마우스를 올리거나 호출을 작성하면 매개변수·반환 타입과 오버로드 후보를 볼 수 있습니다. 인수 타입이 정해지면 후보가 좁혀지며, 화살표로 전환하고 현재 입력 중인 매개변수를 확인할 수 있습니다. 스니펫 호출의 매개변수는 string, 반환값은 fragment입니다.</p>
+                </article>
+                <article class="guide-item">
+                  <h3 data-i18n="guide_doc_diagnostic_rules_title">오류와 경고의 차이</h3>
+                  <p class="guide-desc" data-i18n="guide_doc_diagnostic_rules_desc">허용 타입과 전혀 맞지 않으면 빨간 오류, 일부 타입만 맞거나 unknown이면 노란 경고입니다. 오류는 실행을 막습니다. 경고는 실행할 수 있지만 실제 값이 타입 규칙과 맞지 않으면 실행 중 오류가 납니다. 예를 들어 string | number를 string 매개변수로 전달하면 경고입니다.</p>
+                </article>
+                <article class="guide-item">
+                  <h3 data-i18n="guide_doc_diagnostic_navigation_title">그룹에서 문제 찾기</h3>
+                  <p class="guide-desc" data-i18n="guide_doc_diagnostic_navigation_desc">그룹 상단의 오류 및 경고를 접으면 건수를, 펼치면 스니펫별 메시지와 위치를 볼 수 있습니다. 항목을 클릭하면 검색 필터가 해제되고 스니펫·서브그룹이 펼쳐지며 해당 위치로 이동합니다. 접힌 스니펫이나 검색으로 숨긴 스니펫의 진단도 집계합니다.</p>
+                </article>
+              </div>
+            </section>
+            <section class="guide-card" id="guide-reference" aria-labelledby="guide-reference-title">
+              <h2 id="guide-reference-title" data-i18n="guide_doc_reference_title">내장 함수 타입 표</h2>
+              <p class="guide-section-intro" data-i18n="guide_doc_reference_intro">같은 이름의 함수라도 인수 타입에 따라 서로 다른 시그니처를 가집니다. 각 행은 오버로드 하나이며, 호출 툴팁은 입력한 인수에 맞는 후보만 보여줍니다.</p>
+              <div class="guide-section">
+                <p class="guide-note" data-i18n="guide_doc_reference_note">?는 선택 인수, ...는 가변 인수입니다. list&lt;string | fragment&gt;는 해당 타입의 원소만 담은 리스트이며 contains&lt;fragment&gt;는 fragment 원소가 하나 이상 필요하다는 뜻입니다. 툴팁의 이전·다음 화살표로 가능한 오버로드를 전환할 수 있습니다.</p>
+                <div class="guide-table-scroll">
+                  <table class="guide-reference-table">
+                    <thead>
+                      <tr>
+                        <th scope="col" data-i18n="guide_doc_function_column">함수</th>
+                        <th scope="col" data-i18n="guide_doc_parameter_column">매개변수</th>
+                        <th scope="col" data-i18n="guide_doc_return_column">반환 타입</th>
+                      </tr>
+                    </thead>
+                    <tbody id="guide-function-reference">
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
           </div>
           <nav class="guide-toc" aria-labelledby="guide-contents-title">
             <h2 id="guide-contents-title" data-i18n="guide_doc_contents">목차</h2>
             <ol>
-              <li>
-                <a href="#guide-start" data-i18n="guide_doc_start_title">기본 문법</a>
-              </li>
-              <li>
-                <a href="#guide-capture" data-i18n="guide_doc_capture_title">트리거에서 변수 받기</a>
-              </li>
-              <li>
-                <a href="#guide-values" data-i18n="guide_doc_values_title">변수·연산·범위·리스트</a>
-              </li>
-              <li>
-                <a href="#guide-cursors" data-i18n="guide_doc_cursors_title">커서 위치 지정</a>
-              </li>
-              <li>
-                <a href="#guide-conditions" data-i18n="guide_doc_conditions_title">조건에 따라 분기하기</a>
-              </li>
-              <li>
-                <a href="#guide-loops" data-i18n="guide_doc_loops_title">반복하기</a>
-              </li>
-              <li>
-                <a href="#guide-text" data-i18n="guide_doc_text_title">텍스트와 fragment 다루기</a>
-              </li>
-              <li>
-                <a href="#guide-numbers" data-i18n="guide_doc_numbers_title">타입과 숫자 다루기</a>
-              </li>
-              <li>
-                <a href="#guide-system" data-i18n="guide_doc_system_title">날짜·페이지·클립보드</a>
-              </li>
-              <li>
-                <a href="#guide-interaction" data-i18n="guide_doc_interaction_title">입력받기·알림 표시</a>
-              </li>
-              <li>
-                <a href="#guide-calls" data-i18n="guide_doc_calls_title">다른 스니펫을 함수로 호출하기</a>
-              </li>
-              <li>
-                <a href="#guide-formatting" data-i18n="guide_doc_formatting_title">줄바꿈·이전 문자 삭제</a>
-              </li>
-            </ol>
+              <li><a href="#guide-start" data-i18n="guide_doc_start_title">기본 문법</a></li>
+              <li><a href="#guide-types" data-i18n="guide_doc_types_title">타입과 명시적 변환</a></li>
+              <li><a href="#guide-capture" data-i18n="guide_doc_capture_title">트리거에서 변수 받기</a></li>
+              <li><a href="#guide-values" data-i18n="guide_doc_values_title">변수·연산·범위·리스트</a></li>
+              <li><a href="#guide-fragments" data-i18n="guide_doc_fragments_title">fragment와 커서 보존</a></li>
+              <li><a href="#guide-cursors" data-i18n="guide_doc_cursors_title">커서 위치 지정</a></li>
+              <li><a href="#guide-conditions" data-i18n="guide_doc_conditions_title">조건에 따라 분기하기</a></li>
+              <li><a href="#guide-loops" data-i18n="guide_doc_loops_title">반복하기</a></li>
+              <li><a href="#guide-text" data-i18n="guide_doc_text_title">텍스트와 fragment 다루기</a></li>
+              <li><a href="#guide-numbers" data-i18n="guide_doc_numbers_title">숫자와 무작위 값</a></li>
+              <li><a href="#guide-calls" data-i18n="guide_doc_calls_title">다른 스니펫을 함수로 호출하기</a></li>
+              <li><a href="#guide-system" data-i18n="guide_doc_system_title">날짜·페이지·클립보드</a></li>
+              <li><a href="#guide-interaction" data-i18n="guide_doc_interaction_title">입력받기·알림 표시</a></li>
+              <li><a href="#guide-formatting" data-i18n="guide_doc_formatting_title">줄바꿈·이전 문자 삭제</a></li>
+              <li><a href="#guide-diagnostics" data-i18n="guide_doc_diagnostics_title">타입 추론·오류·경고</a></li>
+              <li><a href="#guide-reference" data-i18n="guide_doc_reference_title">내장 함수 타입 표</a></li>
+</ol>
           </nav>
         </div>
       </section>
@@ -1205,28 +1345,11 @@ Hello, {{$name}}!</code></pre>
   </dialog>
 
   <!-- Options modules (load order matters: state first, main last) -->
-  <script src="utils/constants.js"></script>
-  <script src="utils/config.js"></script>
-  <script src="utils/sync.js"></script>
-  <script src="options/i18n.js"></script>
-  <script src="utils/triggers.js"></script>
-  <script src="options/state.js"></script>
-  <script src="options/dialog.js"></script>
-  <script src="options/timeout.js"></script>
-  <script src="options/file-format.js"></script>
-  <script src="options/storage.js"></script>
-  <script src="options/hotkeys.js"></script>
-  <script src="options/groups.js"></script>
-  <script src="options/highlight.js"></script>
-  <script src="options/guide.js"></script>
-  <script src="options/subgroups.js"></script>
-  <script src="options/snippets.js"></script>
-  <script src="options/tester.js"></script>
-  <script src="options/main.js"></script>
   <div id="status-message">
     <span class="status-icon"></span>
     <span class="status-text"></span>
   </div>
+  <script defer src="bundles/options.js"></script>
 </body>
 
 </html>

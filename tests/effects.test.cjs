@@ -1,8 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
+const fs = require('./helpers/source.cjs');
 const path = require('node:path');
-const vm = require('node:vm');
+const vm = require('./helpers/vm.cjs');
 
 function toastHarness() {
   const hosts = [];
@@ -117,7 +117,7 @@ test('selected language controls both toast and error details regardless of brow
   await assert.rejects(context.processTemplate('{{@Missing()}}', {}),
     exception => exception.message === catalogs.ko.err_snippet_call_target.message.replace('$1', 'Missing'));
   assert.throws(() => context.createRange(1.5, 3),
-    exception => exception.message === catalogs.ko.err_range_integer_bounds.message);
+    exception => exception.messageKey === 'err_range_integer_bounds');
 
   // Explicit English must also override a Korean browser after a settings change.
   context.chrome.i18n.getMessage = (key, values = []) => (catalogs.ko[key]?.message || '')

@@ -1,4 +1,13 @@
 {
+  "err_division_by_zero": {
+    "message": "Cannot divide by zero."
+  },
+  "err_remainder_by_zero": {
+    "message": "Cannot calculate a remainder with a zero divisor."
+  },
+  "err_number_nan": {
+    "message": "The numeric operation or conversion produced NaN."
+  },
   "err_string_repeat_count": {
     "message": "String repetition requires a non-negative safe integer count."
   },
@@ -30,7 +39,7 @@
     "message": "Join a list into text"
   },
   "guide_doc_join_desc": {
-    "message": "Combine list elements with a separator. If an element or the separator is a fragment, return a fragment and preserve its cursors; otherwise return a string. null and undefined elements become empty text."
+    "message": "Accepts a list containing only string or fragment items, plus a string or fragment separator. Returns a cursor-preserving fragment if an item or separator is a fragment; otherwise returns string. Numbers, null and undefined are not converted automatically; apply str() before adding them to the list."
   },
   "tabs_tester": {
     "message": "Snippet Test"
@@ -420,7 +429,7 @@
     "message": "Unknown tag: {{$1}}"
   },
   "err_trigger_arg_regex_required": {
-    "message": "Trigger argument definition requires regex (e.g. ${id:\\d+})"
+    "message": "An explicitly specified trigger regex cannot be empty (e.g. ${id:\\d+})."
   },
   "status_sync_conflict_confirm": {
     "message": "Synced settings changed on another device while you were editing. Press OK to use the remote settings, or Cancel to keep this device's settings."
@@ -453,13 +462,13 @@
     "message": "Text and tags"
   },
   "guide_doc_plain_desc": {
-    "message": "Plain text is inserted as written. A tag inserts the result of its expression."
+    "message": "Plain text is inserted as written. {{…}} inserts an expression result, preserving actual cursor nodes in fragments. null and undefined insert no text."
   },
   "guide_doc_strings_title": {
     "message": "Strings and function arguments"
   },
   "guide_doc_strings_desc": {
-    "message": "Wrap strings in double or single quotes. Separate function arguments with commas. Close every quote; escape a matching quote inside a string with a backslash (\\)."
+    "message": "Wrap strings in double or single quotes. Inside strings, \\\" and \\' produce literal quotes, \\\\ produces one backslash, \\n produces a newline, and \\t produces a tab. Other escapes such as \\d stay unchanged. Separate function arguments with commas and close every quote."
   },
   "guide_doc_start_title": {
     "message": "Template basics"
@@ -471,7 +480,7 @@
     "message": "Capture and reuse"
   },
   "guide_doc_capture_value_desc": {
-    "message": "Write a variable name and regular expression in the trigger, then read it as $name in the body. Flags are optional. For example, \\d+ captures one or more digits."
+    "message": "Use ${name:regex:flags} in a trigger and $name in the body. Every capture starts as string, even when it contains digits. Convert with num() or int() before numeric use. Flags are optional; ${name} captures non-space text."
   },
   "guide_doc_capture_title": {
     "message": "Capture trigger variables"
@@ -489,13 +498,13 @@
     "message": "Arithmetic and comparison"
   },
   "guide_doc_operators_desc": {
-    "message": "Use parentheses to control evaluation order. Compare with == and combine conditions with && (and) or || (or). A conditional expression uses condition ? value_if_true : value_if_false. Multiply a string by a non-negative integer to repeat it: \"ab\" * 3 or 3 * \"ab\" produces \"ababab\". Zero produces an empty string; *= also supports repetition."
+    "message": "Use parentheses for precedence. Comparisons ==, !=, >, >=, <, <= and logical &&/|| produce bool. Logical ! is unsupported; compare a bool value with == false to check its opposite. A ternary evaluates only its chosen expression; &&/|| evaluate the right side only when needed. Repeat strings/fragments with * and a non-negative integer. Operators and conditions use their own rules, distinct from strict function arguments; use num()/int() to make numeric calculations explicit."
   },
   "guide_doc_range_value_title": {
     "message": "Integer ranges"
   },
   "guide_doc_range_value_desc": {
-    "message": "A range includes both integer endpoints. 2~5 means 2, 3, 4, 5; 5~2 runs in reverse. Endpoints can be variables or expressions. Store a range in a variable or pass it to random(), for or a snippet function."
+    "message": "An inclusive integer range: 2~5 contains 2, 3, 4, 5; 5~2 reverses the order. Endpoints may be number variables or expressions. Store ranges in variables or use them with random() and for. Snippet-call arguments require string, so ranges cannot be passed directly."
   },
   "guide_doc_scope": {
     "message": "Variable scope: you can update an outer variable inside a block. A variable first created inside an if, for or switch block disappears when that block ends."
@@ -513,7 +522,7 @@
     "message": "Fixed cursor stops"
   },
   "guide_doc_cursor_positions_desc": {
-    "message": "Visit the lowest number first; equal numbers share a step. {{cursor}} and {{#cursor}} are aliases for zero. Only tags written in the snippet source create cursors. Cursor syntax inside strings, captures, prompts or pasted text remains literal."
+    "message": "Cursor stops follow ascending levels; equal levels share a step. {{cursor}} and {{#cursor}} are aliases for level 0. Cursor tags in bodies, backtick literals and template text interpreted by fragment() produce actual cursors. Ordinary strings, captures, prompt() and paste() results keep cursor syntax as text."
   },
   "guide_doc_cursor_dynamic_note": {
     "message": "Creates cursor stop 3 after Name."
@@ -522,7 +531,7 @@
     "message": "Computed cursor stops"
   },
   "guide_doc_cursor_dynamic_desc": {
-    "message": "Use a variable or expression that evaluates to a nonnegative integer."
+    "message": "The cursor level must be a non-negative safe integer of type number. Strings are not converted automatically; apply num() or int() to numeric captures."
   },
   "guide_doc_cursors_title": {
     "message": "Cursor positions"
@@ -537,7 +546,7 @@
     "message": "if · elif · else"
   },
   "guide_doc_if_branch_desc": {
-    "message": "Use the first true branch, starting with if. Add elif and else only when needed."
+    "message": "Use the first true branch, starting with if. elif and else are optional. if/elif require a condition; {{if }} is invalid. Conditions follow bool() rules, and unselected branches are not executed."
   },
   "guide_doc_switch_note": {
     "message": "A or B inserts Pass; any other value inserts Review. Line breaks outside case and default bodies are ignored, so no backslash (\\) is needed after switch, endcase or enddefault. The backslashes shown remove only line breaks within the selected body."
@@ -582,7 +591,7 @@
     "message": "Length, slicing and replacement"
   },
   "guide_doc_text_extract_desc": {
-    "message": "len returns the length. substr returns the requested length starting at the given position. For fragments, each Unicode character or cursor counts as one item. substr and replace return fragments and preserve remaining cursors; replace matches the first occurrence, with fragment replacements inserted literally."
+    "message": "len returns an iterable length as number. substr takes string or fragment, a number start, and an optional number count. String substr positions use UTF-16 units; fragments count each Unicode character or cursor as one item. replace changes the first match. Fragment slicing/replacement preserves remaining cursors. Other types are not automatically converted."
   },
   "guide_doc_text_match_title": {
     "message": "Check a prefix or suffix"
@@ -600,13 +609,13 @@
     "message": "Convert a value"
   },
   "guide_doc_cast_value_desc": {
-    "message": "str converts a value to a string. For fragments it writes cursor nodes as {{#number}} syntax; this becomes ordinary text and is never interpreted as cursors again. num converts to a number, and int truncates the fractional part."
+    "message": "str(value) returns string and serializes fragment cursors as {{#number}} text. num(value) converts to a number; int(value) parses the leading integer from its textual representation, so int(\"10.5\") is 10. A num/int conversion that produces NaN throws an error. These explicit conversion functions accept every argument type."
   },
   "guide_doc_math_value_title": {
     "message": "Rounding, minimum and maximum"
   },
   "guide_doc_math_value_desc": {
-    "message": "round rounds to the nearest integer, ceil rounds up, and floor rounds down. min and max select the smallest or largest argument."
+    "message": "round rounds, ceil rounds up, and floor rounds down. min/max return the smallest/largest of one or more number arguments. Every argument must be number; convert numeric strings with num() or int() first."
   },
   "guide_doc_random_note": {
     "message": "The first line is an integer from 1 to 6. The second is red, blue or green."
@@ -615,7 +624,7 @@
     "message": "Choose randomly from a range or list"
   },
   "guide_doc_random_value_desc": {
-    "message": "A range returns a random integer including both endpoints. Multiple arguments return one randomly chosen argument."
+    "message": "A range produces a random integer including both endpoints. Multiple arguments select one of them. A list passed as one argument is returned as a whole rather than selecting one of its items."
   },
   "guide_doc_uuid_value_title": {
     "message": "Generate an identifier"
@@ -624,10 +633,10 @@
     "message": "Generate a random UUID v4 identifier."
   },
   "guide_doc_numbers_title": {
-    "message": "Types and numbers"
+    "message": "Numbers and random values"
   },
   "guide_doc_numbers_intro": {
-    "message": "Inspect value types, convert values and perform calculations. Convert captured numeric strings before doing arithmetic."
+    "message": "Calculate number values or choose randomly from arguments and integer ranges."
   },
   "guide_doc_date_note": {
     "message": "Displays the date and time when the snippet runs."
@@ -663,13 +672,13 @@
     "message": "Open a menu and return the selected option. Number keys 1–9 also select options."
   },
   "guide_doc_toast_note": {
-    "message": "Shows a Done toast with a green accent."
+    "message": "Shows a Done toast with a green accent for three seconds."
   },
   "guide_doc_toast_value_title": {
     "message": "Show a toast"
   },
   "guide_doc_toast_value_desc": {
-    "message": "Display a message for six seconds using a CSS color. Inserts no text. Colors can be #22c55e, red or rgb(...). A new toast replaces the previous one."
+    "message": "Display a message using a CSS color. The optional third argument specifies the duration in seconds (default: 6). It must be a finite positive number, at most 2147483.647. Returns undefined and inserts no text. Colors can be #22c55e, red or rgb(...). Invalid arguments or display errors fail the call. A new toast replaces the previous one."
   },
   "guide_doc_interaction_title": {
     "message": "Prompts, choices and notifications"
@@ -681,7 +690,7 @@
     "message": "Call by name and pass arguments"
   },
   "guide_doc_snippet_call_desc": {
-    "message": "Write the snippet name after @. Captures in its trigger become parameters from left to right; the argument count must match. Missing or duplicate names cause an error. Double-click the function name in the body editor to jump to that snippet."
+    "message": "Write the snippet name after @. Captures in its trigger become parameters from left to right; the argument count must match. Missing or duplicate names cause an error. Double-click the function name in the body editor to jump to that snippet. Each parameter requires string, matching trigger captures. Other values must be converted explicitly, for example @hello(str(123))."
   },
   "guide_doc_quote_alternative": {
     "message": "Using single quotes for the name, @'hello world'(\"Guest\"), works the same way."
@@ -747,7 +756,7 @@
     "message": "Copy to the clipboard"
   },
   "guide_doc_copy_value_desc": {
-    "message": "Convert a value to text and copy it to the clipboard without inserting text into the body. Variables, expressions and snippet function results are supported."
+    "message": "Copies a string or fragment to the clipboard and returns an empty string. Fragment cursors are serialized as {{#number}} text. Convert numbers and other types explicitly with str(). Clipboard write failures raise an error."
   },
   "guide_doc_copy_note": {
     "message": "Copies Hello, Guest! to the clipboard. You can also copy a computed value, such as {{copy(upper('hello'))}}."
@@ -789,7 +798,7 @@
     "message": "Inspect the value type"
   },
   "guide_doc_type_value_desc": {
-    "message": "Return the value type as a string: string, fragment, number, bool, range, list, null or undefined. Snippet calls return fragments. Captured variables remain strings; num() and int() convert them to numbers. An undefined variable name causes an error."
+    "message": "type(value) returns a type name as string: string, number, bool, fragment, list, range, null or undefined. Captures and snippet-call parameters start as string, but reassignment with set may change a variable type. Snippet calls return fragment. Undeclared variables are errors; declared variables without a value contain undefined."
   },
   "guide_doc_declare_value_title": {
     "message": "Declare a variable without a value"
@@ -891,7 +900,7 @@
     "message": "Inserting an item by index"
   },
   "guide_doc_list_insert_at_desc": {
-    "message": "Insert a value before index in a list, string or fragment. A list receives one item. A fragment receives text or fragment content while preserving cursors; inserting a fragment into a string also returns a fragment. len(target) appends and -1 inserts before the last item. Indices must be integers; out-of-range indices leave contents unchanged. Strings count Unicode characters; fragments also count each cursor as one item. Readonly ranges are not supported."
+    "message": "Inserts before an integer index in a list, string or fragment. Lists accept one item of any type; string/fragment targets only accept string or fragment values. Inserting a fragment into a string produces a fragment. len(target) appends, -1 inserts before the last item, and out-of-bounds indices leave contents unchanged. The original is unchanged; ranges are unsupported."
   },
   "guide_doc_list_remove_at_title": {
     "message": "Removing an item by index"
@@ -918,7 +927,7 @@
     "message": "Lists, strings and fragments are iterable. for visits their items, and insertAt/removeAt return edited values. A range is readonly. Strings use Unicode code points; fragments count each Unicode character or cursor as one item. type() returns list, string, fragment or range."
   },
   "guide_doc_loop_iterable_title": {
-    "message": "Iterating lists and strings"
+    "message": "Iterate lists, strings and fragments"
   },
   "guide_doc_loop_iterable_desc": {
     "message": "For every iterable loop, index is the zero-based position and value is the current item. A fragment yields a one-item fragment for each Unicode character or cursor, so printing value preserves its cursor. Enclosing index/value are restored after nested loops. value is separate from $value. Numeric count loops make value equal to index. Use num() or int() to turn numeric text into a repetition count."
@@ -954,13 +963,13 @@
     "message": "Snippet results as fragments"
   },
   "guide_doc_fragment_desc": {
-    "message": "A snippet call returns a fragment containing text and cursor nodes. Variables and parameters preserve it. Concatenating with + or repeating with * preserves cursors. String operations support fragments, and len, indexing and for count each Unicode character or cursor as one item. str explicitly converts the fragment to ordinary text including its cursor syntax."
+    "message": "A fragment stores plain text and actual cursors together. Backtick literals and snippet calls produce fragments. Variables, + concatenation and * repetition preserve cursors. len(), indexing and for count each Unicode character or cursor as one item. str() serializes cursor syntax as ordinary text. Convert fragments to string before passing them as snippet-call arguments."
   },
   "guide_doc_is_cursor_title": {
     "message": "Check whether a value is a cursor"
   },
   "guide_doc_is_cursor_desc": {
-    "message": "isCursor(value) returns true only for a fragment containing exactly one cursor node. It returns false for text, literal cursor syntax, empty fragments, mixed content or multiple cursors. Use it with value in a fragment loop or with an indexed item."
+    "message": "isCursor(fragment) returns true only for a fragment containing exactly one cursor and nothing else. Mixed text, multiple cursors, empty fragments and text-only fragments return false. Only fragment arguments are accepted; string and other types are errors. Use it with fragment loop values or indexed items."
   },
   "err_includes_iterable_target": {
     "message": "The first argument to includes must be iterable (list, string, fragment or range)."
@@ -969,13 +978,13 @@
     "message": "Check whether a value is included"
   },
   "guide_doc_includes_desc": {
-    "message": "includes(iterable, value) searches for a substring or fragment within text. Fragment matches preserve cursor identity: a cursor node differs from literal cursor syntax. For lists, compare complete elements by value, including nested lists, ranges and fragments, without type conversion. For ranges, check whether an integer is between the endpoints in either direction. Empty text matches any text. Other search values are converted to text when searching text."
+    "message": "For string/fragment targets, searches for partial text and requires a string or fragment search value. Actual cursors differ from serialized cursor text. Lists compare entire items without type conversion and allow any search type. Ranges require number and check integer membership between the endpoints. Empty text matches any text; other types are not automatically converted to text."
   },
   "guide_doc_has_cursor_title": {
     "message": "Check whether a fragment contains cursors"
   },
   "guide_doc_has_cursor_desc": {
-    "message": "hasCursor(fragment) returns true when a fragment contains at least one actual cursor node, even among text or other cursors. Empty fragments, plain text and non-fragment values return false. Literal cursor syntax and str(fragment) are ordinary text. isCursor(value) instead requires exactly one cursor node."
+    "message": "hasCursor(fragment) returns true if at least one actual cursor is present, even alongside text or other cursors. Only fragment arguments are accepted. isCursor() instead requires exactly one cursor and nothing else. Strings, including str(fragment), require explicit fragment() conversion before checking; that conversion interprets text as template syntax again."
   },
   "err_unclosed_fragment_literal": {
     "message": "Close the fragment literal with a backtick (`)."
@@ -984,7 +993,7 @@
     "message": "Fragment literals"
   },
   "guide_doc_fragment_literal_desc": {
-    "message": "Wrap a snippet body in backticks (`) to create a fragment. Cursor tags, expressions, variables, branches, loops and snippet calls use the same {{...}} syntax as a snippet body. Evaluation reads the current variables; assignments inside the literal remain local. Use \\` for a literal backtick and \\\\ for a backslash in its text. Newlines are preserved. Quoted strings remain ordinary text, and str(fragment) serializes cursor syntax as text."
+    "message": "Backticks (`) create a fragment using body syntax: {{…}}, cursors, branches, loops and snippet calls. Inner assignments do not change outer variables. In backtick text, only \\` and \\\\ decode to a backtick and backslash. \\n and \\t stay literal; actual newlines are preserved. Quoted strings inside tags follow string escape rules."
   },
   "guide_doc_fragment_cast_title": {
     "message": "Convert text to a fragment"
@@ -996,6 +1005,93 @@
     "message": "Convert a value to bool"
   },
   "guide_doc_bool_cast_desc": {
-    "message": "bool(value) uses the same truth test as if. false, zero, NaN, null, undefined, empty text, and the exact strings \"false\" and \"0\" become false. Fragments are tested using their text representation, so an empty fragment is false and a cursor-only fragment is true. Other values, including empty lists and ranges, become true. type() returns \"bool\" for the result."
-  }
+    "message": "bool(value) uses the same truth test as if. false, zero, null, undefined, empty text, and the exact strings \"false\" and \"0\" become false. Fragments are tested using their text representation, so an empty fragment is false and a cursor-only fragment is true. Other values, including empty lists and ranges, become true. type() returns \"bool\" for the result. Numeric operations or conversions that produce NaN throw before this truth test."
+  },
+  "err_host_function_unavailable": {
+    "message": "The host does not support this function: $1"
+  },
+  "err_snippet_cancelled": {
+    "message": "Snippet execution cancelled."
+  },
+  "err_trigger_arg_unclosed": {
+    "message": "Trigger parameter is missing its closing }."
+  },
+  "err_trigger_arg_name": {
+    "message": "Invalid trigger parameter name: $1"
+  },
+  "err_trigger_arg_duplicate": {
+    "message": "Duplicate trigger parameter name: $1"
+  },
+  "err_trigger_regex_invalid": {
+    "message": "Invalid trigger regular expression: $1"
+  },
+  "guide_doc_capture_escape_desc": {
+    "message": "Use \\{ and \\} in a trigger regex to match literal braces. For example, ${text:\\{[^}]+\\}} captures {hello}. Quantifiers such as \\d{2,4} also work. ${name} without a regex captures one or more non-space characters."
+  },
+  "status_sync_changed": {"message": "Synced data changed in another environment. Reload settings before saving. Your edits have not been saved."},
+  "err_argument_type": {"message": "Argument $2 of $1() requires $3; argument type: $4."},
+  "warn_argument_type": {"message": "Argument $2 of $1() may have an incompatible type. Expected: $3; inferred: $4."},
+  "err_cursor_expression_type": {"message": "A cursor expression requires number; inferred type: $1."},
+  "warn_cursor_expression_type": {"message": "A cursor expression may have a type other than number. Inferred: $1."},
+  "err_cursor_offset_type": {"message": "A snippet cursor offset requires number; inferred type: $1."},
+  "warn_cursor_offset_type": {"message": "A snippet cursor offset may have a type other than number. Inferred: $1."},
+  "diagnostic_error": {"message": "Error"},
+  "diagnostic_warning": {"message": "Warning"},
+  "guide_doc_strict_arguments_desc": {"message": "Function arguments are not automatically converted to other types. For example, use substr(str(1234), 1, 2) instead of substr(1234, 1, 2). Captured variables start as string; use num() or int() for numeric parameters. join() accepts a list of strings or fragments."},
+  "group_diagnostics_title": {"message": "Errors and warnings"},
+  "group_diagnostics_error_count": {"message": "Errors: {count}"},
+  "group_diagnostics_warning_count": {"message": "Warnings: {count}"},
+  "group_diagnostics_empty": {"message": "No errors or warnings."},
+  "group_diagnostics_unnamed": {"message": "Unnamed snippet {number}"},
+  "group_diagnostics_body": {"message": "Body"},
+  "group_diagnostics_trigger": {"message": "Trigger"},
+  "group_diagnostics_location": {"message": "Line {line}, column {column}"},
+  "err_toast_args": {"message": "toast() requires a message, a color, and an optional duration in seconds."},
+  "err_toast_duration": {"message": "Toast duration must be a finite number greater than zero and at most 2147483.647 seconds."},
+  "signature_function": {"message": "Built-in function"},
+  "signature_snippet": {"message": "Snippet"},
+  "signature_return": {"message": "Returns"},
+  "signature_no_parameters": {"message": "No parameters"},
+  "signature_target_types": {"message": "Types by target"},
+  "err_condition_required": {"message": "The $1 tag requires a condition."},
+  "err_tag_expression_required": {"message": "The $1 tag requires an expression."},
+  "err_expression_required": {"message": "An expression is required."},
+  "guide_doc_types_title": {"message": "Types and explicit conversion"},
+  "guide_doc_types_intro": {"message": "Understand value types and conversion rules before writing function arguments and cursor expressions."},
+  "guide_doc_type_overview_title": {"message": "Available value types"},
+  "guide_doc_type_overview_desc": {"message": "any means a parameter accepts every type; it is not a runtime value type. unknown means analysis cannot determine the type. string | number means the result may have either type."},
+  "guide_doc_type_column": {"message": "Type"},
+  "guide_doc_value_column": {"message": "Example"},
+  "guide_doc_meaning_column": {"message": "Meaning"},
+  "guide_doc_type_string": {"message": "Quoted text and captures"},
+  "guide_doc_type_number": {"message": "Integers and decimals"},
+  "guide_doc_type_bool": {"message": "True or false"},
+  "guide_doc_type_fragment": {"message": "Text with actual cursor nodes"},
+  "guide_doc_type_list": {"message": "An ordered collection of arbitrary values"},
+  "guide_doc_type_range": {"message": "An inclusive integer range"},
+  "guide_doc_type_null": {"message": "An explicit empty value"},
+  "guide_doc_type_undefined": {"message": "An uninitialized variable or the result of toast()"},
+  "guide_doc_strict_title": {"message": "Function arguments are not converted automatically"},
+  "guide_doc_fragments_title": {"message": "Fragments and cursor preservation"},
+  "guide_doc_fragments_intro": {"message": "Use fragment to work with a body containing cursors as a value."},
+  "guide_doc_diagnostics_title": {"message": "Type inference, errors and warnings"},
+  "guide_doc_diagnostics_intro": {"message": "Inspect problems before execution and locate relevant types and source through the group overview and hovers."},
+  "guide_doc_inference_title": {"message": "Types depend on the source position"},
+  "guide_doc_inference_desc": {"message": "Variable hovers show possible types at that source position, accounting for reassignment, branches and loops. Hover a function name to see its parameter/return types and overload candidates. Known argument types narrow the candidates; use arrows to switch signatures. Snippet parameters are string and their return type is fragment."},
+  "guide_doc_diagnostic_rules_title": {"message": "Errors versus warnings"},
+  "guide_doc_diagnostic_rules_desc": {"message": "A wholly incompatible type is a red error. Partially compatible unions and unknown types produce yellow warnings. Errors prevent execution; warnings permit execution, but incompatible actual values still fail at runtime. Passing string | number to a string parameter produces a warning."},
+  "guide_doc_diagnostic_navigation_title": {"message": "Find problems in a group"},
+  "guide_doc_diagnostic_navigation_desc": {"message": "The group errors/warnings toggle shows counts when collapsed and messages by snippet when expanded. Click an entry to clear search, unfold its snippet/subgroup, and select the reported location. Folded and search-hidden snippets are included."},
+  "guide_doc_reference_title": {"message": "Built-in function types"},
+  "guide_doc_reference_intro": {"message": "A function can have distinct signatures for different argument types. Each row is one overload; call tooltips show only candidates compatible with the supplied arguments."},
+  "guide_doc_reference_note": {"message": "? marks optional arguments and ... marks variadic arguments. list<string | fragment> contains only those item types; contains<fragment> requires at least one fragment item. Use the tooltip arrows to switch between applicable overloads."},
+  "guide_doc_function_column": {"message": "Function"},
+  "guide_doc_parameter_column": {"message": "Parameters"},
+  "guide_doc_return_column": {"message": "Return type"},
+  "guide_doc_no_parameters": {"message": "None"},
+  "signature_overloads": {"message": "Function overloads"},
+  "signature_previous": {"message": "Previous signature"},
+  "signature_next": {"message": "Next signature"},
+  "signature_no_overload": {"message": "No overload matches the current arguments. Check the parameter types."},
+  "signature_required_elements": {"message": "Contains at least one {types} item"}
 }

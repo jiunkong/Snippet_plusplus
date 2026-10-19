@@ -1,9 +1,9 @@
 const { assertTemplateOutput } = require('./helpers/fragment.cjs');
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
+const fs = require('./helpers/source.cjs');
 const path = require('node:path');
-const vm = require('node:vm');
+const vm = require('./helpers/vm.cjs');
 const root = path.join(__dirname, '..');
 const context = vm.createContext({ t: (key, args = []) => `${key}:${args.join(',')}`, currentConfig: { visualizeNewlines: false } });
 for (const file of ['utils/constants.js', 'utils/triggers.js', 'utils/i18n.js', 'content/fragment.js', 'content/evaluator.js', 'content/template-parser.js', 'content/template.js', 'options/highlight.js']) {
@@ -127,7 +127,7 @@ test('split and join highlight builtins and reject wrong counts or empty argumen
     for (const args of ['', '"one"', '"a", "b", "c"', ', "b"', '"a",']) {
       const value = `{{${name}(${args})}}`;
       assert.equal(context.updateHighlight({ value }, highlight), `err_fn_two_args_exact:${name}`, value);
-      assert.throws(() => context.evaluateExpression(`${name}(${args})`, {}), error => error.messageKey === 'err_function_arguments');
+      assert.throws(() => context.evaluateExpression(`${name}(${args})`, {}), error => error.messageKey === 'err_fn_two_args_exact');
     }
   }
 });

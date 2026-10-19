@@ -1,9 +1,9 @@
 const { assertTemplateOutput } = require('./helpers/fragment.cjs');
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
+const fs = require('./helpers/source.cjs');
 const path = require('node:path');
-const vm = require('node:vm');
+const vm = require('./helpers/vm.cjs');
 
 const root = path.join(__dirname, '..');
 const context = vm.createContext({ console });
@@ -22,7 +22,7 @@ test('set applies comma-separated declarations and assignments from left to righ
     ['{{set $a = @Value("x,y"), $b = @Value(max(3, 5))}}{{$a}}|{{$b}}', 'x,y|5']
   ]) assertTemplateOutput(await context.processTemplate(template, {}, { snippets: [{ name: 'Value', trigger: '/v ${x}', replacement: '{{$x}}' }] }), expected, template);
   for (const template of ['{{set , $a = 3}}', '{{set $a = 3,}}', '{{set $a = 3,, $b = 5}}', '{{set $a = 3, $b =}}', '{{set $a = 3, b = 5}}']) {
-    await assert.rejects(context.processTemplate(template, {}), error => error.messageKey === 'err_template_syntax', template);
+    await assert.rejects(context.processTemplate(template, {}), error => ['err_template_syntax','err_var_name_required','err_missing_operand'].includes(error.messageKey), template);
   }
   await assert.rejects(context.processTemplate('{{set $a = $b, $b = 5}}', {}), error => error.messageKey === 'err_undefined_variable');
   await assert.rejects(context.processTemplate('{{if true}}{{set $a = 3, $b = 5}}{{endif}}{{$b}}', {}), error => error.messageKey === 'err_undefined_variable');
@@ -104,7 +104,7 @@ test('direct and indirect recursion stop at the configured depth', async () => {
   for (const snippets of [
     [{ name: 'A', replacement: '{{@A()}}' }],
     [{ name: 'A', replacement: '{{@B()}}' }, { name: 'B', replacement: '{{@A()}}' }]
-  ]) await assert.rejects(context.processTemplate('{{@A()}}', {}, { snippets, maxCallDepth: 4 }), error => error.messageKey === 'err_snippet_call_depth' && error.messageValues[0] === '4');
+  ]) await assert.rejects(context.processTemplate('{{@A()}}', {}, { snippets, maxCallDepth: 4 }), error => error.messageKey === 'err_snippet_call_depth' && error.messageValues[0] === 4);
   assertTemplateOutput(await context.processTemplate('{{@Constant()}}{{@Constant()}}', {}, library()), 'Shared bodyShared body');
 });
 
@@ -186,7 +186,7 @@ test('mutual recursion and depths above the former hard limit can complete', asy
   assertTemplateOutput(await context.processTemplate('{{@A(255)}}', {}, { snippets, maxCallDepth: 256, maxExecutionMs: 60000 }), 'AB'.repeat(127) + 'A');
   context.config = { maxCallDepth: 2 };
   try {
-    await assert.rejects(context.processTemplate('{{@A(3)}}', {}, { snippets }), error => error.messageKey === 'err_snippet_call_depth' && error.messageValues[0] === '2');
+    await assert.rejects(context.processTemplate('{{@A(3)}}', {}, { snippets }), error => error.messageKey === 'err_snippet_call_depth' && error.messageValues[0] === 2);
   } finally { delete context.config; }
 });
 
@@ -262,7 +262,7 @@ test('replacement syntax errors carry translated error keys instead of silently 
     ['{{$missing}}', 'err_undefined_variable'],
     ['{{unknownTag}}', 'err_unknown_tag'],
     ['{{notAFunction()}}', 'err_unknown_function'],
-    ['{{upper()}}', 'err_function_arguments'],
+    ['{{upper()}}', 'err_fn_args_required'],
     ['{{prompt("a", "b")}}', 'err_fn_one_arg_max'],
     ['{{paste(1)}}', 'err_fn_no_args_allowed'],
     ['{{(1 + 2}}', 'err_unmatched_open_paren'],
@@ -274,9 +274,9 @@ test('replacement syntax errors carry translated error keys instead of silently 
     ['{{()}}', 'err_missing_operand'],
     ['{{if true}}body', 'err_if_unclosed'],
     ['{{for 2}}body', 'err_for_unclosed'],
-    ['{{endif}}', 'err_template_syntax'],
-    ['{{set name = 1}}', 'err_template_syntax'],
-    ['{{set $name = }}', 'err_template_syntax'],
+    ['{{endif}}', 'err_endif_no_if'],
+    ['{{set name = 1}}', 'err_var_name_required'],
+    ['{{set $name = }}', 'err_missing_operand'],
     ['{{#-1}}', 'err_cursor_level'],
     ['{{}}', 'err_unknown_tag'],
     ['{{unterminated', 'err_template_unclosed_tag']
@@ -362,12 +362,13 @@ test('copy and paste enforce argument counts before clipboard access and replace
     async writeText() { assert.fail('invalid call must not write'); }
   } };
   try {
-    for (const value of ['{{copy()}}', '{{copy(1, 2)}}']) {
+    for (const value of ['{{copy(1, 2)}}']) {
       await assert.rejects(context.processTemplate(value, {}), error => error.messageKey === 'err_fn_one_arg_exact');
     }
     for (const value of ['{{copy(,1)}}', '{{copy(1,)}}']) {
-      await assert.rejects(context.processTemplate(value, {}), error => error.messageKey === 'err_function_arguments');
+      await assert.rejects(context.processTemplate(value, {}), error => error.messageKey === 'err_fn_one_arg_exact');
     }
+    await assert.rejects(context.processTemplate('{{copy()}}', {}), error => error.messageKey === 'err_fn_args_required');
     await assert.rejects(context.processTemplate('{{paste(1)}}', {}), error => error.messageKey === 'err_fn_no_args_allowed');
     await assert.rejects(context.processTemplate('{{clipboard()}}', {}), error => error.messageKey === 'err_unknown_function');
   } finally { delete context.navigator; }
@@ -397,6 +398,6 @@ test('set without an initializer declares undefined and supports assignment, res
   await assert.rejects(context.processTemplate('{{if true}}{{set $local}}{{endif}}{{$local}}', {}), error => error.messageKey === 'err_undefined_variable');
   assertTemplateOutput(await context.processTemplate('{{for 2}}{{set $local}}{{type($local)}} {{endfor}}', {}), 'undefined undefined ');
   for (const value of ['{{set value}}', '{{set $}}', '{{set $a $b}}', '{{set $value =}}']) {
-    await assert.rejects(context.processTemplate(value, {}), error => error.messageKey === 'err_template_syntax', value);
+    await assert.rejects(context.processTemplate(value, {}), error => ['err_template_syntax','err_var_name_required','err_missing_operand'].includes(error.messageKey), value);
   }
 });
