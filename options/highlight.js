@@ -5,11 +5,11 @@
  * and performs real-time syntax validation.
  * @returns {string} First error message found, or empty string if none.
  */
-function updateHighlight(textarea, highlightDiv, triggerValue = "", groupSnippets = null, sourceSnippetName = null) {
+function updateHighlight(textarea, highlightDiv, triggerValue = "", groupSnippets = null, sourceSnippetName = null, literalContext = {}) {
   let text = textarea.value;
   text = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-  const definedArgs = new Set();
+  const definedArgs = new Set(literalContext.variables || []);
   [...triggerValue.matchAll(/\$\{([\p{L}\p{N}_]+)(?::.*?)?\}/gu)].forEach(m => definedArgs.add(m[1]));
 
   // --- String-aware tag parser ---
@@ -27,6 +27,17 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "", groupSnippet
         let inner = '';
         while (i < src.length) {
           const ch = src[i];
+          if (ch === '`') {
+            const literal = scanSnippetQuotedValue(src, i);
+            if (literal.error) {
+              results.push({ index: start, match: src.slice(start), inner, error: literal.error });
+              i = src.length;
+              break;
+            }
+            inner += src.slice(i, literal.end);
+            i = literal.end;
+            continue;
+          }
           // Handle string literals — skip their content
           if (ch === '\'' || ch === '"') {
             const quote = ch;
@@ -106,9 +117,18 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "", groupSnippet
 
   // --- Single-pass Highlight + Inline Validation ---
   let scopeDepth = 0;
-  let activeForDepth = 0; // Still need to track specifically for 'index'
+  let activeForDepth = literalContext.forDepth || 0;
   // Track variables defined via {{set}} and the depth at which they were defined
   const scopedVars = new Map(); // name -> depth
+
+  const highlightFragmentLiteral = token => {
+    // Keep source spelling (including escapes) aligned with the textarea.
+    const body = token.slice(1, -1);
+    const rendered = { innerHTML: '' };
+    const error = updateHighlight({ value: body }, rendered, triggerValue, groupSnippets, sourceSnippetName,
+      { variables: [...definedArgs, ...scopedVars.keys()], forDepth: activeForDepth, nested: true });
+    return { error, html: rendered.innerHTML };
+  };
 
   const splitFunctionArgs = (text) => {
     const parts = [];
@@ -117,6 +137,12 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "", groupSnippet
     let quote = null;
     for (let i = 0; i < text.length; i++) {
       const char = text[i];
+      if (!quote && char === '`') {
+        const literal = scanSnippetQuotedValue(text, i);
+        current += text.slice(i, literal.end || text.length);
+        i = (literal.end || text.length) - 1;
+        continue;
+      }
       if (quote) {
         current += char;
         if (char === '\\' && i + 1 < text.length) current += text[++i];
@@ -157,7 +183,14 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "", groupSnippet
     for (let i = 0; i < cond.length;) {
       const char = cond[i];
       if (offsetDelimiters.has(i)) { strippedForOps += offsetDelimiters.get(i); i++; continue; }
-      if (char === '@') {
+      if (char === '`') {
+        const literal = scanSnippetQuotedValue(cond, i);
+        if (literal.error) return t(literal.error);
+        const nested = highlightFragmentLiteral(cond.slice(i, literal.end));
+        if (nested.error) return nested.error;
+        strippedForOps += '""';
+        i = literal.end;
+      } else if (char === '@') {
         const call = parseSnippetCall(cond, i);
         if (call.error) return t(call.error);
         snippetArgsOpenings.add(call.argsStart - 1);
@@ -320,7 +353,7 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "", groupSnippet
    */
   const highlightInnerExpr = (expr, tagOffset, addError) => {
     const isRandomFn = (n) => n === 'uuid' || n === 'random';
-    const isTypeFn = (n) => BUILTIN_FUNCS_TYPE_CAST.includes(n) || n === 'type';
+    const isTypeFn = (n) => BUILTIN_FUNCS_TYPE_CAST.includes(n) || n === 'type' || n === 'isCursor' || n === 'hasCursor';
 
     const getError = (n, a, snippetName = n.slice(1)) => {
       if (BUILTIN_FUNCS_NO_ARGS.includes(n) && a.trim() !== "") return t("err_fn_no_args_allowed", [n]);
@@ -328,9 +361,9 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "", groupSnippet
       const allParts = splitFunctionArgs(a);
       const parts = allParts.filter(p => p.length > 0);
       if ((n === 'insertAt' || n === 'removeAt') && /,\s*$/.test(a)) return t(n === 'insertAt' ? 'err_fn_three_args_exact' : 'err_fn_two_args_exact', [n]);
-      if ((n === 'split' || n === 'join' || n === 'removeAt') && (parts.length !== 2 || allParts.some(part => !part))) return t('err_fn_two_args_exact', [n]);
+      if ((n === 'split' || n === 'join' || n === 'removeAt' || n === 'includes') && (parts.length !== 2 || allParts.some(part => !part))) return t('err_fn_two_args_exact', [n]);
       if (n === 'insertAt' && (parts.length !== 3 || allParts.some(part => !part))) return t('err_fn_three_args_exact', [n]);
-      if (n === 'type' && (parts.length !== 1 || allParts.some(part => !part))) return t('err_fn_one_arg_exact', [n]);
+      if ((BUILTIN_FUNCS_TYPE_CAST.includes(n) || n === 'type' || n === 'isCursor' || n === 'hasCursor') && (parts.length !== 1 || allParts.some(part => !part))) return t('err_fn_one_arg_exact', [n]);
       if (BUILTIN_FUNCS_HAS_ARGS.includes(n) && parts.length === 0) return t("err_fn_args_required", [n]);
       if (n.startsWith('@')) {
         if (allParts.some(part => !part)) return t('err_snippet_call_syntax');
@@ -343,7 +376,7 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "", groupSnippet
         }
       }
       // Optional args fns like prompt() are allowed to be empty
-      if ((BUILTIN_FUNCS_TYPE_CAST.includes(n) || n === 'copy') && parts.length !== 1) return t("err_fn_one_arg_exact", [n]);
+      if (n === 'copy' && parts.length !== 1) return t("err_fn_one_arg_exact", [n]);
 
       // Strict count checks
       const oneArgFns = ['upper', 'lower', 'trim', 'capitalize', 'len', 'prompt', 'round', 'ceil', 'floor', 'date', 'time', 'datetime'];
@@ -373,6 +406,17 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "", groupSnippet
     // Mask argument strings while retaining quoted function names for parsing.
     let text = '';
     for (let i = 0; i < expr.length;) {
+      if (expr[i] === '`') {
+        const literal = scanSnippetQuotedValue(expr, i);
+        const end = literal.end || expr.length;
+        const token = expr.slice(i, end).replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+        const nested = highlightFragmentLiteral(token);
+        if (nested.error && addError) addError(tagOffset, nested.error);
+        strings.push(`<span class="hl-fragment">\u0060</span>${nested.html}<span class="hl-fragment">\u0060</span>`);
+        text += `\x01${strings.length - 1}\x02`;
+        i = end;
+        continue;
+      }
       if (expr[i] === '@') {
         const name = parseSnippetFunctionName(expr, i);
         if (!name.error) { text += expr.slice(i, name.nameEnd); i = name.nameEnd; continue; }
@@ -516,6 +560,7 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "", groupSnippet
     const hasOperators = /[+\-*/%=$~]/.test(content);
     const isNumber = /^\d+$/.test(content);
     const isString = /^(?:"(?:\\[\s\S]|[^"\\])*"|'(?:\\[\s\S]|[^'\\])*')$/.test(content);
+    const hasFragment = content.includes('`');
     const hasList = content.includes('[') || content.includes(']');
     const hasFunction = /(?:@[\p{L}_][\p{L}\p{N}_]*|[a-zA-Z_][a-zA-Z0-9_]*)\s*\(/u.test(content) || content.includes('@');
     const hasVariable = /\$[\p{L}\p{N}_]+/u.test(content) || /\b(?:index|value)\b/.test(content);
@@ -536,13 +581,13 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "", groupSnippet
           return `<span class="error-badge">${match}</span>`;
         }
 
-        const err = validateExpr(trimmedExpr, offset);
+        const err = trimmedExpr === 'cursor' ? null : validateExpr(trimmedExpr, offset);
         if (err) { addError(offset, err); return `<span class="error-badge">${match}</span>`; }
         return `<span class="cursor-syntax-badge">{{${prefix}#</span><span class="cursor-expr-badge">${highlightInnerExpr(exprPart, offset, addError)}</span><span class="cursor-syntax-badge">}}</span>`;
       }
     }
 
-    if (isControl || hasOperators || isNumber || isString || hasList || hasFunction || hasVariable) {
+    if (isControl || hasOperators || isNumber || isString || hasFragment || hasList || hasFunction || hasVariable) {
       if (content.startsWith('if ') || content.startsWith('elif ') || content.startsWith('switch ') || content.startsWith('case ') || content === 'default') {
         const prefixLen = content.startsWith('switch ') ? 7 : (content.startsWith('case ') ? 5 : (content.startsWith('if ') ? 3 : (content === 'default' ? 7 : 5)));
         const exprPart = content.substring(prefixLen);
@@ -611,7 +656,7 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "", groupSnippet
         return `<span class="error-badge">${match}</span>`;
       }
 
-      if (!isControl && (hasOperators || hasFunction || hasVariable || hasList)) {
+      if (!isControl && (hasOperators || hasFunction || hasVariable || hasList || hasFragment)) {
         const err = validateExpr(content, offset);
         if (err) { addError(offset, err); return `<span class="error-badge">${match}</span>`; }
       }
@@ -638,7 +683,7 @@ function updateHighlight(textarea, highlightDiv, triggerValue = "", groupSnippet
   output += text.slice(lastIndex);
   text = output;
 
-  if (typeof currentConfig !== 'undefined' && currentConfig.visualizeNewlines !== false) {
+  if (!literalContext.nested && typeof currentConfig !== 'undefined' && currentConfig.visualizeNewlines !== false) {
     // Standardize to \n and prepend the visual marker
     text = text.replace(/\r?\n/g, '<span class="hl-newline">↵</span>\n');
   }

@@ -1,3 +1,4 @@
+const { assertTemplateOutput } = require('./helpers/fragment.cjs');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -24,7 +25,7 @@ test('settings retain each snippet library by group, including helpers without t
     defaultConfig: {}, defaultSnippetGroups: []
   });
   vm.runInContext('let config; let snippets;', context);
-  for (const file of ['utils/constants.js', 'utils/triggers.js', 'utils/i18n.js', 'content/evaluator.js', 'content/template.js', 'content/settings.js']) {
+  for (const file of ['utils/constants.js', 'utils/triggers.js', 'utils/i18n.js', 'content/fragment.js', 'content/evaluator.js', 'content/template-parser.js', 'content/template.js', 'content/settings.js']) {
     vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
   }
   context.loadSettings();
@@ -35,11 +36,11 @@ test('settings retain each snippet library by group, including helpers without t
   const caller = snippets.find(s => s.name === 'Caller');
   assert.equal(caller.groupSnippets, first.snippets);
   assert.equal(caller.sourceSnippet, first.snippets[0]);
-  assert.equal(await context.processTemplate(caller.replacement, { name: 'Jiun' }, {
+  assertTemplateOutput(await context.processTemplate(caller.replacement, { name: 'Jiun' }, {
     snippets: caller.groupSnippets, stack: [caller.sourceSnippet]
   }), 'first Jiun');
-  assert.equal(await context.processTemplate('{{@Constant()}}', {}, { snippets: caller.groupSnippets }), 'constant');
-  assert.equal(await context.processTemplate('{{@Caller("self")}}', {}, {
+  assertTemplateOutput(await context.processTemplate('{{@Constant()}}', {}, { snippets: caller.groupSnippets }), 'constant');
+  assertTemplateOutput(await context.processTemplate('{{@Caller("self")}}', {}, {
     snippets: caller.groupSnippets, stack: [caller.sourceSnippet]
   }), 'first self');
   await assert.rejects(context.processTemplate('{{@Constant()}}', {}, {

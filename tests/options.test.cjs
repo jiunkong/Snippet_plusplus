@@ -310,3 +310,12 @@ test('add-subgroup shortcut honors defaults, custom bindings, editor scope and k
   assert.equal(press({ altKey: false, ctrlKey: true, shiftKey: true }), true);
   assert.equal(created, 3);
 });
+
+test('function navigation distinguishes fragment text from calls in literal template tags', () => {
+  const context = snippetNavigationContext();
+  const text = '{{`plain @Missing() {{@Inner()}}` + @After()}}';
+  for (const [name, expected] of [['Missing', null], ['Inner', 'Inner'], ['After', 'After']]) {
+    const index = text.indexOf(name);
+    assert.equal(context.snippetFunctionAtSelection(text, index, index + name.length), expected);
+  }
+});

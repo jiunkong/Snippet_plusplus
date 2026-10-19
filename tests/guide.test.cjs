@@ -17,7 +17,7 @@ const examples = [...page.matchAll(/<details class="guide-example"([^>]*)>([\s\S
 }));
 function engine() {
   const context = vm.createContext({ t: key => key, currentConfig: { visualizeNewlines: false } });
-  for (const file of ['utils/constants.js', 'utils/triggers.js', 'utils/i18n.js', 'content/evaluator.js', 'content/template.js', 'options/highlight.js']) {
+  for (const file of ['utils/constants.js', 'utils/triggers.js', 'utils/i18n.js', 'content/fragment.js', 'content/evaluator.js', 'content/template-parser.js', 'content/template.js', 'options/highlight.js']) {
     vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
   }
   return context;
@@ -52,7 +52,7 @@ test('documented deterministic results match the actual expansion engine', async
     const trigger = example.panels.find(panel => panel.kind === 'trigger');
     const compiled = input && trigger ? context.compileTrigger(trigger.text) : null;
     const args = compiled?.isRegex ? compiled.regex.exec(input.text)?.groups || {} : {};
-    let actual = await context.processTemplate(template.text, args, { snippets: example.snippets });
+    let actual = String(await context.processTemplate(template.text, args, { snippets: example.snippets }));
     // Backspace effects are applied by expansion after evaluating the body.
     while (actual.includes('\b')) actual = actual.replace(/[^\b]?\x08/, '');
     assert.equal(actual, expected.text, template.text);

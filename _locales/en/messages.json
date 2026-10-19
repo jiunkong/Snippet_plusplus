@@ -9,28 +9,28 @@
     "message": "An index must be a single integer."
   },
   "err_list_index_target": {
-    "message": "Indexed values must be iterable (list, string or range)."
+    "message": "Indexed values must be iterable (list, string, fragment or range)."
   },
   "guide_doc_list_index_title": {
     "message": "Reading iterable items"
   },
   "guide_doc_list_index_desc": {
-    "message": "Use [index] on lists, strings and ranges. Indices start at zero; -1 reads the last item and -2 the second last. Strings use Unicode code points; ranges return numbers in iteration order. Indices may be variables or expressions but must be integers. Convert captured numeric strings with num() or int(). Out-of-range indices return undefined. Nested indexing and function results are supported."
+    "message": "Use [index] on lists, strings, fragments and ranges. Indices start at zero; -1 reads the last item. Strings count Unicode characters. Fragments count characters and cursors, returning a one-item fragment. Ranges return numbers in iteration order. Indices must be integers; out-of-range indices return undefined. Nested indexing and function results are supported."
   },
   "err_join_list_required": {
     "message": "The first argument to join() must be a list."
   },
   "guide_doc_split_title": {
-    "message": "Split a string into a list"
+    "message": "Split text into a list"
   },
   "guide_doc_split_desc": {
-    "message": "Split text into a list using a separator string. An empty separator is also supported. The separator is plain text rather than a regular expression. Empty items between consecutive separators are preserved."
+    "message": "Split a string or fragment into a list with a literal separator. Empty fields are preserved. An empty separator splits a fragment into Unicode characters and cursor nodes, each wrapped in a fragment. A fragment separator can match cursor nodes."
   },
   "guide_doc_join_title": {
-    "message": "Join a list into a string"
+    "message": "Join a list into text"
   },
   "guide_doc_join_desc": {
-    "message": "Combine list elements into a string with the separator between them. An empty separator concatenates without spaces. The first argument must be a list; null and undefined elements become empty strings."
+    "message": "Combine list elements with a separator. If an element or the separator is a fragment, return a fragment and preserve its cursors; otherwise return a string. null and undefined elements become empty text."
   },
   "tabs_tester": {
     "message": "Snippet Test"
@@ -513,7 +513,7 @@
     "message": "Fixed cursor stops"
   },
   "guide_doc_cursor_positions_desc": {
-    "message": "Stops are visited in ascending order. Repeated numbers share the same navigation step. {{cursor}} and {{#cursor}} are aliases for stop zero."
+    "message": "Visit the lowest number first; equal numbers share a step. {{cursor}} and {{#cursor}} are aliases for zero. Only tags written in the snippet source create cursors. Cursor syntax inside strings, captures, prompts or pasted text remains literal."
   },
   "guide_doc_cursor_dynamic_note": {
     "message": "Creates cursor stop 3 after Name."
@@ -570,37 +570,37 @@
     "message": "Loops"
   },
   "guide_doc_loops_intro": {
-    "message": "Repeat by a numeric count, or iterate over a list, string or range."
+    "message": "Repeat by a numeric count, or iterate over a list, string, fragment or range."
   },
   "guide_doc_text_transform_title": {
     "message": "Case and whitespace"
   },
   "guide_doc_text_transform_desc": {
-    "message": "upper and lower change the case of the whole string; capitalize uppercases the first character. trim removes leading and trailing whitespace."
+    "message": "upper and lower change text case; capitalize uppercases the first text character. trim removes leading and trailing whitespace. With a fragment, these functions return a fragment and preserve cursors. A cursor stops whitespace trimming at that edge."
   },
   "guide_doc_text_extract_title": {
     "message": "Length, slicing and replacement"
   },
   "guide_doc_text_extract_desc": {
-    "message": "len returns the length. substr returns the requested length starting at the given position. replace substitutes matching text."
+    "message": "len returns the length. substr returns the requested length starting at the given position. For fragments, each Unicode character or cursor counts as one item. substr and replace return fragments and preserve remaining cursors; replace matches the first occurrence, with fragment replacements inserted literally."
   },
   "guide_doc_text_match_title": {
     "message": "Check a prefix or suffix"
   },
   "guide_doc_text_match_desc": {
-    "message": "Return true or false depending on whether the string starts or ends with the given text. Use the result in an if condition."
+    "message": "Return whether the value starts or ends with the given text or fragment. Fragment matching distinguishes a cursor node from literal cursor syntax in a string."
   },
   "guide_doc_text_title": {
-    "message": "String functions"
+    "message": "Text and fragments"
   },
   "guide_doc_text_intro": {
-    "message": "Pass a string literal or a $variable to a function. String positions start at zero."
+    "message": "Transform, slice, split and join strings and fragments. Positions start at zero; each cursor in a fragment counts as one item."
   },
   "guide_doc_cast_value_title": {
     "message": "Convert a value"
   },
   "guide_doc_cast_value_desc": {
-    "message": "str converts to a string, num to a number, and int to an integer by truncating the fractional part."
+    "message": "str converts a value to a string. For fragments it writes cursor nodes as {{#number}} syntax; this becomes ordinary text and is never interpreted as cursors again. num converts to a number, and int truncates the fractional part."
   },
   "guide_doc_math_value_title": {
     "message": "Rounding, minimum and maximum"
@@ -789,7 +789,7 @@
     "message": "Inspect the value type"
   },
   "guide_doc_type_value_desc": {
-    "message": "Return the value type as a string: string, number, boolean, range, list, null or undefined. Captured variables are strings even when they look numeric; num() and int() convert them to numbers. An undefined variable name still causes an error."
+    "message": "Return the value type as a string: string, fragment, number, bool, range, list, null or undefined. Snippet calls return fragments. Captured variables remain strings; num() and int() convert them to numbers. An undefined variable name causes an error."
   },
   "guide_doc_declare_value_title": {
     "message": "Declare a variable without a value"
@@ -891,19 +891,19 @@
     "message": "Inserting an item by index"
   },
   "guide_doc_list_insert_at_desc": {
-    "message": "Returns a new list or string with a value inserted before index, preserving the target type. A list receives one item; a string receives str(value). len(target) appends; -1 inserts before the last item. Use 0 for empty targets. Indices must be integers; out-of-range indices leave contents unchanged. String positions use Unicode code points. Readonly ranges are not supported."
+    "message": "Insert a value before index in a list, string or fragment. A list receives one item. A fragment receives text or fragment content while preserving cursors; inserting a fragment into a string also returns a fragment. len(target) appends and -1 inserts before the last item. Indices must be integers; out-of-range indices leave contents unchanged. Strings count Unicode characters; fragments also count each cursor as one item. Readonly ranges are not supported."
   },
   "guide_doc_list_remove_at_title": {
     "message": "Removing an item by index"
   },
   "guide_doc_list_remove_at_desc": {
-    "message": "Returns a new list or string with one item at index removed, preserving the target type. 0 is the first item and -1 the last. Indices must be integers; out-of-range indices leave contents unchanged. String positions use Unicode code points. Readonly ranges are not supported. Assign the returned value to update a variable."
+    "message": "Return a new list, string or fragment with the item at index removed. 0 is the first item and -1 the last. A fragment cursor is one complete removable item. Out-of-range integer indices leave contents unchanged. Readonly ranges are not supported. Assign the returned value to update a variable."
   },
   "snippets_enabled_hint": {
     "message": "Enable trigger expansion · Can still be called as a snippet function when disabled."
   },
   "err_iterable_function_target": {
-    "message": "The first argument to $1 must be a list or string."
+    "message": "The first argument to $1 must be a list, string or fragment."
   },
   "err_readonly_iterable": {
     "message": "range is a readonly iterable and cannot be used with $1."
@@ -915,13 +915,13 @@
     "message": "Iterable values"
   },
   "guide_doc_iterable_desc": {
-    "message": "Lists and strings are iterable: for visits their items, and insertAt/removeAt return edited values. A range is a readonly iterable: for and len are supported, but insertion and removal are not. type() still returns list, string or range. String iteration, insertion, removal and len use Unicode code points."
+    "message": "Lists, strings and fragments are iterable. for visits their items, and insertAt/removeAt return edited values. A range is readonly. Strings use Unicode code points; fragments count each Unicode character or cursor as one item. type() returns list, string, fragment or range."
   },
   "guide_doc_loop_iterable_title": {
     "message": "Iterating lists and strings"
   },
   "guide_doc_loop_iterable_desc": {
-    "message": "For every iterable loop, index is the zero-based position and value is the current item. Enclosing index/value are restored after nested loops. value is separate from variables such as $value. Only numeric count loops make value equal to index. The string \"3\" iterates one character; use num() or int() to convert captured numeric strings to repetition counts."
+    "message": "For every iterable loop, index is the zero-based position and value is the current item. A fragment yields a one-item fragment for each Unicode character or cursor, so printing value preserves its cursor. Enclosing index/value are restored after nested loops. value is separate from $value. Numeric count loops make value equal to index. Use num() or int() to turn numeric text into a repetition count."
   },
   "error_location": {
     "message": "Body: line $1, column $2"
@@ -949,5 +949,53 @@
   },
   "status_export_failed": {
     "message": "File export failed."
+  },
+  "guide_doc_fragment_title": {
+    "message": "Snippet results as fragments"
+  },
+  "guide_doc_fragment_desc": {
+    "message": "A snippet call returns a fragment containing text and cursor nodes. Variables and parameters preserve it. Concatenating with + or repeating with * preserves cursors. String operations support fragments, and len, indexing and for count each Unicode character or cursor as one item. str explicitly converts the fragment to ordinary text including its cursor syntax."
+  },
+  "guide_doc_is_cursor_title": {
+    "message": "Check whether a value is a cursor"
+  },
+  "guide_doc_is_cursor_desc": {
+    "message": "isCursor(value) returns true only for a fragment containing exactly one cursor node. It returns false for text, literal cursor syntax, empty fragments, mixed content or multiple cursors. Use it with value in a fragment loop or with an indexed item."
+  },
+  "err_includes_iterable_target": {
+    "message": "The first argument to includes must be iterable (list, string, fragment or range)."
+  },
+  "guide_doc_includes_title": {
+    "message": "Check whether a value is included"
+  },
+  "guide_doc_includes_desc": {
+    "message": "includes(iterable, value) searches for a substring or fragment within text. Fragment matches preserve cursor identity: a cursor node differs from literal cursor syntax. For lists, compare complete elements by value, including nested lists, ranges and fragments, without type conversion. For ranges, check whether an integer is between the endpoints in either direction. Empty text matches any text. Other search values are converted to text when searching text."
+  },
+  "guide_doc_has_cursor_title": {
+    "message": "Check whether a fragment contains cursors"
+  },
+  "guide_doc_has_cursor_desc": {
+    "message": "hasCursor(fragment) returns true when a fragment contains at least one actual cursor node, even among text or other cursors. Empty fragments, plain text and non-fragment values return false. Literal cursor syntax and str(fragment) are ordinary text. isCursor(value) instead requires exactly one cursor node."
+  },
+  "err_unclosed_fragment_literal": {
+    "message": "Close the fragment literal with a backtick (`)."
+  },
+  "guide_doc_fragment_literal_title": {
+    "message": "Fragment literals"
+  },
+  "guide_doc_fragment_literal_desc": {
+    "message": "Wrap a snippet body in backticks (`) to create a fragment. Cursor tags, expressions, variables, branches, loops and snippet calls use the same {{...}} syntax as a snippet body. Evaluation reads the current variables; assignments inside the literal remain local. Use \\` for a literal backtick and \\\\ for a backslash in its text. Newlines are preserved. Quoted strings remain ordinary text, and str(fragment) serializes cursor syntax as text."
+  },
+  "guide_doc_fragment_cast_title": {
+    "message": "Convert text to a fragment"
+  },
+  "guide_doc_fragment_cast_desc": {
+    "message": "fragment(value) interprets a string using the same body syntax as a backtick literal, including cursor tags, expressions, variables and control flow. Existing fragments are returned unchanged. Evaluation reads current variables while keeping assignments local. Other values first convert to text, with null and undefined becoming empty text."
+  },
+  "guide_doc_bool_cast_title": {
+    "message": "Convert a value to bool"
+  },
+  "guide_doc_bool_cast_desc": {
+    "message": "bool(value) uses the same truth test as if. false, zero, NaN, null, undefined, empty text, and the exact strings \"false\" and \"0\" become false. Fragments are tested using their text representation, so an empty fragment is false and a cursor-only fragment is true. Other values, including empty lists and ranges, become true. type() returns \"bool\" for the result."
   }
 }

@@ -263,3 +263,79 @@ test('set declarations without initializers define variables and preserve block 
     assert.notEqual(context.updateHighlight({ value }, { innerHTML: '' }), '', value);
   }
 });
+
+test('isCursor highlights as a builtin and validates its one argument', () => {
+  for (const source of ['{{isCursor("{{#1}}")}}', '{{isCursor(undefined)}}', '{{for "ab"}}{{isCursor(value)}}{{endfor}}']) {
+    const output = { innerHTML: '' };
+    assert.equal(context.updateHighlight({ value: source }, output), '', source);
+    assert.doesNotMatch(output.innerHTML, /error-badge|hl-fn-err/, source);
+  }
+  for (const source of ['{{isCursor()}}', '{{isCursor(1, 2)}}', '{{isCursor(,1)}}', '{{isCursor(1,)}}']) {
+    assert.equal(context.updateHighlight({ value: source }, { innerHTML: '' }), 'err_fn_one_arg_exact:isCursor', source);
+  }
+  assert.equal(context.updateHighlight({ value: '{{isCursor($missing)}}' }, { innerHTML: '' }), 'err_undefined_variable:$missing');
+});
+
+test('includes and hasCursor highlight with their required argument counts', () => {
+  for (const source of ['{{includes("abcd", "bc")}}', '{{includes([1,2], 2)}}', '{{includes(5~2, 3)}}', '{{hasCursor(undefined)}}', '{{for "ab"}}{{hasCursor(value)}}{{endfor}}']) {
+    const output = { innerHTML: '' };
+    assert.equal(context.updateHighlight({ value: source }, output), '', source);
+    assert.doesNotMatch(output.innerHTML, /error-badge|hl-fn-err/, source);
+  }
+  for (const source of ['{{includes()}}', '{{includes([])}}', '{{includes([], 1, 2)}}', '{{includes(,1)}}', '{{includes([],1,)}}']) {
+    assert.equal(context.updateHighlight({ value: source }, { innerHTML: '' }), 'err_fn_two_args_exact:includes', source);
+  }
+  for (const source of ['{{hasCursor()}}', '{{hasCursor(1, 2)}}', '{{hasCursor(,1)}}', '{{hasCursor(1,)}}']) {
+    assert.equal(context.updateHighlight({ value: source }, { innerHTML: '' }), 'err_fn_one_arg_exact:hasCursor', source);
+  }
+});
+
+test('fragment literals highlight their nested template syntax and inherit variables and loop values', () => {
+  for (const source of ['{{`a{{#1}}b`}}', '{{type(``)}}', '{{includes(`a,b{{#1}}`, `b{{#1}}`)}}',
+    '{{set $x = 2, $f = `{{$x}}{{#1}}`}}{{$f}}',
+    '{{for 2}}{{`{{index}}:{{value}}`}}{{endfor}}',
+    '{{`{{upper(`a{{#1}}b`)}}`}}', '{{`{{for 2}}{{break}}{{endfor}}`}}']) {
+    const output = { innerHTML: '' };
+    assert.equal(context.updateHighlight({ value: source }, output), '', source);
+    assert.match(output.innerHTML, /class="hl-fragment"/, source);
+    assert.doesNotMatch(output.innerHTML, /error-badge|hl-fn-err/, source);
+  }
+  assert.equal(context.updateHighlight({ value: '{{`{{$missing}}`}}' }, { innerHTML: '' }), 'err_undefined_variable:$missing');
+  assert.equal(context.updateHighlight({ value: '{{`{{set $local = 1}}`}}{{$local}}' }, { innerHTML: '' }), 'err_undefined_variable:$local');
+  assert.equal(context.updateHighlight({ value: '{{`{{includes(1)}}`}}' }, { innerHTML: '' }), 'err_fn_two_args_exact:includes');
+  for (const source of ['{{`unclosed}}', '{{`{{upper(`unclosed`)}}']) {
+    assert.equal(context.updateHighlight({ value: source }, { innerHTML: '' }), 'err_unclosed_fragment_literal:', source);
+  }
+});
+
+test('literal highlighting preserves source escapes and escapes HTML', () => {
+  const source = '{{`a\\`b\\\\c <b>&{{#1}}`}}';
+  const output = { innerHTML: '' };
+  assert.equal(context.updateHighlight({ value: source }, output), '');
+  assert.doesNotMatch(output.innerHTML, /<b>/);
+  const rendered = output.innerHTML.replace(/<[^>]*>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  assert.equal(rendered, source);
+});
+
+test('fragment conversion highlights as a type cast and requires exactly one argument', () => {
+  for (const source of ['{{fragment("ab{{#1}}cd")}}', '{{fragment(`a{{#1}}b`)}}', '{{set $text = "abc", $f = fragment($text)}}{{$f}}']) {
+    const output = { innerHTML: '' };
+    assert.equal(context.updateHighlight({ value: source }, output), '', source);
+    assert.match(output.innerHTML, /class="hl-fn-type">fragment\(/, source);
+  }
+  for (const source of ['{{fragment()}}', '{{fragment(1,2)}}', '{{fragment(,1)}}', '{{fragment(1,)}}']) {
+    assert.equal(context.updateHighlight({ value: source }, { innerHTML: '' }), 'err_fn_one_arg_exact:fragment', source);
+  }
+});
+
+test('bool is highlighted as a type cast and validates exactly one argument', () => {
+  for (const source of ['{{bool(0)}}', '{{bool(undefined)}}', '{{bool(`{{#1}}`)}}', '{{set $flag = bool("yes")}}{{type($flag)}}']) {
+    const output = { innerHTML: '' };
+    assert.equal(context.updateHighlight({ value: source }, output), '', source);
+    assert.match(output.innerHTML, /class="hl-fn-type">bool\(/, source);
+  }
+  for (const source of ['{{bool()}}', '{{bool(1,2)}}', '{{bool(,1)}}', '{{bool(1,)}}']) {
+    assert.equal(context.updateHighlight({ value: source }, { innerHTML: '' }), 'err_fn_one_arg_exact:bool', source);
+  }
+  assert.equal(context.updateHighlight({ value: '{{bool($missing)}}' }, { innerHTML: '' }), 'err_undefined_variable:$missing');
+});

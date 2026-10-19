@@ -1,3 +1,4 @@
+const { assertTemplateOutput } = require('./helpers/fragment.cjs');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -6,7 +7,7 @@ const vm = require('node:vm');
 const root = path.join(__dirname, '..');
 function engine() {
   const context = vm.createContext({ t: (key, values = []) => `${key}:${values.join(',')}` });
-  for (const file of ['utils/constants.js', 'utils/triggers.js', 'utils/i18n.js', 'content/evaluator.js', 'content/template.js', 'options/highlight.js']) {
+  for (const file of ['utils/constants.js', 'utils/triggers.js', 'utils/i18n.js', 'content/fragment.js', 'content/evaluator.js', 'content/template-parser.js', 'content/template.js', 'options/highlight.js']) {
     vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
   }
   return context;
@@ -15,19 +16,19 @@ function engine() {
 test('break and continue retain partial output and skip subsequent effects', async () => {
   const ctx = engine();
   ctx.showSnippetToast = () => assert.fail('skipped effect executed');
-  assert.equal(await ctx.processTemplate('{{for 5}}A{{break}}{{toast("bad", "red")}}{{endfor}}Z', {}), 'AZ');
-  assert.equal(await ctx.processTemplate('{{for 3}}A{{continue}}{{toast("bad", "red")}}{{endfor}}Z', {}), 'AAAZ');
-  assert.equal(await ctx.processTemplate('{{for 1~5}}{{if value == 2}}{{continue}}{{endif}}{{if value == 4}}{{break}}{{endif}}[{{value}}]{{endfor}}', {}), '[1][3]');
-  assert.equal(await ctx.processTemplate('{{for 5~1}}{{if index == 2}}{{break}}{{endif}}{{value}}{{endfor}}', {}), '54');
+  assertTemplateOutput(await ctx.processTemplate('{{for 5}}A{{break}}{{toast("bad", "red")}}{{endfor}}Z', {}), 'AZ');
+  assertTemplateOutput(await ctx.processTemplate('{{for 3}}A{{continue}}{{toast("bad", "red")}}{{endfor}}Z', {}), 'AAAZ');
+  assertTemplateOutput(await ctx.processTemplate('{{for 1~5}}{{if value == 2}}{{continue}}{{endif}}{{if value == 4}}{{break}}{{endif}}[{{value}}]{{endfor}}', {}), '[1][3]');
+  assertTemplateOutput(await ctx.processTemplate('{{for 5~1}}{{if index == 2}}{{break}}{{endif}}{{value}}{{endfor}}', {}), '54');
 });
 
 test('loop signals pass through switch and if, target the nearest loop and clean local variables', async () => {
   const ctx = engine();
   const args = { index: 99, total: 0 };
   const template = '{{for 2}}O{{index}}{{for 3}}{{set $local = 1}}I{{index}}{{switch index}}{{case 0}}{{if true}}{{continue}}{{endif}}bad{{endcase}}{{default}}{{break}}{{enddefault}}{{endswitch}}bad{{endfor}}X{{index}}{{set $total += 1}}{{endfor}}';
-  assert.equal(await ctx.processTemplate(template, args), 'O0I0I1X0O1I0I1X1');
+  assertTemplateOutput(await ctx.processTemplate(template, args), 'O0I0I1X0O1I0I1X1');
   assert.deepEqual(args, { index: 99, total: 2 });
-  assert.equal(await ctx.processTemplate('{{for 2}}{{set $local = 1}}{{continue}}{{endfor}}', {}), '');
+  assertTemplateOutput(await ctx.processTemplate('{{for 2}}{{set $local = 1}}{{continue}}{{endfor}}', {}), '');
   await assert.rejects(ctx.processTemplate('{{for 1}}{{set $local = 1}}{{break}}{{endfor}}{{$local}}', {}), error => error.messageKey === 'err_undefined_variable');
 });
 
@@ -39,7 +40,7 @@ test('loop control outside a loop is rejected even in unexecuted blocks and call
   await assert.rejects(ctx.processTemplate('{{for 1}}{{@helper()}}{{endfor}}', {}, {
     snippets: [{ name: 'helper', replacement: '{{break}}' }]
   }), error => error.messageKey === 'err_loop_control_outside_for');
-  assert.equal(await ctx.processTemplate('{{for 2}}{{@helper()}}X{{endfor}}', {}, {
+  assertTemplateOutput(await ctx.processTemplate('{{for 2}}{{@helper()}}X{{endfor}}', {}, {
     snippets: [{ name: 'helper', replacement: '{{for 3}}H{{break}}{{endfor}}' }]
   }), 'HXHX');
 });
@@ -57,7 +58,7 @@ test('list + and += return immutable lists without flattening or mutating inputs
   assert.equal(ctx.evaluateExpression('type([] + [])', {}), 'list');
   assert.equal(ctx.evaluateExpression('len([1] + [2, 3])', {}), 3);
   assert.equal(ctx.evaluateExpression('([1] + [2])[-1]', {}), 2);
-  assert.equal(await ctx.processTemplate('{{set $items = [1]}}{{set $items += [2, 3]}}{{join($items, ",")}}', {}), '1,2,3');
+  assertTemplateOutput(await ctx.processTemplate('{{set $items = [1]}}{{set $items += [2, 3]}}{{join($items, ",")}}', {}), '1,2,3');
   assert.equal(ctx.evaluateExpression('1 + 2 * 3', {}), 7);
   assert.equal(ctx.evaluateExpression('"a" + "b"', {}), 'ab');
   for (const expression of ['[] + 1', '"a" + []', '[] + null', '[1] + undefined']) {

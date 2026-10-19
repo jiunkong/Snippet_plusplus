@@ -248,15 +248,21 @@ async function selectAndReplace(el, info, context, triggerLength, replacement, a
     // from the cell's start into the preceding cell.
     if (!selectEditableText(el, 0, before.text.length)) return { cancelled: true };
     // There is no text before a sole trigger for leading backspaces to erase.
-    processedReplacement = processedReplacement.replace(/^\u0008+/, '');
-    if (!processedReplacement.includes('\u0008')) {
+    processedReplacement = new SnippetFragment(processedReplacement.nodes.map((node, i) =>
+      i === 0 && node.type === 'text' ? { type: 'text', value: node.value.replace(/^\u0008+/, '') } : node));
+    if (!processedReplacement.nodes.some(node => node.type === 'text' && node.value.includes('\u0008'))) {
       // Host editors can discard custom spans (including hidden end markers)
       // and reset DOM ranges. Insert native text with the first stop already
       // consumed, then locate the caret in the host's resulting text nodes.
-      let text = processedReplacement.replace(CURSOR_REGEX, (_, tag) => {
-        const level = tag === 'cursor' || tag === '#cursor' ? '0' : tag.substring(1);
-        return `${VISUAL_OPEN}${level}${VISUAL_CLOSE}`;
-      });
+      let text = '';
+      for (const node of processedReplacement.nodes) {
+        if (node.type === 'text') text += node.value;
+        else {
+          const marker = `${VISUAL_OPEN}${node.level}${VISUAL_CLOSE}`;
+          text += marker;
+        }
+      }
+      // Rendered markers also survive host normalization as ordinary text.
       const firstStop = findNextPlaceholder(text, 0, 0);
       let plainCaretOffset = firstStop ? firstStop.index : text.length;
       if (firstStop) text = text.slice(0, firstStop.index) + text.slice(firstStop.index + firstStop.length);
@@ -281,7 +287,7 @@ async function selectAndReplace(el, info, context, triggerLength, replacement, a
 
   // --- Shift existing placeholders if enabled ---
   if (config.shiftCursorLevels && !replaceTriggerOnInsert) {
-    const newMaxLevel = getMaxCursorLevel(processedReplacement);
+    const newMaxLevel = processedReplacement.maxCursorLevel;
     if (newMaxLevel >= 0) {
       // Reserve every level used by the new snippet. Adding only the maximum
       // level causes collisions (and level 0 previously was not shifted at all).
@@ -293,20 +299,14 @@ async function selectAndReplace(el, info, context, triggerLength, replacement, a
 
   // --- Auto-append cursor if missing (Notion fix) ---
   // If no cursor position is specified, we want the cursor to end up at the very end.
-  // We achieve this by automatically appending a hidden {{#cursor}} tag.
+  // We achieve this by automatically appending a hidden cursor node.
   let isAutoCursor = false;
   let autoCursorId = null;
-  if (info.isEditable && !processedReplacement.match(CURSOR_REGEX) && !processedReplacement.match(VISUAL_CURSOR_REGEX)) {
-    processedReplacement += '{{#cursor}}';
+  if (info.isEditable && processedReplacement.maxCursorLevel < 0) {
+    processedReplacement = processedReplacement.concat(new SnippetFragment([{ type: 'cursor', level: 0 }]));
     isAutoCursor = true;
     autoCursorId = `spp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   }
-
-  const getDisplay = (tag) => {
-    if (tag === 'cursor' || tag === '#cursor') return '0';
-    if (tag.startsWith('#')) return tag.substring(1);
-    return tag;
-  };
 
   // 4. INSERT REPLACEMENT WITH BACKSPACE SUPPORT
   const insertWithBackspaces = (content, isHTML = false) => {
@@ -338,11 +338,8 @@ async function selectAndReplace(el, info, context, triggerLength, replacement, a
   };
 
   if (info.isInput) {
-    let hasPlaceholders = false;
-    const visualReplacement = processedReplacement.replace(CURSOR_REGEX, (_, p1) => {
-      hasPlaceholders = true;
-      return `${VISUAL_OPEN}${getDisplay(p1)}${VISUAL_CLOSE}`;
-    });
+    const hasPlaceholders = processedReplacement.maxCursorLevel >= 0;
+    const visualReplacement = processedReplacement.render(level => `${VISUAL_OPEN}${level}${VISUAL_CLOSE}`);
 
     withInternalEdit(() => insertWithBackspaces(visualReplacement, false));
     
@@ -360,21 +357,14 @@ async function selectAndReplace(el, info, context, triggerLength, replacement, a
     return { start: insertionStart, hasPlaceholders, before, afterInsert: getEditorSnapshot(el, info) };
   }
   if (info.isEditable) {
-    let hasPlaceholders = false;
-    const escaped = processedReplacement
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-
-    const htmlReplacement = escaped
-      .replace(CURSOR_REGEX, (_, p1) => {
-        hasPlaceholders = true;
-        const displayVal = getDisplay(p1);
-        const isAuto     = (isAutoCursor && p1 === '#cursor');
-        const display    = isAuto ? '' : `${VISUAL_OPEN}${displayVal}${VISUAL_CLOSE}`;
-        const extraStyle = isAuto ? `style="display:none;" data-spp-auto-cursor="${autoCursorId}"` : '';
-        return `<span class="ss-placeholder" ${extraStyle} contenteditable="false" data-val="${p1}">${display}</span>`;
-      })
-      .replace(/\n/g, '<br>');
+    const hasPlaceholders = processedReplacement.maxCursorLevel >= 0;
+    const htmlReplacement = processedReplacement.render(level => {
+      const isAuto = isAutoCursor;
+      const display = isAuto ? '' : `${VISUAL_OPEN}${level}${VISUAL_CLOSE}`;
+      const extraStyle = isAuto ? `style="display:none;" data-spp-auto-cursor="${autoCursorId}"` : '';
+      return `<span class="ss-placeholder" ${extraStyle} contenteditable="false" data-val="#${level}">${display}</span>`;
+    }, text => text.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/\n/g, '<br>'));
 
     withInternalEdit(() => insertWithBackspaces(htmlReplacement, true));
 

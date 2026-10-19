@@ -18,7 +18,7 @@ function harness() {
     showSnippetToast: (...args) => state.toasts.push(args),
     getTargetInfo: () => ({}), getEditorTarget: target => target, console: { error() {} }
   });
-  for (const file of ['utils/config.js', 'utils/triggers.js', 'content/state.js', 'content/settings.js']) {
+  for (const file of ['utils/constants.js', 'utils/config.js', 'utils/triggers.js', 'utils/i18n.js', 'content/fragment.js', 'content/evaluator.js', 'content/template-parser.js', 'content/state.js', 'content/settings.js']) {
     vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context);
   }
   state.data = { config: vm.runInContext('({ ...DEFAULT_CONFIG })', context), snippetGroups: [

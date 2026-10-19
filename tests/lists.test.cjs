@@ -1,3 +1,4 @@
+const { assertTemplateOutput } = require('./helpers/fragment.cjs');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -5,7 +6,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const root = path.join(__dirname, '..');
 const context = vm.createContext({ t: (key, args = []) => `${key}:${args.join(',')}`, currentConfig: { visualizeNewlines: false } });
-for (const file of ['utils/constants.js', 'utils/triggers.js', 'utils/i18n.js', 'content/evaluator.js', 'content/template.js', 'options/highlight.js']) {
+for (const file of ['utils/constants.js', 'utils/triggers.js', 'utils/i18n.js', 'content/fragment.js', 'content/evaluator.js', 'content/template-parser.js', 'content/template.js', 'options/highlight.js']) {
   vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
 }
 
@@ -31,19 +32,19 @@ test('list literals support empty, mixed and nested values with normal expressio
 });
 
 test('lists retain their type in variables and snippet parameters and work alongside cursor offsets', async () => {
-  assert.equal(await context.processTemplate('{{set $items = [1, 2, 3]}}{{type($items)}} / {{len($items)}} / {{$items}}', {}), 'list / 3 / [1,2,3]');
+  assertTemplateOutput(await context.processTemplate('{{set $items = [1, 2, 3]}}{{type($items)}} / {{len($items)}} / {{$items}}', {}), 'list / 3 / [1,2,3]');
   const library = { snippets: [{ name: 'show', trigger: '/show ${items}', replacement: '{{type($items)}}:{{len($items)}}:{{$items}}{{cursor}}' }] };
   for (const call of ['@show([1, 2])<3>', '@show<3>([1, 2])', '@show<1 + len([1, 2])>([1, 2])']) {
-    assert.equal(await context.processTemplate(`{{${call}}}`, {}, library), 'list:2:[1,2]{{#3}}', call);
+    assertTemplateOutput(await context.processTemplate(`{{${call}}}`, {}, library), 'list:2:[1,2]{{#3}}', call);
   }
 });
 
 test('list items can contain async calls without interpreting their returned text as code', async () => {
   context.showSnippetPrompt = async () => 'Guest';
   try {
-    assert.equal(await context.processTemplate('{{[1, prompt("Name"), 3]}}', {}), '[1,"Guest",3]');
+    assertTemplateOutput(await context.processTemplate('{{[1, prompt("Name"), 3]}}', {}), '[1,"Guest",3]');
     context.showSnippetPrompt = async () => '[1,2], unknown()';
-    assert.equal(await context.processTemplate('{{[prompt("Name")]}}', {}), '["[1,2], unknown()"]');
+    assertTemplateOutput(await context.processTemplate('{{[prompt("Name")]}}', {}), '["[1,2], unknown()"]');
   } finally { delete context.showSnippetPrompt; }
 });
 
@@ -108,12 +109,12 @@ test('join combines list values with a string separator and validates the list t
 });
 
 test('split and join compose with async text, stored variables and snippet function parameters', async () => {
-  assert.equal(await context.processTemplate('{{set $items = split($text, ",")}}{{join($items, " / ")}}', { text: 'a,b,c' }), 'a / b / c');
+  assertTemplateOutput(await context.processTemplate('{{set $items = split($text, ",")}}{{join($items, " / ")}}', { text: 'a,b,c' }), 'a / b / c');
   const library = { snippets: [{ name: 'show', trigger: '/show ${items}', replacement: '{{join($items, "|")}}{{cursor}}' }] };
-  assert.equal(await context.processTemplate('{{@show(split("a,b", ","))<2>}}', {}, library), 'a|b{{#2}}');
+  assertTemplateOutput(await context.processTemplate('{{@show(split("a,b", ","))<2>}}', {}, library), 'a|b{{#2}}');
   context.navigator = { clipboard: { readText: async () => 'a,b,unknown()' } };
   try {
-    assert.equal(await context.processTemplate('{{join(split(paste(), ","), "|")}}', {}), 'a|b|unknown()');
+    assertTemplateOutput(await context.processTemplate('{{join(split(paste(), ","), "|")}}', {}), 'a|b|unknown()');
   } finally { delete context.navigator; }
 });
 

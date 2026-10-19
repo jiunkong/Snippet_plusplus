@@ -44,7 +44,7 @@ function getCaretContext(el, info) {
 }
 
 /**
- * Finds the next placeholder (⟦n⟧ or {{n}}) to jump to.
+ * Finds the next rendered placeholder (⟦n⟧) to jump to.
  * Priority: same level after cursor → next higher level → wrap to min level.
  */
 function findNextPlaceholder(text, currentStart, currentEnd) {
@@ -56,9 +56,6 @@ function findNextPlaceholder(text, currentStart, currentEnd) {
     return parseInt(tag, 10) || 0;
   };
 
-  for (const m of text.matchAll(CURSOR_REGEX)) {
-    matches.push({ index: m.index, length: m[0].length, level: getLevel(m[1]) });
-  }
   for (const m of text.matchAll(VISUAL_CURSOR_REGEX)) {
     matches.push({ index: m.index, length: m[0].length, level: getLevel(m[1]) });
   }
@@ -189,12 +186,8 @@ function getCaretCoordinates(element, position) {
  * Returns the maximum cursor level found in the given text.
  */
 function getMaxCursorLevel(text) {
+  if (text instanceof SnippetFragment) return text.maxCursorLevel;
   let max = -1;
-  // Check static tags {{#1}}, {{#2}}
-  for (const m of text.matchAll(CURSOR_REGEX)) {
-    const level = (m[1] === 'cursor' || m[1] === '#c' || m[1] === '#cursor') ? 0 : (parseInt(m[1].substring(1), 10) || 0);
-    if (level > max) max = level;
-  }
   // Check visual tags ⟦1⟧
   for (const m of text.matchAll(VISUAL_CURSOR_REGEX)) {
     const level = parseInt(m[1], 10) || 0;

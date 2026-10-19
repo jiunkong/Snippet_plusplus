@@ -105,7 +105,7 @@ test('selected language controls both toast and error details regardless of brow
   // errors created before the requested catalog finishes loading.
   context.chrome.i18n.getMessage = (key, values = []) => (catalogs.en[key]?.message || '')
     .replace(/\$(\d+)/g, (_, index) => values[Number(index) - 1]);
-  for (const file of ['utils/constants.js', 'utils/triggers.js', 'content/evaluator.js', 'content/template.js']) {
+  for (const file of ['utils/constants.js', 'utils/triggers.js', 'content/fragment.js', 'content/evaluator.js', 'content/template-parser.js', 'content/template.js']) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'), context);
   }
   context.config.uiLocale = 'ko';

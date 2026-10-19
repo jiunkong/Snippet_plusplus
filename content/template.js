@@ -85,6 +85,25 @@ async function resolveAsyncCalls(expression, args, context) {
   while (i < expression.length) {
     context.execution.check();
     const char = expression[i];
+    if (char === '`') {
+      const quoted = scanSnippetQuotedValue(expression, i, context.execution);
+      if (quoted.error) throw createSnippetError(quoted.error);
+      const token = expression.slice(i, quoted.end);
+      const literal = context.activeTemplate.literals[token];
+      const template = context.activeTemplate;
+      const from = template.sourceOffsets.indexOf(context.position.offset);
+      const expressionStart = template.normalizedSource.indexOf(expression, Math.max(0, from));
+      const offsets = literal.offsets.map(offset => {
+        const local = template.sourceOffsets[Math.max(0, expressionStart) + i + offset] ?? context.position.offset;
+        return context.literalSource ? context.literalSource.offsets[local] ?? local : local;
+      });
+      const value = await processTemplate(literal.template, { ...args }, {
+        ...context, loopControl: null, literalSource: { source: context.source, offsets }
+      });
+      result += storeTemplateValue(value, args, expression);
+      i = quoted.end;
+      continue;
+    }
     if (char === "'" || char === '"') {
       const start = i++;
       while (i < expression.length) {
@@ -96,7 +115,7 @@ async function resolveAsyncCalls(expression, args, context) {
     }
     const call = char === '@' ? parseSnippetCall(expression, i) : null;
     if (call?.error) throw snippetCallError(call.error);
-    const match = expression.slice(i).match(/^(paste|copy|prompt|choice|toast)\s*\(/);
+    const match = expression.slice(i).match(/^(paste|copy|prompt|choice|toast|fragment)\s*\(/);
     if ((!call && !match) || (i > 0 && /[\p{L}\p{N}_$@]/u.test(expression[i - 1]))) {
       if (char === '@') throw snippetCallError('err_snippet_call_syntax');
       result += expression[i++];
@@ -111,6 +130,10 @@ async function resolveAsyncCalls(expression, args, context) {
       if (quote) {
         if (c === '\\') end++;
         else if (c === quote) quote = null;
+      } else if (c === '`') {
+        const literal = scanSnippetQuotedValue(expression, end, context.execution);
+        if (literal.error) throw createSnippetError(literal.error);
+        end = literal.end - 1;
       } else if (c === "'" || c === '"') quote = c;
       else if (c === '(') depth++;
       else if (c === ')' && --depth === 0) break;
@@ -123,15 +146,20 @@ async function resolveAsyncCalls(expression, args, context) {
         throw createSnippetError('err_function_arguments', [functionName]);
       }
       if (functionName === 'paste' && parts.length) throw createSnippetError('err_fn_no_args_allowed', [functionName]);
-      if (functionName === 'copy' && parts.length !== 1) throw createSnippetError('err_fn_one_arg_exact', [functionName]);
+      if ((functionName === 'copy' || functionName === 'fragment') && parts.length !== 1) throw createSnippetError('err_fn_one_arg_exact', [functionName]);
       if (functionName === 'prompt' && parts.length > 1) throw createSnippetError('err_fn_one_arg_max', [functionName]);
       if (functionName === 'choice' && parts.length < 2) throw createSnippetError('err_function_arguments', [functionName]);
       if (functionName === 'toast' && parts.length !== 2) throw createSnippetError('err_fn_two_args_exact', [functionName]);
       const values = [];
       for (const part of parts) values.push(await evaluateTemplateExpression(part, args, context));
       let value = '';
-      if (functionName === 'toast') {
-        showSnippetToast(values[0], values[1]);
+      if (functionName === 'fragment') {
+        const input = values[0];
+        value = input instanceof SnippetFragment ? input : await processTemplate(String(input ?? ''), { ...args }, {
+          ...context, loopControl: null, literalSource: null
+        });
+      } else if (functionName === 'toast') {
+        showSnippetToast(String(values[0] ?? ''), String(values[1] ?? ''));
       } else if (functionName === 'copy') {
         try { await context.execution.wait(() => navigator.clipboard.writeText(String(values[0] ?? ''))); }
         catch (error) {
@@ -147,7 +175,7 @@ async function resolveAsyncCalls(expression, args, context) {
           ? showSnippetPrompt(message) : window.prompt(message));
       } else {
         const title = String(values[0] || 'Select Option:');
-        const options = values.slice(1);
+        const options = values.slice(1).map(value => String(value ?? ''));
         value = await context.execution.userInput(() => typeof showSnippetChoice === 'function'
           ? showSnippetChoice(title, options)
           : window.prompt(`${title}\nOptions: ${options.join(', ')}`));
@@ -157,7 +185,7 @@ async function resolveAsyncCalls(expression, args, context) {
         error.name = 'SnippetPromptCancelled';
         throw error;
       }
-      result += storeTemplateValue(String(value ?? ''), args, expression);
+      result += storeTemplateValue(functionName === 'fragment' ? value : String(value ?? ''), args, expression);
       i = end + 1;
       continue;
     }
@@ -191,87 +219,41 @@ async function resolveAsyncCalls(expression, args, context) {
       const offsetExpression = expression.slice(call.offsetStart, call.offsetEnd);
       if (splitArgs(offsetExpression).length !== 1) throw snippetCallError('err_snippet_call_syntax');
       const rawOffset = await evaluateTemplateExpression(offsetExpression, args, childContext);
-      cursorOffset = typeof rawOffset === 'number' || (typeof rawOffset === 'string' && rawOffset.trim())
+      cursorOffset = typeof rawOffset === 'number' || ((typeof rawOffset === 'string' || rawOffset instanceof SnippetFragment) && String(rawOffset).trim())
         ? Number(rawOffset) : NaN;
       if (!Number.isSafeInteger(cursorOffset) || cursorOffset < 0) throw snippetCallError('err_snippet_cursor_offset');
     }
-    let value = await processTemplate(target.replacement || '', childArgs, {
-      ...childContext, source: null, sourceOffsets: null
-    });
-    if (cursorOffset) {
-      value = value.replace(/\{\{\s*(cursor|#(?:cursor|\d+))\s*\}\}/g, (tag, cursor) => {
-        const level = cursor === 'cursor' || cursor === '#cursor' ? 0 : Number(cursor.slice(1));
-        const shifted = level + cursorOffset;
-        if (!Number.isSafeInteger(shifted)) throw snippetCallError('err_snippet_cursor_offset');
-        return `{{#${shifted}}}`;
-      });
-    }
+    let value = await processTemplate(target, childArgs, childContext);
+    if (cursorOffset) value = value.shiftCursors(cursorOffset);
     result += storeTemplateValue(value, args, expression);
     i = call.end;
   }
   return result;
 }
 
-function validateTemplateStructure(template, execution, inLoop = false, position = {}) {
-  const blocks = [];
-  for (let i = 0; i < template.length - 1; i++) {
-    execution?.check();
-    if (template.slice(i, i + 2) !== '{{' || template[i + 2] === '{') continue;
-    const from = i;
-    position.offset = from;
-    let quote = null;
-    let end = i + 2;
-    for (; end < template.length; end++) {
-      const char = template[end];
-      if (quote) {
-        if (char === '\\') end++;
-        else if (char === quote) quote = null;
-      } else if (char === '"' || char === "'") quote = char;
-      else if (template.slice(end, end + 2) === '}}') break;
-    }
-    if (quote) throw createSnippetError('err_unclosed_string');
-    if (end >= template.length - 1) throw createSnippetError('err_template_unclosed_tag');
-    const tag = template.slice(from + 2, end).trim();
-    i = end + 1;
-    if (!tag) throw createSnippetError('err_unknown_tag', ['']);
-    if ((tag === 'break' || tag === 'continue') && !inLoop && !blocks.some(block => block.type === 'for')) {
-      throw createSnippetError('err_loop_control_outside_for', [tag]);
-    }
-    const opener = tag.match(/^(if|for|switch|case)\s+/)?.[1] || (tag === 'default' ? 'default' : null);
-    const parent = blocks[blocks.length - 1];
-    if (opener) {
-      if ((opener === 'case' || opener === 'default') && parent?.type !== 'switch') {
-        throw createSnippetError('err_template_syntax', [tag]);
-      }
-      blocks.push({ type: opener, hasElse: false, offset: from });
-    } else if (tag === 'else' || tag.startsWith('elif ')) {
-      if (parent?.type !== 'if' || parent.hasElse) throw createSnippetError('err_elif_else_outside_if');
-      if (tag === 'else') parent.hasElse = true;
-    } else if (/^end(if|for|switch|case|default)$/.test(tag)) {
-      if (parent?.type !== tag.slice(3)) throw createSnippetError('err_template_syntax', [tag]);
-      blocks.pop();
-    }
-  }
-  if (blocks.length) {
-    position.offset = blocks[blocks.length - 1].offset;
-    const type = blocks[blocks.length - 1].type;
-    throw createSnippetError(type === 'default' ? 'err_case_unclosed' : `err_${type}_unclosed`);
-  }
-}
-
-/**
- * Processes control flow (for, if, set, switch/case), expressions, and placeholders.
- * Now async to support paste() and prompt() inline.
- */
-async function processTemplate(template, args, context = {}) {
+/** Parse source once, then solve immutable templates into output fragments. */
+async function processTemplate(input, args = {}, context = {}) {
   context = { ...context, position: { offset: 0 } };
-  context.source ||= { text: template, name: context.stack?.[context.stack.length - 1]?.name || '' };
-  context.sourceOffsets ||= Array.from({ length: template.length }, (_, i) => i);
+  context.maxCallDepth = normalizeSnippetCallDepth(context.maxCallDepth ?? (typeof config !== 'undefined' ? config.maxCallDepth : undefined));
+  context.execution ||= createSnippetExecution(context.maxExecutionMs ?? (typeof config !== 'undefined' ? config.maxExecutionMs : undefined));
+  const snippet = input && !(input instanceof SnippetTemplate) && typeof input === 'object' ? input : null;
+  const source = snippet ? snippet.replacement || '' : input instanceof SnippetTemplate ? input.source : input;
+  if (snippet) context.literalSource = null;
+  context.source = context.literalSource?.source || { text: source, name: snippet?.name || context.stack?.at(-1)?.name || '' };
   try {
-    return await processSnippetTemplate(template, args, context);
+    await context.execution.checkpoint();
+    const current = snippet || context.stack?.at(-1);
+    const template = input instanceof SnippetTemplate ? input
+      : current && (current.replacement || '') === source ? getSnippetTemplate(current, context.execution)
+      : parseSnippetTemplate(source, context.execution);
+    context.activeTemplate = template;
+    const fragment = await solveSnippetTemplate(template, args, context);
+    context.execution.check();
+    return fragment;
   } catch (error) {
     if (error && !error.snippetLocation && error.name !== 'SnippetPromptCancelled') {
-      const offset = context.sourceOffsets[context.position.offset] ?? context.sourceOffsets.at(-1) ?? 0;
+      const localOffset = error.snippetOffset ?? context.position.offset;
+      const offset = context.literalSource?.offsets[localOffset] ?? localOffset;
       const lines = context.source.text.slice(0, offset).split(/\r\n|\r|\n/);
       error.snippetLocation = {
         snippetName: context.source.name, offset, line: lines.length,
@@ -282,396 +264,111 @@ async function processTemplate(template, args, context = {}) {
   }
 }
 
-function snippetBodyContext(context, start, length) {
-  return { ...context, sourceOffsets: context.sourceOffsets.slice(start, start + length) };
-}
-
-async function processSnippetTemplate(template, args, context) {
-  context.maxCallDepth = normalizeSnippetCallDepth(context.maxCallDepth ?? (typeof config !== 'undefined' ? config.maxCallDepth : undefined));
-  context.execution ||= createSnippetExecution(context.maxExecutionMs ?? (typeof config !== 'undefined' ? config.maxExecutionMs : undefined));
-  await context.execution.checkpoint();
-  validateTemplateStructure(template, context.execution, !!context.loopControl, context.position);
-  context.position.offset = 0;
-  let result = "";
-  // Retain original positions when line continuations and indentation vanish.
-  const removals = [...template.matchAll(/\\(?:\r\n|\n|\r)\s*/g)];
-  if (removals.length) {
-    let normalized = '';
-    const offsets = [];
-    let from = 0;
-    for (const match of [...removals, { index: template.length, 0: '' }]) {
-      normalized += template.slice(from, match.index);
-      for (let i = from; i < match.index; i++) offsets.push(context.sourceOffsets[i]);
-      from = match.index + match[0].length;
-    }
-    template = normalized;
-    context.sourceOffsets = offsets;
-  }
-  let remaining = template;
-  
-  // Track keys that are newly created in this scope level
+async function solveSnippetTemplate(template, args, context) {
+  const nodes = [];
+  const append = value => {
+    for (const node of SnippetFragment.from(value).nodes) nodes.push(node);
+  };
   const newlyCreated = new Set();
-
-  const setVar = (name, val) => {
-    if (!(name in args)) newlyCreated.add(name);
-    args[name] = val;
+  const setVar = (name, value) => {
+    if (!Object.prototype.hasOwnProperty.call(args, name)) newlyCreated.add(name);
+    Object.defineProperty(args, name, { value, writable: true, enumerable: true, configurable: true });
   };
-
-  // Find {{ where the char at +2 is not { (skips {{{ patterns)
-  const findOpen = (str) => {
-    let i = str.indexOf('{{');
-    while (i !== -1) {
-      if (str[i + 2] !== '{') return i;
-      i = str.indexOf('{{', i + 1);
-    }
-    return -1;
-  };
-
-  // Find }} that closes a tag, skipping over string literals so that
-  // { or } inside 'quotes' or "quotes" don't confuse the parser.
-  const findClose = (str, from) => {
-    let i = from;
-    while (i < str.length - 1) {
-      const ch = str[i];
-      // Skip string literals
-      if (ch === '\'' || ch === '"') {
-        const quote = ch;
-        i++;
-        while (i < str.length) {
-          if (str[i] === '\\') { i += 2; continue; }
-          if (str[i] === quote) { i++; break; }
-          i++;
+  try {
+    for (const node of template.nodes) {
+      if (context.loopControl?.type) break;
+      context.position.offset = node.offset;
+      await context.execution.checkpoint();
+      switch (node.type) {
+        case 'text':
+        case 'cursor': nodes.push(node); break;
+        case 'expression': append(await evaluateTemplateExpression(node.expression, args, context)); break;
+        case 'cursorExpression': {
+          const level = await evaluateTemplateExpression(node.expression, args, context);
+          if (!Number.isSafeInteger(level) || level < 0) throw createSnippetError('err_cursor_level');
+          nodes.push({ type: 'cursor', level });
+          break;
         }
-        continue;
-      }
-      // Closing }}
-      if (ch === '}' && str[i + 1] === '}') {
-        if (i === 0 || str[i - 1] !== '}') return i;
-      }
-      i++;
-    }
-    return -1;
-  };
-
-  while (remaining.length > 0) {
-    if (context.loopControl?.type) break;
-    await context.execution.checkpoint();
-    const tagStart = findOpen(remaining);
-    if (tagStart === -1) { result += remaining; break; }
-
-    context.position.offset = template.length - remaining.length + tagStart;
-    result += remaining.substring(0, tagStart);
-    remaining = remaining.substring(tagStart);
-
-    const tagEnd = findClose(remaining, 2);
-    if (tagEnd === -1) { result += remaining; break; }
-
-    const fullTag = remaining.substring(0, tagEnd + 2);
-    const content = remaining.substring(2, tagEnd).trim();
-    remaining = remaining.substring(tagEnd + 2);
-
-    if (content === 'break' || content === 'continue') {
-      if (!context.loopControl) throw createSnippetError('err_loop_control_outside_for', [content]);
-      context.loopControl.type = content;
-      break;
-    }
-
-    // 1. Comma-separated declarations and assignments: {{set $a = 3, $b = 5}}
-    if (content.startsWith('set ')) {
-      const source = content.substring(4);
-      const assignments = splitArgs(source);
-      if (!assignments.length || assignments.some(part => !part) || /,\s*$/.test(source)) {
-        throw createSnippetError('err_template_syntax', [content]);
-      }
-      // Apply left to right so later expressions can use earlier updates.
-      for (const assignment of assignments) {
-        const declaration = assignment.match(/^\$([\p{L}\p{N}_]+)\s*$/u);
-        if (declaration) {
-          setVar(declaration[1], undefined);
-          continue;
-        }
-        const varMatch = assignment.match(/^\$(?<n>[\p{L}\p{N}_]+)\s*(?<op>=|\+=|-=|\*=|%=|\/=)\s*(?<v>[\s\S]*)$/u);
-        if (varMatch) {
-          const { n: name, op, v: expr } = varMatch.groups;
-          if (!expr.trim()) throw createSnippetError('err_template_syntax', [content]);
-          const newVal = await evaluateTemplateExpression(expr, args, context);
-
-          if (op === '=') {
-            setVar(name, newVal);
-          } else {
-            const oldVal = args[name] ?? 0;
-            switch (op) {
-              case '+=': setVar(name, addSnippetValues(oldVal, newVal)); break;
-              case '-=': setVar(name, subtractSnippetValues(oldVal, newVal, context.execution)); break;
-              case '*=': setVar(name, multiplySnippetValues(oldVal, newVal)); break;
-              case '/=': setVar(name, oldVal / newVal); break;
-              case '%=': setVar(name, oldVal % newVal); break;
+        case 'break':
+        case 'continue':
+          if (!context.loopControl) throw createSnippetError('err_loop_control_outside_for', [node.type]);
+          context.loopControl.type = node.type;
+          break;
+        case 'set':
+          for (const { name, operator, expression } of node.assignments) {
+            const value = operator ? await evaluateTemplateExpression(expression, args, context) : undefined;
+            const old = args[name] ?? 0;
+            switch (operator) {
+              case '+=': setVar(name, addSnippetValues(old, value)); break;
+              case '-=': setVar(name, subtractSnippetValues(old, value, context.execution)); break;
+              case '*=': setVar(name, multiplySnippetValues(old, value, context.execution)); break;
+              case '/=': setVar(name, old / value); break;
+              case '%=': setVar(name, old % value); break;
+              default: setVar(name, value);
             }
           }
-        } else throw createSnippetError('err_template_syntax', [content]);
-      }
-      continue;
-    }
-
-    // 2. {{for expr}} ... {{endfor}}
-    if (content.startsWith('for ')) {
-      const countExpr = content.substring(4);
-      const bodyStart = template.length - remaining.length;
-      const { body, rest } = findMatchingBlock(remaining, 'for', 'endfor');
-      remaining = rest;
-      const iterable = await evaluateTemplateExpression(countExpr, args, context);
-      const range = isRange(iterable);
-      const values = !range && isSnippetIterable(iterable) ? (typeof iterable === 'string' ? Array.from(iterable) : iterable) : null;
-      const start = range ? iterable.start : 0;
-      const step = range && iterable.end < iterable.start ? -1 : 1;
-      const count = values ? values.length : range ? Math.abs(iterable.end - iterable.start) + 1 : (parseInt(iterable, 10) || 0);
-      
-      const hadIndex = ('index' in args);
-      const oldIndex = args['index'];
-      const hadValue = Object.prototype.hasOwnProperty.call(args, SNIPPET_LOOP_VALUE);
-      const oldValue = args[SNIPPET_LOOP_VALUE];
-      const loopContext = { ...snippetBodyContext(context, bodyStart, body.length), loopControl: { type: null } };
-
-      try {
-        for (let i = 0; i < count; i++) {
-          args['index'] = i;
-          args[SNIPPET_LOOP_VALUE] = values ? values[i] : start + i * step;
-          loopContext.loopControl.type = null;
-          result += await processTemplate(body, args, loopContext);
-          if (loopContext.loopControl.type === 'break') break;
+          break;
+        case 'for': {
+          const iterable = await evaluateTemplateExpression(node.expression, args, context);
+          const range = isRange(iterable);
+          const values = !range && isSnippetIterable(iterable)
+            ? iterable instanceof SnippetFragment ? iterable.iterate(context.execution) : iterable[Symbol.iterator]() : null;
+          const start = range ? iterable.start : 0;
+          const step = range && iterable.end < iterable.start ? -1 : 1;
+          const count = values ? 0 : range ? Math.abs(iterable.end - iterable.start) + 1 : (parseInt(iterable, 10) || 0);
+          const hadIndex = Object.prototype.hasOwnProperty.call(args, 'index');
+          const oldIndex = args.index;
+          const hadValue = Object.prototype.hasOwnProperty.call(args, SNIPPET_LOOP_VALUE);
+          const oldValue = args[SNIPPET_LOOP_VALUE];
+          const loopContext = { ...context, loopControl: { type: null } };
+          try {
+            for (let i = 0; values || i < count; i++) {
+              const next = values?.next();
+              if (next?.done) break;
+              args.index = i;
+              args[SNIPPET_LOOP_VALUE] = values ? next.value : start + i * step;
+              loopContext.loopControl.type = null;
+              append(await processTemplate(node.body, args, loopContext));
+              if (loopContext.loopControl.type === 'break') break;
+            }
+          } finally {
+            if (hadIndex) args.index = oldIndex;
+            else delete args.index;
+            if (hadValue) args[SNIPPET_LOOP_VALUE] = oldValue;
+            else delete args[SNIPPET_LOOP_VALUE];
+          }
+          break;
         }
-      } finally {
-        if (hadIndex) args['index'] = oldIndex;
-        else delete args['index'];
-        if (hadValue) args[SNIPPET_LOOP_VALUE] = oldValue;
-        else delete args[SNIPPET_LOOP_VALUE];
-      }
-
-      continue;
-    }
-
-    // 3. {{if expr}} ... {{endif}}
-    if (content.startsWith('if ')) {
-      const initialCond = content.substring(3);
-      const bodyStart = template.length - remaining.length;
-      const ifOffset = context.position.offset;
-      const { body, rest } = findMatchingBlock(remaining, 'if', 'endif');
-      remaining = rest;
-
-      const segments = [{ cond: initialCond, content: "", start: 0, condOffset: ifOffset }];
-      const parts = splitIfBody(body);
-      for (const part of parts) {
-        if (part.type === 'elif') segments.push({ cond: part.cond, content: part.body, start: part.bodyStart, condOffset: bodyStart + part.start });
-        else if (part.type === 'else') segments.push({ cond: "true", content: part.body, start: part.bodyStart, condOffset: bodyStart + part.start });
-        else {
-          const segment = segments[segments.length - 1];
-          if (!segment.content) segment.start = part.start;
-          segment.content += part.body;
-        }
-      }
-
-      for (const seg of segments) {
-        context.position.offset = seg.condOffset;
-        const condition = await evaluateTemplateExpression(seg.cond, args, context);
-        if (!!condition && condition !== 'false' && condition !== '0') {
-          result += await processTemplate(seg.content, args, snippetBodyContext(context, bodyStart + seg.start, seg.content.length));
+        case 'if':
+          for (const branch of node.branches) {
+            context.position.offset = branch.offset;
+            const condition = branch.expression === null ? true : await evaluateTemplateExpression(branch.expression, args, context);
+            if (snippetConditionValue(condition)) {
+              append(await processTemplate(branch.body, args, context));
+              break;
+            }
+          }
+          break;
+        case 'switch': {
+          const value = String(await evaluateTemplateExpression(node.expression, args, context));
+          let selected = node.defaultBody;
+          cases: for (const branch of node.cases) {
+            context.position.offset = branch.offset;
+            for (const expression of splitArgs(branch.expression)) {
+              if (String(await evaluateTemplateExpression(expression, args, context)) === value) {
+                selected = branch.body;
+                break cases;
+              }
+            }
+          }
+          if (selected) append(await processTemplate(selected, args, context));
           break;
         }
       }
-      continue;
     }
-
-    // 4. {{switch expr}} ... {{endswitch}}
-    if (content.startsWith('switch ')) {
-      const switchExpr = content.substring(7);
-      const bodyStart = template.length - remaining.length;
-      const switchVal = String(await evaluateTemplateExpression(switchExpr, args, context));
-      const match = findMatchingBlock(remaining, 'switch', 'endswitch');
-      if (match) {
-        remaining = match.rest;
-        const segments = splitSwitchBody(match.body);
-        let executed = false;
-        for (const seg of segments.cases) {
-          context.position.offset = bodyStart + seg.start;
-          const valExprs = splitArgs(seg.valExpr).filter(Boolean);
-          let found = false;
-          for (const expr of valExprs) {
-            if (String(await evaluateTemplateExpression(expr, args, context)) === switchVal) { found = true; break; }
-          }
-          if (found) {
-            result += await processTemplate(seg.content, args, snippetBodyContext(context, bodyStart + seg.bodyStart, seg.content.length));
-            executed = true;
-            break;
-          }
-        }
-        if (!executed && segments.defaultContent !== null) {
-          result += await processTemplate(segments.defaultContent, args, snippetBodyContext(context, bodyStart + segments.defaultStart, segments.defaultContent.length));
-        }
-      }
-      continue;
-    }
-
-    // Skip control terminators
-    if (content === 'endif' || content === 'endfor' || content === 'endswitch' ||
-      content === 'else' || content === 'default' ||
-      content.startsWith('elif ') || content.startsWith('case ') ||
-      content === 'endcase' || content === 'enddefault') {
-      continue;
-    }
-
-    // 5. Cursor / placeholder handling
-    if (content === 'cursor') {
-      result += fullTag;
-      continue;
-    }
-    if (content.startsWith('#')) {
-      const rest = content.substring(1).trim();
-      // If it's a simple number or keyword (cursor, 1, 2, ...), pass it through
-      if (/^(cursor|\d+)$/.test(rest)) {
-        result += fullTag;
-      } else {
-        // Dynamic cursor: evaluate expression and format as {{#result}}
-        const evaluated = await evaluateTemplateExpression(rest, args, context);
-        if (!Number.isSafeInteger(evaluated) || evaluated < 0) throw createSnippetError('err_cursor_level');
-        result += `{{#${evaluated}}}`;
-      }
-      continue;
-    }
-
-    // 6. Expression evaluation (with async pre-resolution)
-    const evaluated = await evaluateTemplateExpression(content, args, context);
-    result += (evaluated !== null && evaluated !== undefined ? evaluated : "");
+    context.execution.check();
+    return new SnippetFragment(nodes);
+  } finally {
+    for (const key of newlyCreated) delete args[key];
   }
-
-  // Cleanup newly created variables in this block
-  for (const key of newlyCreated) {
-    delete args[key];
-  }
-
-  context.execution.check();
-  return result;
-}
-
-/**
- * Finds the matching end tag for a block, handling nesting.
- */
-function findMatchingBlock(text, startKey, endKey) {
-  let depth = 1;
-  let pos = 0;
-  while (depth > 0 && pos < text.length) {
-    const nextTag = text.indexOf('{{', pos);
-    if (nextTag === -1) break;
-    const nextEnd = text.indexOf('}}', nextTag);
-    if (nextEnd === -1) break;
-    const content = text.substring(nextTag + 2, nextEnd).trim();
-    if (content.startsWith(startKey + ' ')) depth++;
-    else if (content === endKey) depth--;
-    if (depth === 0) {
-      return { body: text.substring(0, nextTag), rest: text.substring(nextEnd + 2) };
-    }
-    pos = nextEnd + 2;
-  }
-  return { body: text, rest: "" };
-}
-
-/**
- * Splits IF body into segments based on top-level elif/else tags.
- */
-function splitIfBody(text) {
-  const parts = [];
-  let currentPos = 0;
-  let lastPos = 0;
-  while (currentPos < text.length) {
-    const tagStart = text.indexOf('{{', currentPos);
-    if (tagStart === -1) break;
-    const tagEnd = text.indexOf('}}', tagStart);
-    if (tagEnd === -1) break;
-    const content = text.substring(tagStart + 2, tagEnd).trim();
-    if (content.startsWith('elif ') || content === 'else') {
-      parts.push({ type: 'text', body: text.substring(lastPos, tagStart), start: lastPos });
-      if (content === 'else') {
-        parts.push({ type: 'else', body: "", start: tagStart, bodyStart: tagEnd + 2 });
-      } else {
-        parts.push({ type: 'elif', cond: content.substring(5).trim(), body: "", start: tagStart, bodyStart: tagEnd + 2 });
-      }
-      lastPos = tagEnd + 2;
-    } else if (content.startsWith('if ')) {
-      const { rest } = findMatchingBlock(text.substring(tagEnd + 2), 'if', 'endif');
-      currentPos = text.length - rest.length;
-      continue;
-    }
-    currentPos = tagEnd + 2;
-  }
-  parts.push({ type: 'text', body: text.substring(lastPos), start: lastPos });
-  return parts;
-}
-
-/**
- * Splits switch body into cases and default.
- */
-function splitSwitchBody(text) {
-  const cases = [];
-  let defaultContent = null;
-  let defaultStart = 0;
-  let pos = 0;
-
-  const findOpen = (str, from) => {
-    let i = str.indexOf('{{', from);
-    while (i !== -1) { if (str[i + 2] !== '{') return i; i = str.indexOf('{{', i + 1); }
-    return -1;
-  };
-  const findClose = (str, from) => {
-    let i = str.indexOf('}}', from);
-    while (i !== -1) { if (i === 0 || str[i - 1] !== '}') return i; i = str.indexOf('}}', i + 1); }
-    return -1;
-  };
-
-  while (pos < text.length) {
-    const tagStart = findOpen(text, pos);
-    if (tagStart === -1) break;
-    const tagEnd = findClose(text, tagStart + 2);
-    if (tagEnd === -1) break;
-    const content = text.substring(tagStart + 2, tagEnd).trim();
-    const startOfBody = tagEnd + 2;
-
-    if (content.startsWith('case ') || content === 'default') {
-      const isDefault = content === 'default';
-      const valExpr = isDefault ? null : content.substring(5).trim();
-      const endTagName = isDefault ? 'enddefault' : 'endcase';
-      let depth = 1;
-      let searchPos = startOfBody;
-      let blockBodyEnd = -1;
-      while (searchPos < text.length) {
-        const nextStart = findOpen(text, searchPos);
-        if (nextStart === -1) break;
-        const nextEnd = findClose(text, nextStart + 2);
-        if (nextEnd === -1) break;
-        const nextContent = text.substring(nextStart + 2, nextEnd).trim();
-        searchPos = nextEnd + 2;
-        if (nextContent.startsWith('if ') || nextContent.startsWith('for ') ||
-          nextContent.startsWith('switch ') || nextContent.startsWith('case ') ||
-          nextContent === 'default') {
-          depth++;
-        } else if (nextContent === 'endif' || nextContent === 'endfor' ||
-          nextContent === 'endswitch' || nextContent === 'endcase' ||
-          nextContent === 'enddefault') {
-          depth--;
-          if (depth === 0) {
-            if (nextContent === endTagName) { blockBodyEnd = nextStart; pos = searchPos; break; }
-            else break;
-          }
-        }
-      }
-      if (blockBodyEnd !== -1) {
-        const body = text.substring(startOfBody, blockBodyEnd);
-        if (isDefault) { defaultContent = body; defaultStart = startOfBody; }
-        else cases.push({ valExpr, content: body, start: tagStart, bodyStart: startOfBody });
-      } else {
-        pos = startOfBody;
-      }
-    } else {
-      pos = tagEnd + 2;
-    }
-  }
-  return { cases, defaultContent, defaultStart };
 }

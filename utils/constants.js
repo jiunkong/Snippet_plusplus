@@ -8,7 +8,7 @@ const BUILTIN_FUNCS_NO_ARGS = [
 
 const BUILTIN_FUNCS_HAS_ARGS = [
   'random', 'upper', 'lower', 'trim', 'capitalize', 'substr', 'replace', 'len',
-  'startswith', 'endswith', 'toast', 'copy', 'type', 'split', 'join', 'insertAt', 'removeAt'
+  'startswith', 'endswith', 'includes', 'toast', 'copy', 'type', 'isCursor', 'hasCursor', 'split', 'join', 'insertAt', 'removeAt'
 ];
 
 const BUILTIN_FUNCS_OPT_ARGS = [
@@ -16,7 +16,7 @@ const BUILTIN_FUNCS_OPT_ARGS = [
 ];
 
 const BUILTIN_FUNCS_TYPE_CAST = [
-  'str', 'num', 'int'
+  'str', 'num', 'int', 'bool', 'fragment'
 ];
 
 const BUILTIN_FUNCS_MATH = [

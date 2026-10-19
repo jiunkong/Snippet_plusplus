@@ -94,6 +94,11 @@
   font-weight: 700;
 }
 
+.hl-fragment {
+  color: #38bdf8 !important;
+  font-weight: 700;
+}
+
 /* Expression — Arguments, Variables, Logic (soft lavender) */
 .expr-badge {
   background: rgba(217, 70, 239, 0.15);

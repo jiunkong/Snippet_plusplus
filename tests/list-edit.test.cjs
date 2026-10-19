@@ -1,3 +1,4 @@
+const { assertTemplateOutput } = require('./helpers/fragment.cjs');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -6,7 +7,7 @@ const vm = require('node:vm');
 const root = path.join(__dirname, '..');
 function engine() {
   const context = vm.createContext({ t: (key, values = []) => `${key}:${values.join(',')}` });
-  for (const file of ['utils/constants.js', 'utils/triggers.js', 'utils/i18n.js', 'content/evaluator.js', 'content/template.js', 'options/highlight.js']) {
+  for (const file of ['utils/constants.js', 'utils/triggers.js', 'utils/i18n.js', 'content/fragment.js', 'content/evaluator.js', 'content/template-parser.js', 'content/template.js', 'options/highlight.js']) {
     vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
   }
   return context;
@@ -72,7 +73,7 @@ test('list subtraction removes all matches by value, preserves order and origina
   assert.equal(String(ctx.evaluateExpression('[1, 2] - [] - [1]', {})), '[2]');
   assert.equal(ctx.evaluateExpression('10 - 3 - 2', {}), 5);
   assert.equal(ctx.evaluateExpression('"10" - 3', {}), 7);
-  assert.equal(await ctx.processTemplate('{{set $items = [1, 2, 2, 3]}}{{set $items -= [2]}}{{$items}}', {}), '[1,3]');
+  assertTemplateOutput(await ctx.processTemplate('{{set $items = [1, 2, 2, 3]}}{{set $items -= [2]}}{{$items}}', {}), '[1,3]');
   for (const expr of ['[] - 1', '1 - []', '[] - null', '"a" - []']) {
     assert.throws(() => ctx.evaluateExpression(expr, {}), error => error.messageKey === 'err_list_subtract_types');
   }
@@ -82,7 +83,7 @@ test('list editing composes with async snippet arguments and leaves the source u
   const ctx = engine();
   const snippets = [{ name: 'echo', trigger: '/e ${value}', replacement: '{{$value}}' }];
   const args = { items: ctx.evaluateExpression('[1, 2]', {}), index: '1' };
-  assert.equal(await ctx.processTemplate('{{@echo(insertAt($items, num($index), "x"))}}|{{@echo(removeAt($items, -1))}}|{{$items}}', args, { snippets }), '[1,"x",2]|[1]|[1,2]');
+  assertTemplateOutput(await ctx.processTemplate('{{@echo(insertAt($items, num($index), "x"))}}|{{@echo(removeAt($items, -1))}}|{{$items}}', args, { snippets }), '[1,"x",2]|[1]|[1,2]');
 });
 
 test('editing functions highlight as builtins and validate counts and empty arguments', () => {

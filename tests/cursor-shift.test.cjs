@@ -8,7 +8,7 @@ const root = path.join(__dirname, '..');
 
 function domHarness() {
   const context = vm.createContext({ console });
-  for (const file of ['utils/constants.js', 'content/dom.js']) {
+  for (const file of ['utils/constants.js', 'content/fragment.js', 'content/dom.js']) {
     vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
   }
   return context;
@@ -16,14 +16,14 @@ function domHarness() {
 
 test('a level zero snippet reserves level zero for itself', () => {
   const context = domHarness();
-  const max = context.getMaxCursorLevel('new {{#0}}');
+  const max = context.getMaxCursorLevel(vm.runInContext('new SnippetFragment([{ type: \"cursor\", level: 0 }])', context));
   assert.equal(max, 0);
   assert.equal(context.shiftVisualPlaceholders('old ⟦0⟧ and ⟦2⟧', max + 1), 'old ⟦1⟧ and ⟦3⟧');
 });
 
 test('existing placeholders move past every level in the new snippet', () => {
   const context = domHarness();
-  const max = context.getMaxCursorLevel('{{#0}} then {{#1}} then {{#2}}');
+  const max = context.getMaxCursorLevel(vm.runInContext('new SnippetFragment([0, 1, 2].map(level => ({ type: \"cursor\", level })))', context));
   assert.equal(max, 2);
   assert.equal(context.shiftVisualPlaceholders('existing ⟦0⟧, ⟦1⟧', max + 1), 'existing ⟦3⟧, ⟦4⟧');
 });

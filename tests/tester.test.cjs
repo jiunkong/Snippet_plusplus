@@ -1,3 +1,4 @@
+const { assertTemplateOutput } = require('./helpers/fragment.cjs');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -19,7 +20,7 @@ function runtimeHarness() {
     loadSnippetLocale: async () => {}, loadLocale: async () => {}, t: key => key
   });
   vm.runInContext('let config = {}; let snippets = []; let typingSeqLength = 7; let lastExpansion = {};', context);
-  for (const file of ['utils/config.js', 'utils/triggers.js', 'options/tester-runtime.js']) {
+  for (const file of ['utils/constants.js', 'utils/config.js', 'utils/i18n.js', 'utils/triggers.js', 'content/fragment.js', 'content/evaluator.js', 'content/template-parser.js', 'content/template.js', 'options/tester-runtime.js']) {
     vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context);
   }
   return { context, fields, requests, listeners };
@@ -41,10 +42,7 @@ test('the tester uses current group data and retains helpers across subgroups re
   assert.equal(loaded[0].compiledRegex.exec('/abc Guest').groups.name, 'Guest');
   assert.equal(loaded[0].groupSnippets, groups[0].snippets);
   assert.equal(loaded.some(snippet => snippet.name === 'helper'), false);
-  for (const file of ['utils/constants.js', 'utils/i18n.js', 'content/evaluator.js', 'content/template.js']) {
-    vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context);
-  }
-  assert.equal(await context.processTemplate('{{@helper()}}', {}, { snippets: loaded[0].groupSnippets }), 'unsaved helper');
+  assertTemplateOutput(await context.processTemplate('{{@helper()}}', {}, { snippets: loaded[0].groupSnippets }), 'unsaved helper');
   assert.equal(loaded[0].sourceSnippet, groups[0].snippets[1]);
   assert.equal(vm.runInContext('config.uiLocale', context), 'ko');
   assert.equal(vm.runInContext('config.nextCursor', context), 'Ctrl+Space');

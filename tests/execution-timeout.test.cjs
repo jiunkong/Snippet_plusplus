@@ -1,3 +1,4 @@
+const { assertTemplateOutput } = require('./helpers/fragment.cjs');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -7,7 +8,7 @@ const root = path.join(__dirname, '..');
 function harness() {
   const clock = { time: 0 };
   const context = vm.createContext({ performance: { now: () => clock.time }, setTimeout, clearTimeout });
-  for (const file of ['utils/constants.js', 'utils/config.js', 'utils/triggers.js', 'utils/i18n.js', 'content/evaluator.js', 'content/template.js']) {
+  for (const file of ['utils/constants.js', 'utils/config.js', 'utils/triggers.js', 'utils/i18n.js', 'content/fragment.js', 'content/evaluator.js', 'content/template-parser.js', 'content/template.js']) {
     vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
   }
   return { context, clock };
@@ -42,7 +43,7 @@ test('nested snippet calls and blocks share one deadline instead of resetting it
   assert.equal(notifications, 3);
   clock.time = 0;
   notifications = 0;
-  assert.equal(await context.processTemplate('{{for 4}}{{@work()}}{{endfor}}', {}, { ...library, maxExecutionMs: 500 }), '');
+  assertTemplateOutput(await context.processTemplate('{{for 4}}{{@work()}}{{endfor}}', {}, { ...library, maxExecutionMs: 500 }), '');
   assert.equal(notifications, 4, 'a larger configured limit allows the same work');
 });
 
@@ -50,7 +51,7 @@ test('prompt and choice waiting time is excluded but execution resumes on the sa
   const { context, clock } = harness();
   context.showSnippetPrompt = async () => { clock.time += 10000; return 'Guest'; };
   context.showSnippetChoice = async (title, options) => { clock.time += 10000; return options[0]; };
-  assert.equal(await context.processTemplate('{{prompt("Name")}} {{choice("Pick", "A", "B")}}', {}, { maxExecutionMs: 100 }), 'Guest A');
+  assertTemplateOutput(await context.processTemplate('{{prompt("Name")}} {{choice("Pick", "A", "B")}}', {}, { maxExecutionMs: 100 }), 'Guest A');
   context.showSnippetToast = () => { clock.time += 101; };
   await assert.rejects(context.processTemplate('{{prompt("Name")}}{{toast("Work", "red")}}', {}, { maxExecutionMs: 100 }), error => error.messageKey === 'err_snippet_timeout');
 });

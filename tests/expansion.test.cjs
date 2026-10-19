@@ -48,9 +48,11 @@ function editorHarness(value, caret) {
     console
   });
   vm.runInContext('let lastExpansion = null; let isInternalEdit = false;', context);
-  for (const file of ['content/expansion.js', 'content/handlers.js']) {
+  for (const file of ['content/fragment.js', 'content/template-parser.js', 'content/expansion.js', 'content/handlers.js']) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'), context, { filename: file });
   }
+  const Fragment = vm.runInContext('SnippetFragment', context);
+  context.processTemplate = async text => new Fragment(context.parseSnippetTemplate(text).nodes);
   return { el, context };
 }
 
@@ -130,7 +132,7 @@ test('a sole contenteditable trigger is replaced without an empty-editor focus l
       // The host replaced the text node; the old range now points to its start.
       range.start = 0;
       range.end = 0;
-      return text;
+      return new (vm.runInContext('SnippetFragment', context))(context.parseSnippetTemplate(text).nodes);
     };
     const result = await context.selectAndReplace(el, info, { textBefore: '/hello', range }, 6, replacement);
     assert.deepEqual(commands, [replacement.includes('\n') ? 'insertHTML' : 'insertText']);
@@ -259,7 +261,7 @@ test('sole-trigger expansion does not overwrite changes made while a template wa
   context.processTemplate = async () => {
     el.textContent += '!';
     el.innerHTML = el.textContent;
-    return 'a{{#0}}b';
+    return new (vm.runInContext('SnippetFragment', context))(context.parseSnippetTemplate('a{{#0}}b').nodes);
   };
   const result = await context.selectAndReplace(el, info, { textBefore: '/hello', range }, 6, 'ignored');
   assert.equal(result.cancelled, true);
@@ -653,4 +655,67 @@ test('execution timeout restores the trigger and reports a localized error witho
   assert.equal(result.cancelled, true);
   assert.equal(el.value, 'prefix /hello suffix');
   assert.deepEqual(errors, ['err_snippet_timeout']);
+});
+
+function loadRealTemplateEngine(context) {
+  // editorHarness already loads the shared fragment and parser classes.
+  for (const file of ['utils/constants.js', 'utils/triggers.js', 'utils/i18n.js', 'content/evaluator.js', 'content/template.js']) {
+    vm.runInContext(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'), context, { filename: file });
+  }
+}
+
+test('literal cursor syntax stays text during input insertion, navigation and undo', async () => {
+  const { el, context } = editorHarness('/hello', 6);
+  el.tagName = 'TEXTAREA';
+  loadRealTemplateEngine(context);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'content/dom.js'), 'utf8'), context);
+  el.focus = () => {};
+  const info = { isInput: true };
+  const result = await context.selectAndReplace(el, info, { textBefore: '/hello' }, 6, '{{"{{#0}}"}}|{{#2}}');
+  assert.equal(el.value, '{{#0}}|⟦2⟧');
+  context.placeExpansionCursor(el, info, result, el.value);
+  assert.equal(el.value, '{{#0}}|');
+  assert.equal(el.selectionStart, '{{#0}}|'.length);
+  assert.equal(context.findNextPlaceholder(el.value, 0, 0), null);
+  context.recordExpansion(el, info, result.before);
+  assert.equal(context.undoLastExpansion(), true);
+  assert.equal(el.value, '/hello');
+});
+
+test('str and externally supplied cursor syntax neither create nor reserve input placeholders', async () => {
+  for (const source of ['{{str(@body())}}', '{{upper(str(@body()))}}', '{{$capture}}']) {
+    const { el, context } = editorHarness('/hello', 6);
+    loadRealTemplateEngine(context);
+    context.config.shiftCursorLevels = true;
+    context.shiftVisualPlaceholders = () => assert.fail('literal text must not shift existing cursors');
+    const result = await context.selectAndReplace(el, { isInput: true }, { textBefore: '/hello' }, 6,
+      source, { capture: '{{#1}}' }, { snippets: [{ name: 'body', replacement: '{{#1}}' }] });
+    assert.equal(el.value, '{{#1}}');
+    assert.equal(result.hasPlaceholders, false);
+  }
+});
+
+test('a sole contenteditable insertion preserves raw cursor text and consumes only the real cursor', async () => {
+  const { el, context, info, range, getRange } = emptyEditableHarness();
+  loadRealTemplateEngine(context);
+  const result = await context.selectAndReplace(el, info, { textBefore: '/hello', range }, 6, '{{"{{#0}}"}}|{{#2}}tail');
+  context.placeExpansionCursor(el, info, result, el.textContent);
+  assert.equal(el.textContent, '{{#0}}|tail');
+  assert.equal(getRange().start, '{{#0}}|'.length);
+});
+
+test('rich insertion escapes literal text and renders spans only for cursor nodes', async () => {
+  const { el, context, info, range } = emptyEditableHarness('prefix /hello');
+  loadRealTemplateEngine(context);
+  let html;
+  const exec = context.document.execCommand;
+  context.document.execCommand = (command, ui, value) => {
+    if (command === 'insertHTML') html = value;
+    return exec(command, ui, value);
+  };
+  await context.selectAndReplace(el, info, { textBefore: 'prefix /hello', range }, 6, '{{$literal}}{{#2}}',
+    { literal: '<span>{{#0}}</span>&"' });
+  assert.match(html, /^&lt;span&gt;\{\{#0\}\}&lt;\/span&gt;&amp;&quot;/);
+  assert.equal((html.match(/class="ss-placeholder"/g) || []).length, 1);
+  assert.match(html, /data-val="#2"/);
 });

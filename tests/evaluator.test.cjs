@@ -6,7 +6,7 @@ const vm = require('node:vm');
 
 const root = path.join(__dirname, '..');
 const context = vm.createContext({});
-for (const file of ['utils/constants.js', 'utils/i18n.js', 'content/evaluator.js']) {
+for (const file of ['utils/constants.js', 'utils/i18n.js', 'content/fragment.js', 'content/evaluator.js']) {
   vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
 }
 
@@ -65,6 +65,7 @@ test('random samples range values and retains literal choices containing tildes'
   let sample = 0;
   math.random = () => sample;
   const ctx = vm.createContext({ Math: math });
+  vm.runInContext(fs.readFileSync(path.join(root, 'content/fragment.js'), 'utf8'), ctx);
   vm.runInContext(fs.readFileSync(path.join(root, 'content/evaluator.js'), 'utf8'), ctx);
   const range = ctx.evaluateExpression('2~5', {});
   assert.equal(ctx.evaluateExpression('random($r)', { r: range }), 2);
@@ -79,14 +80,39 @@ test('random samples range values and retains literal choices containing tildes'
 test('type identifies values without coercion and preserves range, null and undefined', () => {
   for (const [expression, expected] of [
     ['type("42")', 'string'], ['type("")', 'string'], ['type(42)', 'number'],
-    ['type(0)', 'number'], ['type(-1.5)', 'number'], ['type(true)', 'boolean'],
-    ['type(false)', 'boolean'], ['type(2~5)', 'range'], ['type((5~2))', 'range'],
+    ['type(0)', 'number'], ['type(-1.5)', 'number'], ['type(true)', 'bool'],
+    ['type(false)', 'bool'], ['type(2~5)', 'range'], ['type((5~2))', 'range'],
     ['type(null)', 'null'], ['type(undefined)', 'undefined'], ['type((undefined))', 'undefined'],
-    ['type(num("42"))', 'number'], ['type(2 < 3)', 'boolean'], ['type(type(42))', 'string'],
+    ['type(num("42"))', 'number'], ['type(2 < 3)', 'bool'], ['type(type(42))', 'string'],
     ['type($captured)', 'string'], ['type($optional)', 'undefined'], ['type($empty)', 'null']
   ]) assert.equal(context.evaluateExpression(expression, { captured: '42', optional: undefined, empty: null }), expected, expression);
   assert.throws(() => context.evaluateExpression('type($missing)', {}), error => error.messageKey === 'err_undefined_variable');
   for (const expression of ['type()', 'type(1, 2)', 'type(,1)', 'type(1,)']) {
     assert.throws(() => context.evaluateExpression(expression, {}), error => error.messageKey === 'err_function_arguments', expression);
   }
+});
+
+test('bool converts values using the existing if condition rules and type reports bool', () => {
+  for (const [source, expected] of [
+    ['false', false], ['true', true], ['0', false], ['-0', false], ['42', true], ['-2', true],
+    ['(0/0)', false], ['(1/0)', true], ['null', false], ['undefined', false],
+    ['""', false], ['"false"', false], ['"0"', false], ['"true"', true],
+    ['"False"', true], ['"0.0"', true], ['" "', true], ['" false "', true],
+    ['[]', true], ['[0]', true], ['1~2', true]
+  ]) {
+    const value = context.evaluateExpression(`bool(${source})`, {});
+    assert.equal(value, expected, source);
+    assert.equal(value, context.evaluateCondition(source, {}), source);
+    assert.equal(context.evaluateExpression(`type(bool(${source}))`, {}), 'bool', source);
+  }
+  for (const source of ['type(true)', 'type(false)', 'type(1 < 2)', 'type(true && false)', 'type(bool(0))']) {
+    assert.equal(context.evaluateExpression(source, {}), 'bool', source);
+  }
+});
+
+test('bool requires exactly one argument and preserves undefined variable errors', () => {
+  for (const source of ['bool()', 'bool(1,2)', 'bool(,1)', 'bool(1,)', 'bool(1,,2)']) {
+    assert.throws(() => context.evaluateExpression(source, {}), error => error.messageKey === 'err_function_arguments', source);
+  }
+  assert.throws(() => context.evaluateExpression('bool($missing)', {}), error => error.messageKey === 'err_undefined_variable');
 });

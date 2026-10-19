@@ -89,6 +89,15 @@ function snippetFunctionAtSelection(text, selectionStart, selectionEnd) {
       else if (char === quote) quote = null;
       continue;
     }
+    if (char === '`') {
+      const literal = scanSnippetQuotedValue(text, i);
+      if (literal.error) return null;
+      if (selectionStart > i && selectionEnd < literal.end) {
+        return snippetFunctionAtSelection(text.slice(i + 1, literal.end - 1), selectionStart - i - 1, selectionEnd - i - 1);
+      }
+      i = literal.end - 1;
+      continue;
+    }
     if (char === '"' || char === "'") { quote = char; continue; }
     if (text.slice(i, i + 2) === '}}') { inTag = false; i++; continue; }
     if (char !== '@') continue;

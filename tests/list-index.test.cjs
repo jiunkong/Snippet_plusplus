@@ -1,3 +1,4 @@
+const { assertTemplateOutput } = require('./helpers/fragment.cjs');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -5,7 +6,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const root = path.join(__dirname, '..');
 const context = vm.createContext({ t: (key, args = []) => `${key}:${args.join(',')}`, currentConfig: { visualizeNewlines: false } });
-for (const file of ['utils/constants.js', 'utils/triggers.js', 'utils/i18n.js', 'content/evaluator.js', 'content/template.js', 'options/highlight.js']) {
+for (const file of ['utils/constants.js', 'utils/triggers.js', 'utils/i18n.js', 'content/fragment.js', 'content/evaluator.js', 'content/template-parser.js', 'content/template.js', 'options/highlight.js']) {
   vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
 }
 
@@ -32,9 +33,9 @@ test('nested indexing and list-returning builtins compose with other expressions
 test('out-of-range integer indices return undefined, including empty lists', async () => {
   for (const expression of ['[1,2][2]', '[1,2][-3]', '[][0]', '[][-1]', '[1][9007199254740991]']) {
     assert.equal(context.evaluateExpression(expression, {}), undefined, expression);
-    assert.equal(await context.processTemplate(`before{{${expression}}}after`, {}), 'beforeafter');
+    assertTemplateOutput(await context.processTemplate(`before{{${expression}}}after`, {}), 'beforeafter');
   }
-  assert.equal(await context.processTemplate('{{type([1][9])}}', {}), 'undefined');
+  assertTemplateOutput(await context.processTemplate('{{type([1][9])}}', {}), 'undefined');
 });
 
 test('invalid indices fail with localized errors and captured numeric strings require conversion', () => {
@@ -50,9 +51,9 @@ test('invalid indices fail with localized errors and captured numeric strings re
 
 test('indices work in snippet arguments, cursor offsets and loops', async () => {
   const library = { snippets: [{ name: 'echo', trigger: '/echo ${text}', replacement: '{{$text}}{{cursor}}' }] };
-  assert.equal(await context.processTemplate('{{@echo(split("red,blue", ",")[-1])<[1,2][-1]>}}', {}, library), 'blue{{#2}}');
-  assert.equal(await context.processTemplate('{{set $items = [10,20,30]}}{{for 3}}{{$items[index]}} {{endfor}}', {}), '10 20 30 ');
-  assert.equal(await context.processTemplate('{{set $items = [[1,2], [3,4]]}}{{$items[-1][0]}}', {}), '3');
+  assertTemplateOutput(await context.processTemplate('{{@echo(split("red,blue", ",")[-1])<[1,2][-1]>}}', {}, library), 'blue{{#2}}');
+  assertTemplateOutput(await context.processTemplate('{{set $items = [10,20,30]}}{{for 3}}{{$items[index]}} {{endfor}}', {}), '10 20 30 ');
+  assertTemplateOutput(await context.processTemplate('{{set $items = [[1,2], [3,4]]}}{{$items[-1][0]}}', {}), '3');
 });
 
 test('string indexing reads code points from literals, variables, function results and nested values', () => {
@@ -87,9 +88,9 @@ test('range indexing reads ascending and descending ranges without allocating th
 
 test('iterable indexing works in loops, snippet parameters, dynamic cursors and highlighting', async () => {
   const value = '{{for ["A😊", 2~5]}}{{value[-1]}}{{endfor}}';
-  assert.equal(await context.processTemplate(value, {}), '😊5');
+  assertTemplateOutput(await context.processTemplate(value, {}), '😊5');
   const snippets = [{ name: 'echo', trigger: '/e ${item}', replacement: '{{$item}}' }];
-  assert.equal(await context.processTemplate('{{@echo("abc"[1])}}{{#(2~5)[-1]}}', {}, { snippets }), 'b{{#5}}');
+  assertTemplateOutput(await context.processTemplate('{{@echo("abc"[1])}}{{#(2~5)[-1]}}', {}, { snippets }), 'b{{#5}}');
   for (const source of [value, '{{"A😊"[1]}}', "{{'abc'[-1]}}", '{{(5~2)[1]}}', '{{set $r = 1~3}}{{$r[-1]}}', '{{upper("ab")[0]}}']) {
     const output = {};
     assert.equal(context.updateHighlight({ value: source }, output), '', source);

@@ -6,7 +6,7 @@ const vm = require('node:vm');
 const root = path.join(__dirname, '..');
 function engine() {
   const context = vm.createContext({ console });
-  for (const file of ['utils/constants.js', 'utils/triggers.js', 'utils/i18n.js', 'content/evaluator.js', 'content/template.js']) {
+  for (const file of ['utils/constants.js', 'utils/triggers.js', 'utils/i18n.js', 'content/fragment.js', 'content/evaluator.js', 'content/template-parser.js', 'content/template.js']) {
     vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
   }
   return context;
@@ -77,4 +77,15 @@ test('callee locations survive propagation; failed arguments and lookup remain a
   });
   await expectLocation(ctx, 'caller\n  {{@helper($missing)}}', '{{@helper', { stack: [caller], snippets: [helper] }, 'caller');
   await expectLocation(ctx, 'caller\n  {{@unknown()}}', '{{@unknown', { stack: [caller], snippets: [helper] }, 'caller');
+});
+
+test('fragment literal errors point into the enclosing source, including nested and escaped literals', async () => {
+  const ctx = engine();
+  for (const source of [
+    'first\n{{`abc\n  {{$missing}}`}}',
+    '{{set $f = `a\\`b\n  {{$missing}}`}}',
+    '{{`outer {{`inner\n  {{$missing}}`}}`}}',
+    '{{for 1}}\\\n  {{`hello\n  {{$missing}}`}}{{endfor}}'
+  ]) await expectLocation(ctx, source, '{{$missing}}');
+  await expectLocation(ctx, '{{`text {{if true}}bad`}}', '{{if true}}');
 });

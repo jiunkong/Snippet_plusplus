@@ -11,6 +11,63 @@ function snippetParameterNames(trigger) {
   return [...String(trigger || '').matchAll(/\$\{([^:}]+)(?::([^}]+))?\}/g)].map(match => match[1]);
 }
 
+// Read an entire quoted value. Backtick fragments may contain template tags,
+// whose expressions can themselves contain quoted values or nested fragments.
+function scanSnippetQuotedValue(text, start, execution) {
+  const stack = [{ kind: text[start], start }];
+  let i = start + 1;
+  while (i < text.length) {
+    execution?.check();
+    const frame = stack[stack.length - 1];
+    const char = text[i];
+    if (frame.kind === 'tag') {
+      if (char === '"' || char === "'" || char === '`') {
+        stack.push({ kind: char, start: i++ });
+      } else if (text.startsWith('}}', i)) { stack.pop(); i += 2; }
+      else i++;
+    } else if (char === '\\') i += 2;
+    else if (char === frame.kind) {
+      stack.pop();
+      i++;
+      if (!stack.length) return { end: i };
+    } else if (frame.kind === '`' && text.startsWith('{{', i) && text[i + 2] !== '{') {
+      stack.push({ kind: 'tag', start: i });
+      i += 2;
+    } else i++;
+  }
+  const frame = stack[stack.length - 1];
+  return { error: frame.kind === 'tag' ? 'err_template_unclosed_tag'
+    : frame.kind === '`' ? 'err_unclosed_fragment_literal' : 'err_unclosed_string', offset: frame.start };
+}
+
+// Only the fragment's own text decodes escaped backticks/backslashes. Quoted
+// expressions retain their spelling for their respective parsers.
+function decodeSnippetFragmentLiteral(token) {
+  let text = '';
+  const offsets = [];
+  for (let i = 1; i < token.length - 1; i++) {
+    if (token.startsWith('{{', i) && token[i + 2] !== '{') {
+      let end = i + 2;
+      while (end < token.length - 1 && !token.startsWith('}}', end)) {
+        if (token[end] === '"' || token[end] === "'" || token[end] === '`') {
+          const quoted = scanSnippetQuotedValue(token, end);
+          if (quoted.error) break;
+          end = quoted.end;
+        } else end++;
+      }
+      end += 2;
+      for (; i < end; i++) { offsets.push(i); text += token[i]; }
+      i--;
+    } else {
+      const offset = i;
+      if (token[i] === '\\' && (token[i + 1] === '`' || token[i + 1] === '\\')) i++;
+      offsets.push(offset);
+      text += token[i];
+    }
+  }
+  return { text, offsets };
+}
+
 // Shared by template execution and options validation. Offsets may precede or
 // follow the required argument list; nested calls and quoted delimiters are safe.
 function parseSnippetFunctionName(text, start = 0) {
@@ -56,6 +113,10 @@ function parseSnippetCall(text, start = 0) {
       if (quote) {
         if (char === '\\') position++;
         else if (char === quote) quote = null;
+      } else if (char === '`') {
+        const literal = scanSnippetQuotedValue(text, position);
+        if (literal.error) return { error: literal.error };
+        position = literal.end - 1;
       } else if (char === '"' || char === "'") quote = char;
       else if (char === '@') {
         const nested = parseSnippetCall(text, position);

@@ -9,6 +9,7 @@ function applySnippetTestState(state) {
   snippets = [];
   for (const group of state.snippetGroups || []) {
     if (!group || !Array.isArray(group.snippets)) continue;
+    group.snippets.forEach(snippet => { if (snippet && typeof snippet === 'object') prepareSnippetTemplate(snippet); });
     for (const snippet of group.snippets) {
       if (!snippet || snippet.disabled === true || typeof snippet.trigger !== 'string' || !snippet.trigger) continue;
       const compiled = compileTrigger(snippet.trigger);

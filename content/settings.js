@@ -30,6 +30,7 @@ function loadSettings(reportFailure = false) {
         if (siteMode === 'blacklist' && onList) return;
         if (siteMode === 'whitelist' && !onList) return;
 
+        group.snippets.forEach(s => { if (s && typeof s === 'object') prepareSnippetTemplate(s); });
         group.snippets.forEach(s => {
           if (!s || s.disabled === true || typeof s.trigger !== 'string' || !s.trigger) return;
           const compiled = compileTrigger(s.trigger);
