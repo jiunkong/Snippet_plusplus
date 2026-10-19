@@ -22,6 +22,7 @@ let lastSyncedGroups;
 let syncChangeGeneration = 0;
 let checkedSyncGeneration = 0;
 let syncChangeTask = null;
+let restoreTask = null;
 
 export function snapshotSyncedState(config, groups) {
   return JSON.stringify({ config, snippetGroups: groups });
@@ -211,8 +212,10 @@ export async function importGroup(e) {
 }
 
 export function restoreOptions() {
+  if (restoreTask) return restoreTask;
   storageReady = false;
-  return loadSyncedState(DEFAULT_CONFIG, defaultSnippetGroups).then(async items => {
+  const generation = syncChangeGeneration;
+  restoreTask = loadSyncedState(DEFAULT_CONFIG, defaultSnippetGroups).then(async items => {
     loadedSyncVersion = items.syncVersion;
     __state_options_state_js.currentConfig = items.config;
     __state_options_state_js.snippetGroups = items.snippetGroups;
@@ -291,6 +294,8 @@ export function restoreOptions() {
     initHotkeyButtons();
     refreshSnippetTester();
     // Rendering normalizes optional fields; it must not count as a user edit.
+    // Use the same editor serialization as saveToStorage for this baseline.
+    syncActiveGroupData();
     lastSyncedSnapshot = snapshotSyncedState(__state_options_state_js.currentConfig, __state_options_state_js.snippetGroups);
     lastSyncedGroups = JSON.stringify(__state_options_state_js.snippetGroups);
     storageReady = true;
@@ -299,7 +304,13 @@ export function restoreOptions() {
     console.error('Snippet++: Sync load failed', error);
     await loadLocale('system', false);
     showStatus(error.code === 'SYNC_CONFLICT' ? t('status_sync_changed') : `${t('status_sync_failed')} ${error.message}`, true);
+  }).finally(() => {
+    restoreTask = null;
+    // A page opened during uninstall/recovery may initially see missing chunks.
+    // Retry when storage changes instead of leaving that page permanently blank.
+    if (!storageReady && generation !== syncChangeGeneration) restoreOptions();
   });
+  return restoreTask;
 }
 
 // Storage notifications also describe this page's own writes. Reconcile only
@@ -367,6 +378,10 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'sync' || !Object.keys(changes).some(key =>
     key === 'config' || key === 'snippetGroups' || key === SNIPPET_META_KEY || key.startsWith(SNIPPET_CHUNK_PREFIX))) return;
   syncChangeGeneration++;
+  if (!storageReady) {
+    if (!restoreTask) restoreOptions();
+    return;
+  }
   checkSyncedChanges();
 });
 

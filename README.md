@@ -26,6 +26,16 @@ npm run test:browser # fresh headless Chrome profile and real editor checks
 
 Reload the extension after rebuilding. `dist/`, `.test-build/` and dependencies are generated and ignored. Do not edit generated files. `manifest.json` is the extension version source of truth, including exported settings files.
 
+### Removal and settings recovery
+
+Use **Reload** in `chrome://extensions` to apply a rebuilt extension while retaining settings. Before using **Remove**, export the full configuration as a `.sppcfg` file; after reinstalling, import that file to restore it.
+
+Chrome Sync is not an uninstall backup. Chromium's [Sync storage backend](https://github.com/chromium/chromium/blob/main/chrome/browser/extensions/api/storage/sync_storage_backend.cc) clears an extension's settings on uninstall, and [the storage implementation](https://github.com/chromium/chromium/blob/main/chrome/browser/extensions/api/storage/syncable_settings_storage.cc) sends those deletions to Sync when enabled. Reinstalling with the same extension ID does not undo those deletions. Blocking startup writes cannot prevent Chrome's uninstall cleanup.
+
+Each remaining installation keeps the last complete synced configuration in `chrome.storage.local`. Its background worker restores that copy to Sync when all configuration and snippet keys disappear, including when another device uninstalls the extension. Settings and content scripts also read that copy while Sync is empty. Enable the updated extension on the other device before removing an installation so it has time to create this backup; the options page does not need to stay open. Incoming partial revisions do not replace the backup.
+
+Deleting all groups within the options page saves an explicit empty list, which is synced and backed up as an intentional edit. It does not trigger recovery. A local backup cannot survive removal of its own installation. If every installation and export is gone, the extension cannot recover the removed data. Keep a `.sppcfg` export for that case, or preserve an offline export on a device that still has the snippets before reconnecting it to Sync.
+
 ## Architecture
 
 - `language-core/`: Git submodule containing the TypeScript analyzer, immutable AST and fragments, function specifications, diagnostics and executor. It has no DOM or Chrome dependencies.

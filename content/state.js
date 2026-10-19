@@ -2,14 +2,7 @@ import { DEFAULT_CONFIG } from '../utils/config.js';
 // --- Constants & Global State ---
 
 export const defaultConfig = DEFAULT_CONFIG;
-export const defaultSnippetGroups = [{
-  name: chrome.i18n.getMessage('default_group_name') || "General",
-  snippets: [{
-    trigger: "/hello",
-    replacement: chrome.i18n.getMessage('default_snippet_replacement') || "Hello, {{cursor}}!"
-  }],
-  disabledSites: []
-}];
+export const defaultSnippetGroups = [];
 
 // Constants (VISUAL_OPEN, CURSOR_REGEX, etc.) are in utils/constants.js
 

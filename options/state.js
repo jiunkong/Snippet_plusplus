@@ -1,20 +1,9 @@
-import { t } from './i18n.js';
 import { DEFAULT_CONFIG } from '../utils/config.js';
 // --- Global State & Constants ---
 
-export const defaultSnippetGroups = [
-  {
-    name: t('default_group_name'),
-    snippets: [
-      { 
-        trigger: "/hello", 
-        replacement: t('default_snippet_replacement'), 
-        name: t('default_snippet_name'), 
-        collapsed: false 
-      }
-    ]
-  }
-];
+// An empty local Sync cache can still be waiting for existing account data.
+// Never seed it with example snippets that a later save could publish.
+export const defaultSnippetGroups = [];
 
 export let currentConfig = { ...DEFAULT_CONFIG };
 export let snippetGroups = [];

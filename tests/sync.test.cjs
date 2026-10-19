@@ -37,6 +37,7 @@ function syncHarness(data = {}) {
   };
   const chrome = { runtime, storage: { sync: storage } };
   const context = vm.createContext({ chrome, TextEncoder, console, Date, Math });
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'utils', 'sync-backup.js'), 'utf8'), context);
   vm.runInContext(source, context);
   return { context, data, storage };
 }
@@ -111,4 +112,15 @@ test('subgroup organization round-trips through sync while snippets stay flat', 
   await context.saveSyncedState({}, groups);
   const loaded = await syncHarness(data).context.loadSyncedState({}, []);
   assert.equal(JSON.stringify(loaded.snippetGroups), JSON.stringify(groups));
+});
+
+test('intentionally deleting the last saved group can still publish an empty list', async () => {
+  for (const legacy of [false, true]) {
+    const { context, data } = syncHarness();
+    if (legacy) data.snippetGroups = [{ name: 'Old', snippets: [] }];
+    else await context.saveSyncedState({}, [{ name: 'Old', snippets: [] }]);
+    await context.saveSyncedState({}, []);
+    const loaded = await context.loadSyncedState({}, [{ name: 'Fallback', snippets: [] }]);
+    assert.equal(loaded.snippetGroups.length, 0);
+  }
 });

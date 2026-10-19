@@ -1,4 +1,4 @@
-
+import { readSyncBackup } from './sync-backup.js';
 // Chrome Sync allows about 100 KB total, but only 8 KB per item. Store the
 // snippet list in versioned chunks and publish its manifest after all chunks
 // have been written, so readers never observe a partially saved list.
@@ -87,9 +87,10 @@ export function syncConflict() {
   return error;
 }
 
-export async function loadSyncedState(defaultConfig, defaultGroups) {
+export async function loadSyncedState(defaultConfig, defaultGroups, { useBackup = true } = {}) {
   const items = await syncGet(['config', 'snippetGroups', SNIPPET_META_KEY]);
-  let config = { ...defaultConfig };
+  const backup = useBackup ? await readSyncBackup() : null;
+  let config = { ...defaultConfig, ...(items.config === undefined ? backup?.config : {}) };
   if (items.config !== undefined) {
     try {
       const saved = typeof items.config === 'string' ? JSON.parse(items.config) : items.config;
@@ -109,10 +110,17 @@ export async function loadSyncedState(defaultConfig, defaultGroups) {
     if (!Array.isArray(groups)) throw new Error('Invalid synced snippet list.');
     const latest = await syncGet(['config', 'snippetGroups', SNIPPET_META_KEY]);
     if (syncedVersion(latest) !== syncedVersion(items)) throw syncConflict();
-    return { config, snippetGroups: groups, syncVersion: syncedVersion(items) };
+    return { config, snippetGroups: groups, syncVersion: syncedVersion(items), hasSyncedSnippets: true, hasSyncedConfig: items.config !== undefined };
   }
 
-  return { config, snippetGroups: Array.isArray(items.snippetGroups) ? items.snippetGroups : structuredClone(defaultGroups), syncVersion: syncedVersion(items) };
+  if (Array.isArray(items.snippetGroups)) {
+    return { config, snippetGroups: items.snippetGroups, syncVersion: syncedVersion(items), hasSyncedSnippets: true, hasSyncedConfig: items.config !== undefined };
+  }
+  return {
+    config,
+    snippetGroups: backup ? backup.snippetGroups : structuredClone(defaultGroups),
+    syncVersion: syncedVersion(items), hasSyncedSnippets: false
+  };
 }
 
 export let syncWriteQueue = Promise.resolve();
@@ -126,8 +134,11 @@ export function saveSyncedState(config, snippetGroups, options = {}) {
     const old = await syncGet(['config', 'snippetGroups', SNIPPET_META_KEY]);
     const expected = options.expectedVersion?.();
     if (expected !== undefined && syncedVersion(old) !== expected) throw syncConflict();
-    // Changing preferences must never publish the fallback example snippets.
-    if (typeof options.configOnly === 'function' ? options.configOnly() : options.configOnly) {
+    // Preferences normally leave the snippet revision alone. If Chrome removed
+    // the entire list, include the recovered local list in the new commit.
+    const configOnly = typeof options.configOnly === 'function' ? options.configOnly() : options.configOnly;
+    const needsRecovery = old[SNIPPET_META_KEY] === undefined && !Array.isArray(old.snippetGroups) && await readSyncBackup();
+    if (configOnly && !needsRecovery) {
       await syncSet({ config: serializedConfig });
       options.onCommitted?.(syncedVersion({ ...old, config: serializedConfig }));
       return;
