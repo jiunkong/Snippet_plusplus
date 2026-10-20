@@ -30,6 +30,11 @@ export function applyTranslations() {
     if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.placeholder = value;
     else el.textContent = value;
   });
+  for (const [attribute, dataAttribute] of [['title', 'data-i18n-title'], ['aria-label', 'data-i18n-aria-label']]) {
+    document.querySelectorAll(`[${dataAttribute}]`).forEach(el => {
+      el.setAttribute(attribute, t(el.getAttribute(dataAttribute)));
+    });
+  }
   document.documentElement.lang = selectedLocale === 'system'
     ? chrome.i18n.getUILanguage().split('-')[0]
     : selectedLocale;

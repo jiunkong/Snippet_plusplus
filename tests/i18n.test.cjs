@@ -13,8 +13,13 @@ const catalogs = Object.fromEntries(['en', 'ko'].map(locale => [
 test('manual language choice translates options and validation messages', async () => {
   const title = { tagName: 'H3', textContent: '', getAttribute: () => 'settings_language' };
   const browserOption = { tagName: 'OPTION', textContent: '', getAttribute: () => 'settings_language_system' };
+  const iconButton = {
+    title: '', 'aria-label': '', textContent: 'icon',
+    getAttribute: () => 'ui_add_group',
+    setAttribute(name, value) { this[name] = value; }
+  };
   const document = {
-    querySelectorAll: () => [title, browserOption],
+    querySelectorAll: selector => selector === '[data-i18n]' ? [title, browserOption] : [iconButton],
     documentElement: { lang: '' },
     body: { classList: { remove() {} } }
   };
@@ -38,10 +43,14 @@ test('manual language choice translates options and validation messages', async 
   assert.equal(title.textContent, catalogs.ko.settings_language.message);
   assert.equal(browserOption.textContent, catalogs.ko.settings_language_system.message);
   assert.equal(document.documentElement.lang, 'ko');
+  assert.equal(iconButton.title, catalogs.ko.ui_add_group.message);
+  assert.equal(iconButton['aria-label'], catalogs.ko.ui_add_group.message);
+  assert.equal(iconButton.textContent, 'icon');
   assert.equal(context.t('err_unknown_tag', ['test']), catalogs.ko.err_unknown_tag.message.replace('$1', 'test'));
 
   await context.loadLocale('system');
   assert.equal(title.textContent, catalogs.en.settings_language.message);
   assert.equal(document.documentElement.lang, 'en');
+  assert.equal(iconButton['aria-label'], catalogs.en.ui_add_group.message);
   assert.equal(notifications, 2);
 });

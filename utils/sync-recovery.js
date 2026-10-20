@@ -16,8 +16,14 @@ export function startSyncRecovery() {
   function reconcile() {
     if (task) return task;
     task = (async () => {
+      let retryGeneration = generation;
+      let conflictRetries = 0;
       while (handledGeneration !== generation) {
         const observedGeneration = generation;
+        if (retryGeneration !== observedGeneration) {
+          retryGeneration = observedGeneration;
+          conflictRetries = 0;
+        }
         handledGeneration = observedGeneration;
         try {
           const state = await loadSyncedState(DEFAULT_CONFIG, [], { useBackup: false });
@@ -47,9 +53,19 @@ export function startSyncRecovery() {
             }
           });
         } catch (error) {
-          // Incomplete chunk notifications and concurrent saves are retried on
-          // their next storage event, without replacing the last good backup.
-          console.error('Snippet++: Sync backup/recovery deferred', error);
+          if (error.code === 'SYNC_CONFLICT') {
+            // A newer snapshot may be readable before onChanged arrives. Read
+            // it again, but yield after three attempts if Sync keeps changing.
+            // A queued storage event already guarantees the next iteration.
+            if (observedGeneration === generation && conflictRetries < 2) {
+              conflictRetries++;
+              handledGeneration = -1;
+            }
+          } else if (error.code !== 'SYNC_INCOMPLETE') {
+            console.error('Snippet++: Sync backup/recovery deferred', error);
+          }
+          // Partial chunk delivery waits for its next storage event. Neither
+          // case is a failed write or permission to republish an older backup.
         }
       }
     })().finally(() => {

@@ -4,9 +4,6 @@
 <head>
   <meta charset="UTF-8">
   <title>Snippet++ Settings</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="options.css">
   <link rel="stylesheet" href="styles/tester.css">
 </head>
@@ -15,28 +12,28 @@
   <div class="app-container">
     <aside class="sidebar">
       <div class="logo">
-        <span class="logo-icon">✨</span>
+        <img class="logo-icon" src="icons/logo.svg" width="32" height="32" alt="">
         <span class="logo-text">Snippet++</span>
       </div>
-      <nav class="nav-tabs">
-        <button class="nav-btn active" data-tab="general">
-          <span class="nav-icon">⚙️</span> <span data-i18n="tabs_general">General Settings</span>
+      <nav class="nav-tabs" aria-label="탐색" data-i18n-aria-label="navigation_label">
+        <button class="nav-btn active" data-tab="general" aria-current="page">
+          <svg class="ui-icon nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="icons/ui.svg#settings"></use></svg> <span data-i18n="tabs_general">General Settings</span>
         </button>
         <button class="nav-btn" data-tab="snippets">
-          <span class="nav-icon">📝</span> <span data-i18n="tabs_snippets">Snippet Editor</span>
+          <svg class="ui-icon nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="icons/ui.svg#code"></use></svg> <span data-i18n="tabs_snippets">Snippet Editor</span>
         </button>
         <button class="nav-btn" data-tab="tester">
-          <span class="nav-icon">🧪</span> <span data-i18n="tabs_tester">스니펫 테스트</span>
+          <svg class="ui-icon nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="icons/ui.svg#play"></use></svg> <span data-i18n="tabs_tester">스니펫 테스트</span>
         </button>
         <button class="nav-btn" data-tab="guide">
-          <span class="nav-icon">📖</span> <span data-i18n="tabs_guide">Syntax Guide</span>
+          <svg class="ui-icon nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="icons/ui.svg#book"></use></svg> <span data-i18n="tabs_guide">Syntax Guide</span>
         </button>
       </nav>
       <div class="sidebar-footer">
         <div class="footer-actions">
-          <button id="export-btn" class="secondary-btn" title="Export Settings">📤 <span
+          <button id="export-btn" class="secondary-btn" title="Export Settings" data-i18n-title="settings_export"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="icons/ui.svg#export"></use></svg> <span
               data-i18n="settings_export">Export</span></button>
-          <button id="import-btn" class="secondary-btn" title="Import Settings">📥 <span
+          <button id="import-btn" class="secondary-btn" title="Import Settings" data-i18n-title="settings_import"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="icons/ui.svg#import"></use></svg> <span
               data-i18n="settings_import">Import</span></button>
         </div>
         <input type="file" id="import-file" style="display:none" accept=".sppcfg">
@@ -46,173 +43,281 @@
     <main class="content-area">
       <section id="general-tab" class="tab-content active">
         <header class="tab-header">
-          <h1 data-i18n="settings_title">General Settings</h1>
+          <h1 data-i18n="settings_title">General Settings</h1><p data-i18n="settings_intro">사용 방식에 맞게 단축키와 편집 동작을 조정하세요.</p>
         </header>
 
         <div class="settings-grid">
-          <div class="setting-card">
-            <div class="card-info">
-              <h3 data-i18n="settings_next_cursor">다음 커서로 이동</h3>
-              <p data-i18n="settings_next_cursor_desc">텍스트 치환 후 다음 플레이스홀더로 점프할 단축키를 지정하세요.</p>
-            </div>
-            <div class="card-action">
-              <div class="hotkey-input">
-                <span id="hotkey-display-nextCursor">Ctrl + Space</span>
-                <button class="record-btn" data-key="nextCursor" data-i18n="settings_change">Change</button>
+          <section class="settings-section" aria-labelledby="settings_section_shortcuts">
+            <h2 id="settings_section_shortcuts" data-i18n="settings_section_shortcuts">
+              단축키
+            </h2>
+            <div class="settings-section-rows">
+              <div class="setting-card">
+                <div class="card-info">
+                  <h3 data-i18n="settings_next_cursor">
+                    다음 커서로 이동
+                  </h3>
+                  <p data-i18n="settings_next_cursor_desc">
+                    텍스트 치환 후 다음 플레이스홀더로 점프할 단축키를 지정하세요.
+                  </p>
+                </div>
+                <div class="card-action">
+                  <div class="hotkey-input">
+                    <span id="hotkey-display-nextCursor">
+                      Ctrl + Space
+                    </span>
+                    <button class="record-btn" data-key="nextCursor" data-i18n="settings_change">
+                      Change
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="setting-card">
+                <div class="card-info">
+                  <h3 data-i18n="settings_undo_expansion">
+                    치환 취소
+                  </h3>
+                  <p data-i18n="settings_undo_expansion_desc">
+                    스니펫 치환 직후 원래 트리거 텍스트로 되돌릴 단축키를 지정하세요.
+                  </p>
+                </div>
+                <div class="card-action">
+                  <div class="hotkey-input">
+                    <span id="hotkey-display-undoExpansion">
+                      Ctrl + Z
+                    </span>
+                    <button class="record-btn" data-key="undoExpansion" data-i18n="settings_change">
+                      Change
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="setting-card">
+                <div class="card-info">
+                  <h3 data-i18n="settings_reload_snippets">
+                    현재 페이지의 스니펫 다시 불러오기
+                  </h3>
+                  <p data-i18n="settings_reload_snippets_desc">
+                    열린 페이지에서 이전 스니펫으로 치환될 때, 저장된 최신 설정을 다시 불러오는 단축키입니다.
+                  </p>
+                </div>
+                <div class="card-action">
+                  <div class="hotkey-input">
+                    <span id="hotkey-display-reloadSnippets">
+                      Alt + R
+                    </span>
+                    <button class="record-btn" data-key="reloadSnippets" data-i18n="settings_change">
+                      Change
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="setting-card">
+                <div class="card-info">
+                  <h3 data-i18n="settings_add_snippet">
+                    스니펫 추가
+                  </h3>
+                  <p data-i18n="settings_add_snippet_desc">
+                    에디터에서 새로운 스니펫을 빠르게 추가할 단축키를 지정하세요.
+                  </p>
+                </div>
+                <div class="card-action">
+                  <div class="hotkey-input">
+                    <span id="hotkey-display-addSnippet">
+                      Alt + N
+                    </span>
+                    <button class="record-btn" data-key="addSnippet" data-i18n="settings_change">
+                      Change
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="setting-card">
+                <div class="card-info">
+                  <h3 data-i18n="settings_add_subgroup">
+                    서브그룹 추가
+                  </h3>
+                  <p data-i18n="settings_add_subgroup_desc">
+                    스니펫 편집 탭에서 현재 그룹에 서브그룹을 추가할 단축키를 지정하세요.
+                  </p>
+                </div>
+                <div class="card-action">
+                  <div class="hotkey-input">
+                    <span id="hotkey-display-addSubgroup">
+                      Alt + G
+                    </span>
+                    <button class="record-btn" data-key="addSubgroup" data-i18n="settings_change">
+                      Change
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="setting-card">
+                <div class="card-info">
+                  <h3 data-i18n="settings_toggle_fold">
+                    스니펫 접기/펴기
+                  </h3>
+                  <p data-i18n="settings_toggle_fold_desc">
+                    현재 선택된 스니펫의 상세 내용을 접거나 폅니다.
+                  </p>
+                </div>
+                <div class="card-action">
+                  <div class="hotkey-input">
+                    <span id="hotkey-display-toggleFold">
+                      Alt + L
+                    </span>
+                    <button class="record-btn" data-key="toggleFold" data-i18n="settings_change">
+                      Change
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-
-          <div class="setting-card">
-            <div class="card-info">
-              <h3 data-i18n="settings_undo_expansion">치환 취소</h3>
-              <p data-i18n="settings_undo_expansion_desc">스니펫 치환 직후 원래 트리거 텍스트로 되돌릴 단축키를 지정하세요.</p>
-            </div>
-            <div class="card-action">
-              <div class="hotkey-input">
-                <span id="hotkey-display-undoExpansion">Ctrl + Z</span>
-                <button class="record-btn" data-key="undoExpansion" data-i18n="settings_change">Change</button>
+          </section>
+          <section class="settings-section" aria-labelledby="settings_section_editing">
+            <h2 id="settings_section_editing" data-i18n="settings_section_editing">
+              편집 동작
+            </h2>
+            <div class="settings-section-rows">
+              <div class="setting-card">
+                <div class="card-info">
+                  <h3 id="particles-toggle-label" data-i18n="settings_particles">
+                    치환 시각 효과
+                  </h3>
+                  <p data-i18n="settings_particles_desc">
+                    삽입된 스니펫에 은은한 푸른 강조를 잠깐 표시합니다.
+                  </p>
+                </div>
+                <div class="card-action">
+                  <label class="switch">
+                    <input type="checkbox" id="particles-toggle" aria-labelledby="particles-toggle-label" checked>
+                    <span class="slider round">
+                    </span>
+                  </label>
+                </div>
+              </div>
+              <div class="setting-card">
+                <div class="card-info">
+                  <h3 id="shift-cursor-toggle-label" data-i18n="settings_shift_cursor">
+                    커서 레벨 자동 조정
+                  </h3>
+                  <p data-i18n="settings_shift_cursor_desc">
+                    스니펫 삽입 시 문서의 기존 커서 위치를 뒤로 밀어 항상 새 스니펫을 먼저 입력하도록 합니다.
+                  </p>
+                </div>
+                <div class="card-action">
+                  <label class="switch">
+                    <input type="checkbox" id="shift-cursor-toggle" aria-labelledby="shift-cursor-toggle-label" checked>
+                    <span class="slider round">
+                    </span>
+                  </label>
+                </div>
+              </div>
+              <div class="setting-card">
+                <div class="card-info">
+                  <h3 id="visualize-newlines-toggle-label" data-i18n="settings_visualize_newlines">
+                    개행 시각화
+                  </h3>
+                  <p data-i18n="settings_visualize_newlines_desc">
+                    스니펫 에디터에서 줄 바꿈(Enter) 위치에 시각적 기호(↵)를 표시합니다.
+                  </p>
+                </div>
+                <div class="card-action">
+                  <label class="switch">
+                    <input type="checkbox" id="visualize-newlines-toggle" aria-labelledby="visualize-newlines-toggle-label" checked>
+                    <span class="slider round">
+                    </span>
+                  </label>
+                </div>
               </div>
             </div>
-          </div>
-
-          <div class="setting-card">
-            <div class="card-info">
-              <h3 data-i18n="settings_reload_snippets">현재 페이지의 스니펫 다시 불러오기</h3>
-              <p data-i18n="settings_reload_snippets_desc">열린 페이지에서 이전 스니펫으로 치환될 때, 저장된 최신 설정을 다시 불러오는 단축키입니다.</p>
-            </div>
-            <div class="card-action">
-              <div class="hotkey-input">
-                <span id="hotkey-display-reloadSnippets">Alt + R</span>
-                <button class="record-btn" data-key="reloadSnippets" data-i18n="settings_change">Change</button>
+          </section>
+          <section class="settings-section" aria-labelledby="settings_section_language">
+            <h2 id="settings_section_language" data-i18n="settings_section_language">
+              언어
+            </h2>
+            <div class="settings-section-rows">
+              <div class="setting-card">
+                <div class="card-info">
+                  <h3 data-i18n="settings_language">
+                    언어
+                  </h3>
+                  <p data-i18n="settings_language_desc">
+                    인터페이스 언어를 선택하세요.
+                  </p>
+                </div>
+                <div class="card-action">
+                  <select id="language-select" class="theme-select" aria-label="Language" data-i18n-aria-label="settings_language">
+                    <option value="system" data-i18n="settings_language_system">
+                      브라우저 설정
+                    </option>
+                    <option value="ko">
+                      한국어
+                    </option>
+                    <option value="en">
+                      English
+                    </option>
+                  </select>
+                </div>
               </div>
             </div>
-          </div>
-
-          <div class="setting-card">
-            <div class="card-info">
-              <h3 data-i18n="settings_add_snippet">스니펫 추가</h3>
-              <p data-i18n="settings_add_snippet_desc">에디터에서 새로운 스니펫을 빠르게 추가할 단축키를 지정하세요.</p>
-            </div>
-            <div class="card-action">
-              <div class="hotkey-input">
-                <span id="hotkey-display-addSnippet">Alt + N</span>
-                <button class="record-btn" data-key="addSnippet" data-i18n="settings_change">Change</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="setting-card">
-            <div class="card-info">
-              <h3 data-i18n="settings_add_subgroup">서브그룹 추가</h3>
-              <p data-i18n="settings_add_subgroup_desc">스니펫 편집 탭에서 현재 그룹에 서브그룹을 추가할 단축키를 지정하세요.</p>
-            </div>
-            <div class="card-action">
-              <div class="hotkey-input">
-                <span id="hotkey-display-addSubgroup">Alt + G</span>
-                <button class="record-btn" data-key="addSubgroup" data-i18n="settings_change">Change</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="setting-card">
-            <div class="card-info">
-              <h3 data-i18n="settings_toggle_fold">스니펫 접기/펴기</h3>
-              <p data-i18n="settings_toggle_fold_desc">현재 선택된 스니펫의 상세 내용을 접거나 폅니다.</p>
-            </div>
-            <div class="card-action">
-              <div class="hotkey-input">
-                <span id="hotkey-display-toggleFold">Alt + L</span>
-                <button class="record-btn" data-key="toggleFold" data-i18n="settings_change">Change</button>
-              </div>
-            </div>
-          </div>
-
+          </section>
           <details class="advanced-settings">
-            <summary data-i18n="settings_advanced">고급 설정</summary>
-          <div class="setting-card">
-            <div class="card-info">
-              <h3 id="snippet-timeout-label" data-i18n="settings_execution_timeout">스니펫 최대 실행 시간</h3>
-              <p id="snippet-timeout-description" data-i18n="settings_execution_timeout_desc">기본 0.5초이며 0.1~60초로 설정할 수 있습니다. 초과하면 치환을 중단합니다. 입력창과 선택 메뉴에서 응답을 기다리는 시간은 제외합니다.</p>
-            </div>
-            <div class="card-action execution-timeout-control">
-              <div id="snippet-timeout-scrubber" class="timeout-scrubber">
-                <span class="timeout-drag-handle" aria-hidden="true">↔</span>
-                <input id="snippet-timeout-input" type="number" min="0.1" max="60" step="0.1" value="0.5" required aria-labelledby="snippet-timeout-label" aria-describedby="snippet-timeout-description snippet-timeout-hint">
-                <span class="timeout-unit" data-i18n="settings_seconds">초</span>
+            <summary data-i18n="settings_advanced">
+              고급 설정
+            </summary>
+            <div class="setting-card">
+              <div class="card-info">
+                <h3 id="snippet-timeout-label" data-i18n="settings_execution_timeout">
+                  스니펫 최대 실행 시간
+                </h3>
+                <p id="snippet-timeout-description" data-i18n="settings_execution_timeout_desc">
+                  기본 0.5초이며 0.1~60초로 설정할 수 있습니다. 초과하면 치환을 중단합니다. 입력창과 선택 메뉴에서 응답을 기다리는 시간은 제외합니다.
+                </p>
               </div>
-              <span id="snippet-timeout-hint" class="timeout-hint" data-i18n="settings_execution_timeout_drag">드래그로 조절 · 직접 입력</span>
-            </div>
-          </div>
-
-          <div class="setting-card">
-            <div class="card-info">
-              <h3 id="snippet-depth-label" data-i18n="settings_call_depth">함수 최대 중첩 깊이</h3>
-              <p id="snippet-depth-description" data-i18n="settings_call_depth_desc">재귀 호출을 허용하며 기본 깊이는 32입니다. 1~256으로 설정할 수 있고, 한도를 초과하면 치환을 중단합니다. 현재 실행 중인 스니펫도 깊이에 포함합니다.</p>
-            </div>
-            <div class="card-action execution-timeout-control">
-              <div id="snippet-depth-scrubber" class="timeout-scrubber">
-                <span class="timeout-drag-handle" aria-hidden="true">↔</span>
-                <input id="snippet-depth-input" class="scrubber-input" type="number" min="1" max="256" step="1" value="32" required aria-labelledby="snippet-depth-label" aria-describedby="snippet-depth-description snippet-depth-hint">
+              <div class="card-action execution-timeout-control">
+                <div id="snippet-timeout-scrubber" class="timeout-scrubber">
+                  <span class="timeout-drag-handle" aria-hidden="true">
+                    <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <use href="icons/ui.svg#resize">
+                      </use>
+                    </svg>
+                  </span>
+                  <input id="snippet-timeout-input" type="number" min="0.1" max="60" step="0.1" value="0.5" required aria-labelledby="snippet-timeout-label" aria-describedby="snippet-timeout-description snippet-timeout-hint">
+                  <span class="timeout-unit" data-i18n="settings_seconds">
+                    초
+                  </span>
+                </div>
+                <span id="snippet-timeout-hint" class="timeout-hint" data-i18n="settings_execution_timeout_drag">
+                  드래그로 조절 · 직접 입력
+                </span>
               </div>
-              <span id="snippet-depth-hint" class="timeout-hint" data-i18n="settings_execution_timeout_drag">드래그로 조절 · 직접 입력</span>
             </div>
-          </div>
+            <div class="setting-card">
+              <div class="card-info">
+                <h3 id="snippet-depth-label" data-i18n="settings_call_depth">
+                  함수 최대 중첩 깊이
+                </h3>
+                <p id="snippet-depth-description" data-i18n="settings_call_depth_desc">
+                  재귀 호출을 허용하며 기본 깊이는 32입니다. 1~256으로 설정할 수 있고, 한도를 초과하면 치환을 중단합니다. 현재 실행 중인 스니펫도 깊이에 포함합니다.
+                </p>
+              </div>
+              <div class="card-action execution-timeout-control">
+                <div id="snippet-depth-scrubber" class="timeout-scrubber">
+                  <span class="timeout-drag-handle" aria-hidden="true">
+                    <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <use href="icons/ui.svg#resize">
+                      </use>
+                    </svg>
+                  </span>
+                  <input id="snippet-depth-input" class="scrubber-input" type="number" min="1" max="256" step="1" value="32" required aria-labelledby="snippet-depth-label" aria-describedby="snippet-depth-description snippet-depth-hint">
+                </div>
+                <span id="snippet-depth-hint" class="timeout-hint" data-i18n="settings_execution_timeout_drag">
+                  드래그로 조절 · 직접 입력
+                </span>
+              </div>
+            </div>
           </details>
-
-          <div class="setting-card">
-            <div class="card-info">
-              <h3 data-i18n="settings_particles">치환 시각 효과</h3>
-              <p data-i18n="settings_particles_desc">스니펫이 치환될 때 사방으로 퍼지는 파티클과 파동 효과를 보여줍니다.</p>
-            </div>
-            <div class="card-action">
-              <label class="switch">
-                <input type="checkbox" id="particles-toggle" checked>
-                <span class="slider round"></span>
-              </label>
-            </div>
-          </div>
-          
-          <div class="setting-card">
-            <div class="card-info">
-              <h3 data-i18n="settings_shift_cursor">커서 레벨 자동 조정</h3>
-              <p data-i18n="settings_shift_cursor_desc">스니펫 삽입 시 문서의 기존 커서 위치를 뒤로 밀어 항상 새 스니펫을 먼저 입력하도록 합니다.</p>
-            </div>
-            <div class="card-action">
-              <label class="switch">
-                <input type="checkbox" id="shift-cursor-toggle" checked>
-                <span class="slider round"></span>
-              </label>
-            </div>
-          </div>
-          
-          <div class="setting-card">
-            <div class="card-info">
-              <h3 data-i18n="settings_visualize_newlines">개행 시각화</h3>
-              <p data-i18n="settings_visualize_newlines_desc">스니펫 에디터에서 줄 바꿈(Enter) 위치에 시각적 기호(↵)를 표시합니다.</p>
-            </div>
-            <div class="card-action">
-              <label class="switch">
-                <input type="checkbox" id="visualize-newlines-toggle" checked>
-                <span class="slider round"></span>
-              </label>
-            </div>
-          </div>
-
-          <div class="setting-card">
-            <div class="card-info">
-              <h3 data-i18n="settings_language">언어</h3>
-              <p data-i18n="settings_language_desc">인터페이스 언어를 선택하세요.</p>
-            </div>
-            <div class="card-action">
-              <select id="language-select" class="theme-select" aria-label="Language">
-                <option value="system" data-i18n="settings_language_system">브라우저 설정</option>
-                <option value="ko">한국어</option>
-                <option value="en">English</option>
-              </select>
-            </div>
-          </div>
-
         </div>
       </section>
 
@@ -222,8 +327,8 @@
             <div class="groups-nav-header">
               <h2 data-i18n="groups_title">Groups</h2>
               <div class="nav-header-actions">
-                <button id="import-group-btn" class="icon-btn secondary" title="Import Group">📥</button>
-                <button id="add-group-btn" class="icon-btn" title="Add New Group">+</button>
+                <button id="import-group-btn" class="icon-btn secondary" title="Import Group" data-i18n-title="ui_import_group" data-i18n-aria-label="ui_import_group"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="icons/ui.svg#import"></use></svg></button>
+                <button id="add-group-btn" class="icon-btn" title="Add New Group" data-i18n-title="ui_add_group" data-i18n-aria-label="ui_add_group"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="icons/ui.svg#plus"></use></svg></button>
                 <input type="file" id="import-group-file" style="display:none" accept=".sppgrp">
               </div>
             </div>
@@ -234,7 +339,7 @@
 
           <div id="group-editor-container" class="group-editor">
             <div id="no-group-selected" class="empty-state">
-              <h3><span class="empty-icon">📂</span> <span data-i18n="groups_title">No Group Selected</span></h3>
+              <h3><svg class="ui-icon empty-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="icons/ui.svg#folder"></use></svg> <span data-i18n="groups_empty_title">그룹을 선택하세요</span></h3>
               <p data-i18n="groups_no_group">왼쪽 목록에서 그룹을 선택하거나 새로운 그룹을 만드세요.</p>
             </div>
 
@@ -243,11 +348,10 @@
                 <div class="group-main-row">
                   <input type="text" id="active-group-name" class="group-name-input" data-i18n="groups_placeholder">
                   <div class="group-actions">
-                    <button id="export-group-btn" class="icon-btn secondary" title="Export this group">📤</button>
-                    <button id="add-snippet-btn" class="primary-btn">+ <span data-i18n="groups_add_snippet">Add
+                    <button id="export-group-btn" class="icon-btn secondary" title="Export this group" data-i18n-title="ui_export_group" data-i18n-aria-label="ui_export_group"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="icons/ui.svg#export"></use></svg></button>
+                    <button id="add-snippet-btn" class="primary-btn"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="icons/ui.svg#plus"></use></svg> <span data-i18n="groups_add_snippet">Add
                         Snippet</span></button>
-                    <button id="delete-group-btn" class="secondary-btn danger" data-i18n="settings_reset">Delete
-                      Group</button>
+                    <button id="delete-group-btn" class="secondary-btn danger"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="icons/ui.svg#trash"></use></svg><span data-i18n="settings_reset">Delete Group</span></button>
                   </div>
                 </div>
 
@@ -266,7 +370,7 @@
                         data-i18n="groups_blacklist">Blacklist</button>
                       <button class="mode-btn" data-mode="whitelist" data-i18n="groups_whitelist">Whitelist</button>
                     </div>
-                    <button id="add-site-btn" class="add-site-btn" title="사이트 추가">+</button>
+                    <button id="add-site-btn" class="add-site-btn" title="사이트 추가" data-i18n-title="ui_add_site" data-i18n-aria-label="ui_add_site"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="icons/ui.svg#plus"></use></svg></button>
                   </div>
                   <div id="disabled-sites-list" class="disabled-sites-list">
                     <!-- Site rows injected here -->
@@ -276,7 +380,7 @@
               <div class="snippet-search-wrap">
                 <input type="search" id="snippet-search" class="snippet-search" data-i18n="snippets_search_placeholder"
                   placeholder="Search snippets by name" autocomplete="off">
-                <button id="add-subgroup-btn" class="secondary-btn" data-i18n="subgroups_add">서브그룹 추가</button>
+                <button id="add-subgroup-btn" class="secondary-btn"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="icons/ui.svg#plus"></use></svg><span data-i18n="subgroups_add">서브그룹 추가</span></button>
               </div>
               <p id="snippet-search-empty" class="snippet-search-empty" data-i18n="snippets_search_empty" hidden>
                 No snippets match this name.
@@ -290,8 +394,10 @@
       </section>
 
       <section id="tester-tab" class="tab-content">
-        <header class="tab-header"><h1 data-i18n="tester_title">스니펫 테스트</h1></header>
-        <p class="tester-description" data-i18n="tester_description">아래 입력창에 트리거를 직접 입력해 치환을 테스트하세요. 현재 편집 내용이 바로 적용되며, 테스트에서는 사이트 제한을 적용하지 않습니다. 커서 이동·되돌리기 단축키도 사용할 수 있습니다.</p>
+        <header class="tab-header">
+          <h1 data-i18n="tester_title">스니펫 테스트</h1>
+          <p class="tester-description" data-i18n="tester_description">아래 입력창에 트리거를 직접 입력해 치환을 테스트하세요. 현재 편집 내용이 바로 적용되며, 테스트에서는 사이트 제한을 적용하지 않습니다. 커서 이동·되돌리기 단축키도 사용할 수 있습니다.</p>
+        </header>
         <div class="tester-toolbar">
           <label for="snippet-test-group" data-i18n="tester_group_label">테스트할 그룹</label>
           <select id="snippet-test-group" class="theme-select"></select>
@@ -1169,7 +1275,7 @@ Review\
                 <article class="guide-item">
                   <h3 data-i18n="guide_doc_copy_value_title">클립보드에 복사하기</h3>
                   <code class="guide-syntax">copy(value)</code>
-                  <p class="guide-desc" data-i18n="guide_doc_copy_value_desc">string 또는 fragment를 클립보드에 복사하고 빈 문자열을 반환합니다. fragment의 커서는 {{#번호}} 형태의 텍스트로 기록됩니다. 숫자 등 다른 타입은 str()로 명시적으로 변환하세요. 클립보드 쓰기에 실패하면 오류가 발생합니다.</p>
+                  <p class="guide-desc" data-i18n="guide_doc_copy_value_desc">string 또는 fragment를 클립보드에 복사하고 undefined를 반환합니다. 본문에는 아무것도 삽입하지 않습니다. fragment의 커서는 {{#번호}} 형태의 텍스트로 기록됩니다. 숫자 등 다른 타입은 str()로 명시적으로 변환하세요. 클립보드 쓰기에 실패하면 오류가 발생합니다.</p>
                   <details class="guide-example">
                     <summary data-i18n="guide_doc_example">예제 보기</summary>
                     <div class="guide-example-content">
@@ -1229,6 +1335,41 @@ Review\
               <p class="guide-section-intro" data-i18n="guide_doc_formatting_intro">본문의 공백과 줄바꿈은 기본적으로 그대로 삽입됩니다.</p>
               <div class="guide-section">
                 <article class="guide-item">
+                  <h3 data-i18n="guide_doc_compact_title">개행과 들여쓰기를 제거하는 블록</h3>
+                  <code class="guide-syntax">{{compact}} … {{endcompact}}</code>
+                  <p class="guide-desc" data-i18n="guide_doc_compact_desc">{{compact}} … {{endcompact}}로 감싼 영역은 소스의 줄바꿈과 각 줄바꿈 바로 뒤의 공백·탭을 제거합니다. 일반 텍스트와 줄 안의 공백은 유지합니다. 중첩할 수 있으며 별도의 변수 범위를 만들지 않습니다.</p>
+                  <details class="guide-example">
+                    <summary data-i18n="guide_doc_example">예제 보기</summary>
+                    <div class="guide-example-content">
+                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
+                      <pre><code data-guide-language="template">{{compact}}
+  {{set $name = &#x27;Guest&#x27;}}
+  {{if $name}}
+    Hello, {{$name}}!
+  {{else}}
+    Hello!
+  {{endif}}
+{{endcompact}}</code></pre>
+                      <div class="guide-code-label" data-i18n="guide_doc_result">결과</div>
+                      <pre><code>Hello, Guest!</code></pre>
+                    </div>
+                  </details>
+                  <details class="guide-example">
+                    <summary data-i18n="guide_doc_example">예제 보기</summary>
+                    <div class="guide-example-content">
+                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
+                      <pre><code data-guide-language="template">{{compact}}
+  First{{newline()}}
+  Second
+{{endcompact}}</code></pre>
+                      <div class="guide-code-label" data-i18n="guide_doc_result">결과</div>
+                      <pre><code>First
+Second</code></pre>
+                    </div>
+                  </details>
+                  <p class="guide-example-note" data-i18n="guide_doc_compact_note">소스에 직접 적은 서식만 제거합니다. 문자열·fragment·스니펫 호출이 만든 개행은 유지합니다. 개행을 명시적으로 넣으려면 {{newline()}}을 사용하세요. 블록 바깥의 텍스트는 바뀌지 않습니다.</p>
+                </article>
+                <article class="guide-item">
                   <h3 data-i18n="guide_doc_line_join_title">코드는 여러 줄로, 결과는 한 줄로</h3>
                   <code class="guide-syntax">\</code>
                   <p class="guide-desc" data-i18n="guide_doc_line_join_desc">줄 끝에 역슬래시(\)를 붙이면 다음 줄과의 줄바꿈과 다음 줄의 들여쓰기를 제거합니다. 긴 태그를 읽기 쉽게 나눌 때 사용할 수 있습니다.</p>
@@ -1240,6 +1381,24 @@ Review\
 Hello, {{$name}}!</code></pre>
                       <div class="guide-code-label" data-i18n="guide_doc_result">결과</div>
                       <pre><code>Hello, Guest!</code></pre>
+                    </div>
+                  </details>
+                </article>
+                <article class="guide-item">
+                  <h3 data-i18n="guide_doc_newline_title">개행 문자 삽입</h3>
+                  <code class="guide-syntax">newline() · nl()</code>
+                  <p class="guide-desc" data-i18n="guide_doc_newline_desc">newline()과 별칭 nl()은 인수 없이 개행 문자 LF(\n) 하나를 담은 string을 반환합니다. 변수에 저장하거나 표현식에서 사용할 수 있으며, compact 블록 안에서도 생성된 개행은 유지됩니다.</p>
+                  <details class="guide-example">
+                    <summary data-i18n="guide_doc_example">예제 보기</summary>
+                    <div class="guide-example-content">
+                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
+                      <pre><code data-guide-language="template">{{compact}}
+  First{{newline()}}
+  Second
+{{endcompact}}</code></pre>
+                      <div class="guide-code-label" data-i18n="guide_doc_result">결과</div>
+                      <pre><code>First
+Second</code></pre>
                     </div>
                   </details>
                 </article>
@@ -1268,6 +1427,20 @@ Hello, {{$name}}!</code></pre>
                   <p class="guide-desc" data-i18n="guide_doc_inference_desc">변수 툴팁은 해당 위치에서 가능한 타입을 보여줍니다. 재대입·분기·반복에 따라 타입이 달라질 수 있습니다. 함수 이름에 마우스를 올리거나 호출을 작성하면 매개변수·반환 타입과 오버로드 후보를 볼 수 있습니다. 인수 타입이 정해지면 후보가 좁혀지며, 화살표로 전환하고 현재 입력 중인 매개변수를 확인할 수 있습니다. 스니펫 호출의 매개변수는 string, 반환값은 fragment입니다.</p>
                 </article>
                 <article class="guide-item">
+                  <h3 data-i18n="guide_doc_type_test_title">is로 타입 검사와 narrowing</h3>
+                  <p class="guide-desc" data-i18n="guide_doc_type_test_desc">$item is string으로 타입을 검사합니다. string | fragment 같은 union, 괄호로 묶은 타입, list&lt;list&lt;string&gt;&gt; 같은 중첩 리스트를 지원합니다. list는 list&lt;any&gt;와 같습니다. list&lt;string&gt;은 모든 원소가 문자열인지 검사하며 빈 리스트도 통과합니다.</p>
+                  <p class="guide-desc" data-i18n="guide_doc_narrowing_desc">검사 결과에 따라 if/elif/else 분기, 조건식, &amp;&amp;·||의 오른쪽에서 변수 타입이 좁혀집니다. !(value is string)으로 검사를 부정할 수 있습니다. 재대입하면 새 타입을 사용하고, 분기가 끝나면 가능한 타입을 다시 합칩니다. 거짓 분기에서는 안전하게 제외할 수 없는 가능성을 남깁니다. 원소의 union 타입이 특정 원소의 존재를 보장하지는 않습니다.</p>
+                  <details class="guide-example">
+                    <summary data-i18n="guide_doc_example">예제 보기</summary>
+                    <div class="guide-example-content">
+                      <div class="guide-code-label" data-i18n="guide_doc_body">본문</div>
+                      <pre><code data-guide-language="template">{{set $item = ["hello", 3][0]}}{{if $item is string}}{{upper($item)}}{{else}}{{str($item)}}{{endif}}</code></pre>
+                      <div class="guide-code-label" data-i18n="guide_doc_result">결과</div>
+                      <pre><code>HELLO</code></pre>
+                    </div>
+                  </details>
+                </article>
+                <article class="guide-item">
                   <h3 data-i18n="guide_doc_diagnostic_rules_title">오류와 경고의 차이</h3>
                   <p class="guide-desc" data-i18n="guide_doc_diagnostic_rules_desc">허용 타입과 전혀 맞지 않으면 빨간 오류, 일부 타입만 맞거나 unknown이면 노란 경고입니다. 오류는 실행을 막습니다. 경고는 실행할 수 있지만 실제 값이 타입 규칙과 맞지 않으면 실행 중 오류가 납니다. 예를 들어 string | number를 string 매개변수로 전달하면 경고입니다.</p>
                 </article>
@@ -1281,7 +1454,7 @@ Hello, {{$name}}!</code></pre>
               <h2 id="guide-reference-title" data-i18n="guide_doc_reference_title">내장 함수 타입 표</h2>
               <p class="guide-section-intro" data-i18n="guide_doc_reference_intro">같은 이름의 함수라도 인수 타입에 따라 서로 다른 시그니처를 가집니다. 각 행은 오버로드 하나이며, 호출 툴팁은 입력한 인수에 맞는 후보만 보여줍니다.</p>
               <div class="guide-section">
-                <p class="guide-note" data-i18n="guide_doc_reference_note">?는 선택 인수, ...는 가변 인수입니다. list&lt;string | fragment&gt;는 해당 타입의 원소만 담은 리스트이며 contains&lt;fragment&gt;는 fragment 원소가 하나 이상 필요하다는 뜻입니다. 툴팁의 이전·다음 화살표로 가능한 오버로드를 전환할 수 있습니다.</p>
+                <p class="guide-note" data-i18n="guide_doc_reference_note">?는 선택 인수, ...는 가변 인수입니다. list&lt;string | fragment&gt;는 string 또는 fragment 원소를 허용하며 어느 쪽도 반드시 포함할 필요는 없습니다. 문자열 구분자를 쓰는 join()은 문자열만 담긴 리스트임이 확실한 경우를 제외하면 string | fragment를 반환 타입으로 표시합니다. 툴팁의 이전·다음 화살표로 가능한 오버로드를 전환할 수 있습니다.</p>
                 <div class="guide-table-scroll">
                   <table class="guide-reference-table">
                     <thead>

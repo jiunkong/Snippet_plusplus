@@ -105,7 +105,11 @@ export async function loadSyncedState(defaultConfig, defaultGroups, { useBackup 
     const keys = chunkKeys(meta);
     if (!keys.length) throw new Error('Invalid synced snippet manifest.');
     const parts = await syncGet(keys);
-    if (keys.some(key => typeof parts[key] !== 'string')) throw new Error('Synced snippet list is incomplete.');
+    if (keys.some(key => typeof parts[key] !== 'string')) {
+      const error = new Error('Synced snippet list is incomplete.');
+      error.code = 'SYNC_INCOMPLETE';
+      throw error;
+    }
     const groups = JSON.parse(keys.map(key => parts[key]).join(''));
     if (!Array.isArray(groups)) throw new Error('Invalid synced snippet list.');
     const latest = await syncGet(['config', 'snippetGroups', SNIPPET_META_KEY]);

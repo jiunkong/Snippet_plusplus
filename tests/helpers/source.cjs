@@ -11,7 +11,7 @@ function corePrelude() {
   core ||= nativeRead(path.join(root,'.test-build/core.js'),'utf8');
   return `if(typeof SnippetScript==='undefined'){${core}\n}\n`;
 }
-const coreNames = ['SnippetFragment','SnippetTemplate','SnippetError','analyze','analyzeTrigger','parseExpression','parseSnippetTemplate','prepareSnippetTemplate','getSnippetTemplate','evaluateExpression','evaluateCondition','createSnippetExecution','normalizeSnippetTimeout','normalizeSnippetCallDepth','DEFAULT_SNIPPET_TIMEOUT_MS','MIN_SNIPPET_TIMEOUT_MS','MAX_SNIPPET_TIMEOUT_MS','DEFAULT_SNIPPET_CALL_DEPTH','MAX_SNIPPET_CALL_DEPTH','SNIPPET_LOOP_VALUE','BUILTIN_ALL','FUNCTIONS','isRange','createRange','createList','isSnippetIterable','snippetConditionValue','snippetBooleanValue','snippetParameterNames','scanSnippetQuotedValue','decodeSnippetFragmentLiteral','parseSnippetFunctionName','parseSnippetCall'];
+const coreNames = ['Type','ScriptValue','StringValue','NumberValue','BoolValue','ListValue','Types','UnionType','ListType','fromNative','toNative','SnippetFragment','SnippetTemplate','SnippetError','analyze','analyzeTrigger','parseExpression','parseSnippetTemplate','prepareSnippetTemplate','getSnippetTemplate','evaluateExpression','evaluateCondition','createSnippetExecution','normalizeSnippetTimeout','normalizeSnippetCallDepth','DEFAULT_SNIPPET_TIMEOUT_MS','MIN_SNIPPET_TIMEOUT_MS','MAX_SNIPPET_TIMEOUT_MS','DEFAULT_SNIPPET_CALL_DEPTH','MAX_SNIPPET_CALL_DEPTH','SNIPPET_LOOP_VALUE','BUILTIN_ALL','FUNCTIONS','isRange','createRange','createList','isSnippetIterable','snippetConditionValue','snippetBooleanValue','snippetParameterNames','scanSnippetQuotedValue','decodeSnippetFragmentLiteral','parseSnippetFunctionName','parseSnippetCall'];
 function classic(source, file) {
   const parsed=ts.createSourceFile(file,source,ts.ScriptTarget.Latest,true,ts.ScriptKind.JS);
   const edits=[]; let bindings='';
@@ -29,7 +29,7 @@ function classic(source, file) {
   }
   for(const [start,end,text] of edits.sort((a,b)=>b[0]-a[0]))source=source.slice(0,start)+text+source.slice(end);
   source=source.replace(/__state_[\w]+\.([\w]+)/g,'$1');
-  let prefix=corePrelude()+coreNames.map(name=>`var ${name}=SnippetScript.${name};`).join('\n')+'\n'+bindings;
+  let prefix=corePrelude()+coreNames.map(name=>`var ${name}=${name === "evaluateExpression" ? "(...args)=>SnippetScript.toNative(SnippetScript.evaluateExpression(...args))" : `SnippetScript.${name}`};`).join('\n')+'\n'+bindings;
   if(file==='content/template.js') {
     const host=classicHost();prefix+=host;
     // Harnesses may provide config directly without loading content/state.
@@ -48,7 +48,7 @@ module.exports = Object.assign(Object.create(fs), {
   readFileSync(filename, options) {
     const absolute=path.resolve(String(filename));
     const relative=path.relative(root,absolute).split(path.sep).join('/');
-    if(['content/evaluator.js','content/fragment.js','content/template-parser.js'].includes(relative))return corePrelude()+coreNames.map(name=>`var ${name}=SnippetScript.${name};`).join('\n');
+    if(['content/evaluator.js','content/fragment.js','content/template-parser.js'].includes(relative))return corePrelude()+coreNames.map(name=>`var ${name}=${name === "evaluateExpression" ? "(...args)=>SnippetScript.toNative(SnippetScript.evaluateExpression(...args))" : `SnippetScript.${name}`};`).join('\n');
     const source=nativeRead(filename,options);
     if(typeof source==='string' && /^(content|options|utils)\/.*\.js$/.test(relative))return classic(source,relative);
     return source;

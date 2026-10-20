@@ -305,7 +305,7 @@ export async function selectAndReplace(el, info, context, triggerLength, replace
       if (afterInsert.text !== text && afterInsert.text === text.replace(/\n/g, '')) {
         plainCaretOffset = text.slice(0, plainCaretOffset).replace(/\n/g, '').length;
       }
-      return { start: 0, hasPlaceholders: false, before, plainCaretOffset, afterInsert };
+      return { start: 0, hasPlaceholders: false, before, plainCaretOffset, afterInsert, effectBefore: { text: '' } };
     }
   }
 
@@ -320,6 +320,9 @@ export async function selectAndReplace(el, info, context, triggerLength, replace
       if (shiftedContext) insertionStart = shiftedContext.textBefore.length;
     }
   }
+
+  // Measure feedback against the editor after trigger removal and cursor shifts.
+  const effectBefore = replaceTriggerOnInsert ? { text: '' } : getEditorSnapshot(el, info);
 
   // --- Auto-append cursor if missing (Notion fix) ---
   // If no cursor position is specified, we want the cursor to end up at the very end.
@@ -378,7 +381,7 @@ export async function selectAndReplace(el, info, context, triggerLength, replace
       el.setSelectionRange(newPos, newPos);
     }
 
-    return { start: insertionStart, hasPlaceholders, before, afterInsert: getEditorSnapshot(el, info) };
+    return { start: insertionStart, hasPlaceholders, before, effectBefore, afterInsert: getEditorSnapshot(el, info) };
   }
   if (info.isEditable) {
     const hasPlaceholders = processedReplacement.maxCursorLevel >= 0;
@@ -392,7 +395,7 @@ export async function selectAndReplace(el, info, context, triggerLength, replace
 
     withInternalEdit(() => insertWithBackspaces(htmlReplacement, true));
 
-    return { start: insertionStart, hasPlaceholders, before, afterInsert: getEditorSnapshot(el, info), autoCursorId };
+    return { start: insertionStart, hasPlaceholders, before, effectBefore, afterInsert: getEditorSnapshot(el, info), autoCursorId };
   }
 }
 
@@ -463,7 +466,7 @@ export async function handleInput(event) {
       // depend on a 50 ms race with editors such as Notion.
       placeExpansionCursor(el, info, result, fullText);
 
-      triggerEffect(el, info);
+      triggerEffect(el, info, result);
       const expansion = recordExpansion(el, info, result.before, result.autoCursorId);
       if (Number.isInteger(result.plainCaretOffset)) {
         settleEditableExpansionCaret(el, result.plainCaretOffset, expansion);

@@ -1,8 +1,8 @@
 import { DEFAULT_TOAST_DURATION_SECONDS, validateToastDuration } from '../language-core/src/index.ts';
 import { currentSnippetLocale, loadSnippetLocale, snippetMessage, createSnippetError } from '../utils/i18n.js';
 import { moduleState as __state_content_state_js } from './state.js';
-import { getCaretCoordinates } from './dom.js';
-// --- Visual Effects: Flash & Ripple Particles ---
+import { getReplacementRange, getReplacementRects } from './effect-range.js';
+// --- Expansion feedback and snippet toasts ---
 
 export let snippetToast = null;
 export let snippetToastTimer = null;
@@ -62,53 +62,62 @@ export function showSnippetToast(message, color, tone = 'default', durationSecon
   }, Math.max(1, Math.round(durationSeconds * 1000)));
 }
 
-export function triggerEffect(el, info) {
-  if (__state_content_state_js.config?.showParticles === false) return;
-
-  if (info.isInput) {
-    el.classList.add('ss-replacement-flash');
-    setTimeout(() => el.classList.remove('ss-replacement-flash'), 600);
-
-    const coords = getCaretCoordinates(el, el.selectionStart);
-    showRipple(coords.left + window.scrollX, coords.top + window.scrollY + 10);
-  } else {
-    const selection = window.getSelection();
-    if (!selection.rangeCount) return;
-    const range = selection.getRangeAt(0);
-    let rect = range.getBoundingClientRect();
-    if (rect.width === 0) {
-      const rects = range.getClientRects();
-      if (rects.length) rect = rects[0];
-    }
-    if (rect.top !== 0 || rect.left !== 0) {
-      showRipple(rect.left + window.scrollX, rect.top + window.scrollY);
-    }
-  }
+export function triggerEffect(el, info, result) {
+  if (__state_content_state_js.config?.showParticles === false ||
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const text = info.isInput ? el.value : el.textContent;
+  const range = getReplacementRange(result, text);
+  if (!range) return;
+  const rects = getReplacementRects(el, info, range.start, range.end);
+  if (rects.length) showReplacementIndicator(rects, el);
 }
 
-export function showRipple(x, y) {
-  const container = document.createElement('div');
-  container.className = 'ss-ripple-container';
-  container.style.left = `${x}px`;
-  container.style.top  = `${y}px`;
-
-  const ripple = document.createElement('div');
-  ripple.className = 'ss-ripple';
-  container.appendChild(ripple);
-
-  for (let i = 0; i < 3; i++) {
-    const sparkle = document.createElement('div');
-    sparkle.className = 'ss-sparkle';
-    const angle = (i / 3) * Math.PI * 2 + (Math.random() * 0.5);
-    const dist  = 15 + Math.random() * 20;
-    sparkle.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
-    sparkle.style.setProperty('--dy', `${Math.sin(angle) * dist}px`);
-    sparkle.style.animationDelay = `${Math.random() * 0.1}s`;
-    container.appendChild(sparkle);
+export function showReplacementIndicator(rects, el) {
+  // Paint over the measured text without touching editor content or selection.
+  const host = document.createElement('div');
+  host.className = 'ss-replacement-indicator';
+  host.setAttribute('contenteditable', 'false');
+  host.setAttribute('aria-hidden', 'true');
+  host.style.cssText = 'all: initial !important; position: fixed !important; inset: 0 !important; pointer-events: none !important; z-index: 2147483647 !important;';
+  const root = host.attachShadow({ mode: 'closed' });
+  root.innerHTML = `<style>
+    @keyframes fade { from { opacity: 1; } to { opacity: 0; } }
+    .marks { animation: fade 380ms ease-out both; }
+    .mark { position: absolute; border-radius: 2px; background: rgb(126 159 199 / 18%); }
+  </style><div class="marks"></div>`;
+  const marks = root.querySelector('.marks');
+  for (const rect of rects) {
+    const mark = document.createElement('div');
+    mark.className = 'mark';
+    Object.assign(mark.style, { left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, height: `${rect.height}px` });
+    marks.appendChild(mark);
   }
-
-  document.body.appendChild(container);
-  setTimeout(() => container.remove(), 800);
+  document.documentElement.appendChild(host);
+  const position = target => target === window ? [window.scrollX, window.scrollY] : [target.scrollLeft, target.scrollTop];
+  const scrollPositions = new Map([[window, position(window)]]);
+  for (let target = el; target; target = target.parentElement) scrollPositions.set(target, position(target));
+  const onScroll = event => {
+    const target = event.target === document ? window : event.target;
+    const before = scrollPositions.get(target);
+    const after = position(target);
+    // Native controls may deliver their insertion scroll event after we have
+    // already measured its final position. That event does not move the marks.
+    if (before && (before[0] !== after[0] || before[1] !== after[1])) cleanup();
+  };
+  const cleanup = () => {
+    clearTimeout(timer);
+    host.remove();
+    window.removeEventListener('scroll', onScroll, true);
+    window.removeEventListener('resize', cleanup);
+    document.removeEventListener('beforeinput', cleanup, true);
+    document.removeEventListener('pointerdown', cleanup, true);
+  };
+  const timer = setTimeout(cleanup, 400);
+  // Measurements become stale as soon as the user edits or moves the viewport.
+  window.addEventListener('scroll', onScroll, true);
+  window.addEventListener('resize', cleanup);
+  document.addEventListener('beforeinput', cleanup, true);
+  document.addEventListener('pointerdown', cleanup, true);
 }
 
 // Mutable module state is shared explicitly through accessors.

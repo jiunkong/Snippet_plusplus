@@ -312,8 +312,8 @@ export function addSnippetRowUI(snippet = { trigger: '', replacement: '', name: 
 
   row.innerHTML = `
     <div class="snippet-row-header">
-      <div class="drag-handle" title="Drag to reorder">⠿</div>
-      <button class="fold-btn" title="Toggle Fold">▾</button>
+      <div class="drag-handle" title="${escHtml(t('ui_drag_snippet'))}"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="icons/ui.svg#grip"></use></svg></div>
+      <button class="fold-btn" title="${escHtml(t('ui_toggle_snippet'))}" aria-label="${escHtml(t('ui_toggle_snippet'))}"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="icons/ui.svg#chevron"></use></svg></button>
       <input type="text" class="snippet-name-input" placeholder="${t('snippets_name_placeholder')}" value="${safeName}">
       <span class="collapsed-trigger-display">${safeTrigger}</span>
       <select class="snippet-subgroup-select" aria-label="${escHtml(t('subgroups_move'))}"></select>
@@ -321,22 +321,22 @@ export function addSnippetRowUI(snippet = { trigger: '', replacement: '', name: 
         <input type="checkbox" class="snippet-enabled-toggle" aria-label="${escHtml(t('snippets_enabled_hint'))}">
         <span class="slider round"></span>
       </label>
-      <button class="delete-row-btn" title="Delete Snippet">×</button>
+      <button class="delete-row-btn" title="${escHtml(t('ui_delete_snippet'))}" aria-label="${escHtml(t('ui_delete_snippet'))}"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="icons/ui.svg#trash"></use></svg></button>
     </div>
     <div class="row-inputs">
       <div class="input-group">
         <label>${t('snippets_trigger_label')}</label>
         <div class="trigger-highlight-container">
           <div class="trigger-highlight"></div>
-          <input type="text" class="trigger-input" placeholder="${t('snippets_trigger_placeholder')}" value="${safeTrigger}">
+          <input type="text" class="trigger-input" spellcheck="false" placeholder="${t('snippets_trigger_placeholder')}" value="${safeTrigger}">
         </div>
       </div>
       <div class="input-group">
         <label>${t('snippets_replacement_label')}</label>
         <div class="highlight-container">
           <div class="replacement-highlight"></div>
-          <textarea class="replacement-input" wrap="off" placeholder="${t('snippets_replacement_placeholder')}"></textarea>
-          <div class="resizer-bar" title="Drag to resize height"></div>
+          <textarea class="replacement-input" wrap="off" spellcheck="false" placeholder="${t('snippets_replacement_placeholder')}"></textarea>
+          <div class="resizer-bar" title="${escHtml(t('ui_resize_editor'))}"></div>
         </div>
         <div class="error-msg-container" style="display: none;"></div>
       </div>

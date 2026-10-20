@@ -114,8 +114,8 @@ export function createSubgroupSection(subgroup) {
   section.dataset.subgroupId = subgroup.id;
   section.innerHTML = `
     <div class="subgroup-header">
-      <span class="drag-handle" title="${subgroupOptionHtml(t('subgroups_drag'))}">⠿</span>
-      <button type="button" class="subgroup-fold-btn" aria-label="${subgroupOptionHtml(t('subgroups_toggle'))}">▾</button>
+      <span class="drag-handle" title="${subgroupOptionHtml(t('subgroups_drag'))}"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="icons/ui.svg#grip"></use></svg></span>
+      <button type="button" class="subgroup-fold-btn" aria-label="${subgroupOptionHtml(t('subgroups_toggle'))}"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="icons/ui.svg#chevron"></use></svg></button>
       <input type="text" class="subgroup-name-input" aria-label="${subgroupOptionHtml(t('subgroups_name'))}">
       <span class="subgroup-count">0</span>
       <button type="button" class="subgroup-add-btn">${subgroupOptionHtml(t('groups_add_snippet'))}</button>

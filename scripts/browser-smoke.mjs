@@ -43,6 +43,7 @@ const snippets=[
  {name:'main',trigger:'/go',replacement:'{{"{{#0}}"}}|{{upper(fragment("ab{{#1}}cd"))}}'},
  {name:'lazy',trigger:'/lazy',replacement:'{{false && prompt()}}'},
  {name:'ask',trigger:'/ask',replacement:'{{prompt("Value")}}'},
+ {name:'guard',trigger:'/guard',replacement:'{{set $item=["ok",3][0]}}{{if $item is string}}{{upper($item)}}{{else}}{{str($item)}}{{endif}}/{{[1,"x"] is list}}/{{[] is list<string>}}/{{`x{{#1}}` is (string | fragment)}}{{cursor}}'},
 ];
 const state={config:{shiftCursorLevels:true,maxExecutionMs:500,maxCallDepth:32,showParticles:false,visualizeNewlines:false},snippetGroups:[{name:'Smoke',snippets}]};
 let server;
@@ -65,6 +66,8 @@ try{
   await send('Input.dispatchKeyEvent',{type:'keyDown',key:'z',code:'KeyZ',windowsVirtualKeyCode:90,modifiers:2},tester);
   await send('Input.dispatchKeyEvent',{type:'keyUp',key:'z',code:'KeyZ',windowsVirtualKeyCode:90,modifiers:0},tester);
   await until(tester,`${expression}==='/go'`,name+' undo');
+  await type(tester,selector,'/guard');
+  await until(tester,`${expression}==='OK/true/true/true'`,name+' type guards');
  }
  await type(tester,'#snippet-test-input','/lazy');
  await until(tester,"document.querySelector('#snippet-test-input').value==='false'",'lazy branch');
@@ -79,13 +82,20 @@ try{
  await until(tester,"!document.querySelector('.spp-prompt-overlay') && document.querySelector('#snippet-test-input').value==='/ask'",'prompt cancellation');
  console.log('Tester: input, textarea, contenteditable, caret, undo, lazy calls and prompt cancellation passed.');
  const options=await open(`chrome-extension://${extension}/options.html`);
- await until(options,"document.querySelectorAll('.snippet-row').length===3",'options rows');
- assert.equal(await evaluate(options,"chrome.runtime.getManifest().version"),'2.0.0');
+ await until(options,`document.querySelectorAll('.snippet-row').length===${snippets.length}`,'options rows');
+ await evaluate(options,'document.fonts.ready');
+ assert.equal(await evaluate(options,"[...document.fonts].some(font=>font.family==='Snippet Mono' && font.status==='loaded')"),true,'packaged editor font loads');
+ assert.equal(await evaluate(options,"chrome.runtime.getManifest().version"),JSON.parse(await readFile(path.join(root,'manifest.json'),'utf8')).version);
  const source='{{set $f=`asdf{{"a"}}`}}{{$f}} {{true}} {{false}} {{null}}';
  await evaluate(options,`(()=>{const field=document.querySelector('.replacement-input');field.value=${JSON.stringify(source)};field.dispatchEvent(new Event('input',{bubbles:true}));})()`);
  const result=await evaluate(options,"({bool:document.querySelectorAll('.hl-bool').length,null:document.querySelectorAll('.hl-null').length,errors:document.querySelectorAll('.replacement-highlight .error-badge').length})");
  console.log('Highlight result',result);assert.ok(result.bool>=2);assert.ok(result.null>=1);assert.equal(result.errors,0);
  console.log('Options page: nested fragment highlighting, bool/null categories and module startup passed.');
+ const guardedSource='{{set $item=["x",3][0]}}{{if $item is string}}{{upper($item)}}{{endif}} {{[] is list<string | fragment>}}';
+ await evaluate(options,`(()=>{const field=document.querySelector('.replacement-input');field.value=${JSON.stringify(guardedSource)};field.dispatchEvent(new Event('input',{bubbles:true}));})()`);
+ assert.ok(await evaluate(options,"document.querySelectorAll('.replacement-highlight .hl-type').length>=4"),'type expressions are highlighted');
+ assert.equal(await evaluate(options,"document.querySelectorAll('.replacement-highlight .error-badge, .replacement-highlight .warning-badge').length"),0,'guarded calls have no type diagnostics');
+ console.log('Type guards: expansion in all editor hosts, union/list checks and narrowed highlighting passed.');
  server=http.createServer((req,res)=>{res.setHeader('Content-Type','text/html');res.end('<input id="field"><div contenteditable id="rich"></div>');});
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  const content=await open(`http://127.0.0.1:${server.address().port}/`);
@@ -95,6 +105,29 @@ try{
  await until(content,"document.querySelector('#field').value==='{{#0}}|ABCD'",'real content script');
  assert.equal(await evaluate(content,"document.querySelector('#field').selectionStart"),9);
  console.log('Real web page content-script bundle passed.');
+ // Exercise the settings shell with the real extension, including translated
+ // icon labels and layouts where the navigation and group list move above it.
+ await send('Page.bringToFront',{},options);
+ for(const locale of ['ko','en']) {
+  await evaluate(options,`(()=>{const select=document.querySelector('#language-select');select.value='${locale}';select.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+  await until(options,`document.documentElement.lang==='${locale}'`,'options language');
+  assert.ok(await evaluate(options,"document.querySelector('#add-group-btn').getAttribute('aria-label')"));
+  assert.equal(await evaluate(options,"document.querySelectorAll('.nav-btn svg use').length"),4);
+  for(const width of [1440,1280,960,768,600]) {
+   await send('Emulation.setDeviceMetricsOverride',{width,height:960,deviceScaleFactor:1,mobile:false},options);
+   for(const tab of ['general','snippets','tester','guide']) {
+    await evaluate(options,`document.querySelector('.nav-btn[data-tab="${tab}"]').click();new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))`);
+    assert.equal(await evaluate(options,"document.querySelectorAll('.nav-btn[aria-current=page]').length"),1);
+    assert.deepEqual(await evaluate(options,"[...document.querySelectorAll('.tab-content.active, .sidebar, .snippet-row, .settings-section-rows')].filter(el=>el.clientWidth && el.scrollWidth>el.clientWidth+2).map(el=>el.className)"),[],`${locale} ${width}px ${tab} overflow`);
+   }
+  }
+ }
+ await evaluate(options,"document.querySelector('.nav-btn[data-tab=snippets]').click()");
+ const longSource='line '.repeat(100)+'\n'+'line\n'.repeat(30);
+ await evaluate(options,`(()=>{const input=document.querySelector('.replacement-input');input.value=${JSON.stringify(longSource)};input.dispatchEvent(new Event('input',{bubbles:true}));input.scrollTop=80;input.scrollLeft=100;input.dispatchEvent(new Event('scroll'));})()`);
+ const editor=await evaluate(options,"(()=>{const input=document.querySelector('.replacement-input'),highlight=document.querySelector('.replacement-highlight');const metrics=el=>{const s=getComputedStyle(el);return [s.fontFamily,s.fontSize,s.lineHeight,s.padding,el.scrollTop,el.scrollLeft];};return {input:metrics(input),highlight:metrics(highlight)};})()");
+ assert.deepEqual(editor.input,editor.highlight,'editor text and highlight stay aligned after scrolling');
+ console.log('Settings UI: four tabs, Korean/English, responsive layouts and editor alignment passed.');
  assert.deepEqual(errors,[]);console.log('No uncaught browser exceptions.');
 }finally{for(const targetId of targets)await send('Target.closeTarget',{targetId}).catch(()=>{});server?.closeAllConnections();server?.close();
  await send('Browser.close').catch(()=>{}); ws.close();

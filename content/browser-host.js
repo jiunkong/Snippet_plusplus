@@ -1,6 +1,6 @@
 import { showSnippetPrompt, showSnippetChoice } from './handlers.js';
 import { showSnippetToast } from './effects.js';
-import { SnippetError } from '../language-core/src/index.ts';
+import { SnippetError, fromNative, toNative } from '../language-core/src/index.ts';
 
 // Only browser capabilities live here. Language signatures and execution
 // policies are defined by the core's FUNCTIONS registry.
@@ -14,7 +14,7 @@ const capabilities = Object.freeze({
     },
     copy: async (args) => {
         await navigator.clipboard.writeText(typeof args[0] === 'string' ? args[0] : args[0].toString());
-        return '';
+        return undefined;
     },
     paste: () => navigator.clipboard.readText(),
     prompt: (args, signal) => typeof showSnippetPrompt === 'function' ? showSnippetPrompt(args[0] ?? 'Enter value:', signal) : window.prompt(args[0] ?? 'Enter value:'),
@@ -30,6 +30,6 @@ export const browserHost = {
             throw new SnippetError('err_snippet_cancelled');
         const capability = Object.prototype.hasOwnProperty.call(capabilities, name) ? capabilities[name] : undefined;
         if (!capability) throw new SnippetError('err_host_function_unavailable', [name]);
-        return capability(args, signal);
+        return fromNative(await capability(args.map(value => toNative(fromNative(value))), signal));
     },
 };

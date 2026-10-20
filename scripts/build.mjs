@@ -3,7 +3,7 @@ import { cp, mkdir, readdir, readFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 const root = path.resolve(import.meta.dirname, '..');
 const outdir = path.join(root, 'dist');
-const assets = ['manifest.json', 'options.html', 'tester.html', 'options.css', 'content.css', 'styles', 'icons', '_locales'];
+const assets = ['manifest.json', 'options.html', 'tester.html', 'options.css', 'content.css', 'styles', 'icons', 'fonts', '_locales'];
 async function copyAssets() {
     await mkdir(outdir, { recursive: true });
     for (const asset of assets)

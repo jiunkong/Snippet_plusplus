@@ -1,4 +1,19 @@
 {
+  "settings_section_shortcuts": {"message": "Keyboard shortcuts"},
+  "settings_section_editing": {"message": "Editing behavior"},
+  "settings_section_language": {"message": "Language"},
+  "settings_intro": {"message": "Make shortcuts and editing behavior work for you."},
+  "navigation_label": {"message": "Settings navigation"},
+  "groups_empty_title": {"message": "Choose a group"},
+  "ui_import_group": {"message": "Import group"},
+  "ui_add_group": {"message": "Add group"},
+  "ui_export_group": {"message": "Export group"},
+  "ui_add_site": {"message": "Add site"},
+  "ui_remove_site": {"message": "Remove site"},
+  "ui_drag_snippet": {"message": "Drag to reorder"},
+  "ui_toggle_snippet": {"message": "Fold or unfold snippet"},
+  "ui_delete_snippet": {"message": "Delete snippet"},
+  "ui_resize_editor": {"message": "Drag to resize editor"},
   "err_division_by_zero": {
     "message": "Cannot divide by zero."
   },
@@ -29,6 +44,11 @@
   "err_join_list_required": {
     "message": "The first argument to join() must be a list."
   },
+  "err_type_syntax": {"message": "Expected a type such as string, string | fragment, or list<string>."},
+  "err_unknown_type": {"message": "Unknown type: $1"},
+  "guide_doc_type_test_title": {"message": "Type checks and narrowing with is"},
+  "guide_doc_type_test_desc": {"message": "Use $item is string to test a type. Union types such as string | fragment, parenthesized types, and nested lists such as list<list<string>> are supported. list is equivalent to list<any>. list<string> checks every element; an empty list also passes."},
+  "guide_doc_narrowing_desc": {"message": "Checks narrow variable types in if/elif/else branches, conditional expressions, and the right operand of && or ||. Use !(value is string) to negate a check. Reassignment replaces the narrowed type, and paths merge afterward. Negative checks retain possibilities that cannot be excluded safely; an element union does not guarantee that any particular element exists."},
   "guide_doc_split_title": {
     "message": "Split text into a list"
   },
@@ -162,7 +182,7 @@
     "message": "Add Group"
   },
   "groups_no_group": {
-    "message": "Select a group or create one to start."
+    "message": "Select a group or create a new one to start editing."
   },
   "groups_placeholder": {
     "message": "New Group"
@@ -222,7 +242,7 @@
     "message": "Visual Effects"
   },
   "settings_particles_desc": {
-    "message": "Show particles and wave effects when a snippet is replaced."
+    "message": "Briefly highlight the inserted snippet with a subtle blue tint."
   },
   "settings_shift_cursor": {
     "message": "Shift Cursor Levels"
@@ -285,7 +305,7 @@
     "message": "Enter snippet content here..."
   },
   "status_saved": {
-    "message": "Saved ✨"
+    "message": "Saved"
   },
   "status_sync_failed": {
     "message": "Sync failed:"
@@ -340,6 +360,12 @@
   },
   "err_enddefault_no_default": {
     "message": "enddefault tag without matching default."
+  },
+  "err_endcompact_no_compact": {
+    "message": "endcompact has no matching compact block."
+  },
+  "err_compact_unclosed": {
+    "message": "The compact block is not closed (missing endcompact)."
   },
   "err_if_unclosed": {
     "message": "if block is not closed (missing endif)."
@@ -719,11 +745,26 @@
   "guide_doc_calls_intro": {
     "message": "Reuse the body of another snippet in the same group, including snippets in other subgroups."
   },
+  "guide_doc_compact_title": {
+    "message": "Compact formatting block"
+  },
+  "guide_doc_compact_desc": {
+    "message": "Wrap a section in {{compact}} … {{endcompact}} to remove its source line breaks and the spaces or tabs immediately following each line break. Ordinary text and spaces within a line are preserved. The block can be nested and does not introduce a variable scope."
+  },
+  "guide_doc_compact_note": {
+    "message": "Only literal source formatting is removed. Line breaks produced by strings, fragments or snippet calls remain. Use {{newline()}} to insert a line break explicitly. Text outside the block is unchanged."
+  },
   "guide_doc_line_join_title": {
     "message": "Write across lines, insert on one line"
   },
   "guide_doc_line_join_desc": {
     "message": "A backslash (\\) at the end of a line removes the line break and indentation on the next line. Use it to lay out a template without inserting those breaks."
+  },
+  "guide_doc_newline_title": {
+    "message": "Insert a line break"
+  },
+  "guide_doc_newline_desc": {
+    "message": "newline() and its alias nl() take no arguments and return a string containing one LF line break (\\n). It can be assigned to a variable or used in expressions. The generated line break is preserved inside compact blocks."
   },
   "guide_doc_backspace_value_title": {
     "message": "Delete the previous character"
@@ -756,7 +797,7 @@
     "message": "Copy to the clipboard"
   },
   "guide_doc_copy_value_desc": {
-    "message": "Copies a string or fragment to the clipboard and returns an empty string. Fragment cursors are serialized as {{#number}} text. Convert numbers and other types explicitly with str(). Clipboard write failures raise an error."
+    "message": "Copies a string or fragment to the clipboard and returns undefined. Inserts no text into the body. Fragment cursors are serialized as {{#number}} text. Convert numbers and other types explicitly with str(). Clipboard write failures raise an error."
   },
   "guide_doc_copy_note": {
     "message": "Copies Hello, Guest! to the clipboard. You can also copy a computed value, such as {{copy(upper('hello'))}}."
@@ -1070,7 +1111,7 @@
   "guide_doc_type_list": {"message": "An ordered collection of arbitrary values"},
   "guide_doc_type_range": {"message": "An inclusive integer range"},
   "guide_doc_type_null": {"message": "An explicit empty value"},
-  "guide_doc_type_undefined": {"message": "An uninitialized variable or the result of toast()"},
+  "guide_doc_type_undefined": {"message": "An uninitialized variable or the result of copy() or toast()"},
   "guide_doc_strict_title": {"message": "Function arguments are not converted automatically"},
   "guide_doc_fragments_title": {"message": "Fragments and cursor preservation"},
   "guide_doc_fragments_intro": {"message": "Use fragment to work with a body containing cursors as a value."},
@@ -1084,7 +1125,7 @@
   "guide_doc_diagnostic_navigation_desc": {"message": "The group errors/warnings toggle shows counts when collapsed and messages by snippet when expanded. Click an entry to clear search, unfold its snippet/subgroup, and select the reported location. Folded and search-hidden snippets are included."},
   "guide_doc_reference_title": {"message": "Built-in function types"},
   "guide_doc_reference_intro": {"message": "A function can have distinct signatures for different argument types. Each row is one overload; call tooltips show only candidates compatible with the supplied arguments."},
-  "guide_doc_reference_note": {"message": "? marks optional arguments and ... marks variadic arguments. list<string | fragment> contains only those item types; contains<fragment> requires at least one fragment item. Use the tooltip arrows to switch between applicable overloads."},
+  "guide_doc_reference_note": {"message": "? marks optional arguments and ... marks variadic arguments. list<string | fragment> allows strings and fragments without requiring either to be present. With a string separator, join() returns string | fragment unless the list is known to contain only strings. Use the tooltip arrows to switch between applicable overloads."},
   "guide_doc_function_column": {"message": "Function"},
   "guide_doc_parameter_column": {"message": "Parameters"},
   "guide_doc_return_column": {"message": "Return type"},
@@ -1092,6 +1133,5 @@
   "signature_overloads": {"message": "Function overloads"},
   "signature_previous": {"message": "Previous signature"},
   "signature_next": {"message": "Next signature"},
-  "signature_no_overload": {"message": "No overload matches the current arguments. Check the parameter types."},
-  "signature_required_elements": {"message": "Contains at least one {types} item"}
+  "signature_no_overload": {"message": "No overload matches the current arguments. Check the parameter types."}
 }

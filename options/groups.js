@@ -131,7 +131,7 @@ export function addDisabledSiteRow(url) {
   row.className = 'site-row';
   row.innerHTML = `
     <input type="text" class="site-input" placeholder="google.com">
-    <button class="delete-site-btn" title="삭제">&times;</button>
+    <button class="delete-site-btn" title="${t('ui_remove_site')}" aria-label="${t('ui_remove_site')}"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="icons/ui.svg#close"></use></svg></button>
   `;
 
   const input = row.querySelector('.site-input');

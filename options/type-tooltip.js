@@ -29,6 +29,9 @@ export function hideTypeTooltip(target) {
 
 export function scheduleHideTypeTooltip(target) {
   if (target && target !== owner || pointerInside) return;
+  // Leaving before the hover delay finishes must cancel the pending tooltip.
+  // The grace period below only applies to an already visible tooltip.
+  if (pending != null) { hideTypeTooltip(target); return; }
   clearTimeout(hideTimer);
   hideTimer = setTimeout(() => hideTypeTooltip(target), 220);
 }
@@ -74,7 +77,7 @@ function queueTooltip(target, key, anchor, variant, build) {
     const ids = new Set((target.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean));
     ids.add(tooltip.id);
     target.setAttribute('aria-describedby', [...ids].join(' '));
-  }, 180);
+  }, 500);
 }
 
 function textElement(tag, className, text) {
@@ -95,11 +98,11 @@ function typeBadges(types, elementTypes) {
 }
 
 export function showTypeTooltip(target, variable, label, anchor) {
-  const key = `variable:${variable.range.start}:${variable.range.end}:${label}:${JSON.stringify([variable.types, variable.elementTypes])}`;
+  const key = `variable:${variable.range.start}:${variable.range.end}:${label}:${JSON.stringify(variable.type ?? [variable.types, variable.elementTypes])}`;
   queueTooltip(target, key, anchor, 'variable', () => [
     textElement('span', 'variable-type-tooltip-name', label),
     textElement('span', 'variable-type-tooltip-separator', ':'),
-    typeBadges(variable.types, variable.elementTypes)
+    typeBadges(variable.type ?? variable.types, variable.elementTypes)
   ]);
 }
 
@@ -142,7 +145,9 @@ export function showSignatureTooltip(target, signature, anchor) {
         button.onclick = () => step(amount);
         return button;
       };
-      navigation.append(arrow('signature_previous', '‹', -1), count, arrow('signature_next', '›', 1));
+      if (choices.length > 1) {
+        navigation.append(arrow('signature_previous', '‹', -1), count, arrow('signature_next', '›', 1));
+      }
       const parameters = document.createElement('dl');
       parameters.className = 'signature-tooltip-parameters';
       choice.parameters.forEach(parameter => {
@@ -150,9 +155,7 @@ export function showSignatureTooltip(target, signature, anchor) {
         row.className = 'signature-tooltip-parameter';
         const name = (parameter.rest ? '...' : '') + (signature.kind === 'snippet' ? '$' : '') + parameter.name + (parameter.optional ? '?' : '');
         const value = document.createElement('dd');
-        value.appendChild(typeBadges(parameter.types, parameter.elementTypes));
-        if (parameter.requiredElementTypes?.length)
-          value.appendChild(textElement('small', 'signature-tooltip-rules', t('signature_required_elements', { types: parameter.requiredElementTypes.join(' | ') })));
+        value.appendChild(typeBadges(parameter.type ?? parameter.types, parameter.elementTypes));
         row.append(textElement('dt', 'signature-tooltip-parameter-name', name + ':'), value);
         parameters.appendChild(row);
       });
@@ -160,8 +163,8 @@ export function showSignatureTooltip(target, signature, anchor) {
       const returns = document.createElement('div');
       returns.className = 'signature-tooltip-return';
       returns.append(textElement('span', 'signature-tooltip-return-label', t('signature_return')),
-        typeBadges(choice.returnTypes, choice.returnElementTypes));
-      container.replaceChildren(heading, navigation, parameters, returns);
+        typeBadges(choice.returnType ?? choice.returnTypes, choice.returnElementTypes));
+      container.replaceChildren(heading, ...(choices.length > 1 ? [navigation] : []), parameters, returns);
       if (signature.matches === false) container.appendChild(textElement('p', 'signature-tooltip-mismatch', t('signature_no_overload')));
       container.onkeydown = event => {
         if (['ArrowLeft', 'ArrowUp', 'ArrowRight', 'ArrowDown'].includes(event.key)) {

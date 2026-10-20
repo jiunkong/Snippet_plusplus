@@ -1,4 +1,19 @@
 {
+  "settings_section_shortcuts": {"message": "단축키"},
+  "settings_section_editing": {"message": "편집 동작"},
+  "settings_section_language": {"message": "언어"},
+  "settings_intro": {"message": "사용 방식에 맞게 단축키와 편집 동작을 조정하세요."},
+  "navigation_label": {"message": "설정 탐색"},
+  "groups_empty_title": {"message": "그룹을 선택하세요"},
+  "ui_import_group": {"message": "그룹 가져오기"},
+  "ui_add_group": {"message": "새 그룹 추가"},
+  "ui_export_group": {"message": "그룹 내보내기"},
+  "ui_add_site": {"message": "사이트 추가"},
+  "ui_remove_site": {"message": "사이트 삭제"},
+  "ui_drag_snippet": {"message": "드래그하여 순서 변경"},
+  "ui_toggle_snippet": {"message": "스니펫 접기 또는 펼치기"},
+  "ui_delete_snippet": {"message": "스니펫 삭제"},
+  "ui_resize_editor": {"message": "드래그하여 편집기 높이 조절"},
   "err_division_by_zero": {
     "message": "0으로 나눌 수 없습니다."
   },
@@ -29,6 +44,11 @@
   "err_join_list_required": {
     "message": "join()의 첫 번째 인수는 list여야 합니다."
   },
+  "err_type_syntax": {"message": "string, string | fragment, list<string> 같은 타입이 필요합니다."},
+  "err_unknown_type": {"message": "알 수 없는 타입: $1"},
+  "guide_doc_type_test_title": {"message": "is로 타입 검사와 narrowing"},
+  "guide_doc_type_test_desc": {"message": "$item is string으로 타입을 검사합니다. string | fragment 같은 union, 괄호로 묶은 타입, list<list<string>> 같은 중첩 리스트를 지원합니다. list는 list<any>와 같습니다. list<string>은 모든 원소가 문자열인지 검사하며 빈 리스트도 통과합니다."},
+  "guide_doc_narrowing_desc": {"message": "검사 결과에 따라 if/elif/else 분기, 조건식, &&·||의 오른쪽에서 변수 타입이 좁혀집니다. !(value is string)으로 검사를 부정할 수 있습니다. 재대입하면 새 타입을 사용하고, 분기가 끝나면 가능한 타입을 다시 합칩니다. 거짓 분기에서는 안전하게 제외할 수 없는 가능성을 남깁니다. 원소의 union 타입이 특정 원소의 존재를 보장하지는 않습니다."},
   "guide_doc_split_title": {
     "message": "텍스트를 리스트로 나누기"
   },
@@ -162,7 +182,7 @@
     "message": "그룹 추가"
   },
   "groups_no_group": {
-    "message": "그룹을 선택하거나 새로 만들어주세요."
+    "message": "그룹을 선택하거나 새로 만들어 스니펫을 편집하세요."
   },
   "groups_placeholder": {
     "message": "새 그룹"
@@ -222,7 +242,7 @@
     "message": "치환 시각 효과"
   },
   "settings_particles_desc": {
-    "message": "스니펫이 치환될 때 사방으로 퍼지는 파티클과 파동 효과를 보여줍니다."
+    "message": "삽입된 스니펫에 은은한 푸른 강조를 잠깐 표시합니다."
   },
   "settings_shift_cursor": {
     "message": "커서 레벨 자동 조정"
@@ -285,7 +305,7 @@
     "message": "내용을 입력하세요..."
   },
   "status_saved": {
-    "message": "저장됨 ✨"
+    "message": "저장됨"
   },
   "status_sync_failed": {
     "message": "동기화 실패:"
@@ -340,6 +360,12 @@
   },
   "err_enddefault_no_default": {
     "message": "enddefault에 매칭되는 default가 없습니다."
+  },
+  "err_endcompact_no_compact": {
+    "message": "endcompact에 매칭되는 compact 블록이 없습니다."
+  },
+  "err_compact_unclosed": {
+    "message": "compact 블록이 닫히지 않았습니다 (endcompact 누락)."
   },
   "err_if_unclosed": {
     "message": "if 블록이 닫히지 않았습니다 (endif 누락)."
@@ -719,11 +745,26 @@
   "guide_doc_calls_intro": {
     "message": "같은 그룹에 있는 스니펫의 본문을 재사용합니다. 서브그룹이 달라도 호출할 수 있습니다."
   },
+  "guide_doc_compact_title": {
+    "message": "개행과 들여쓰기를 제거하는 블록"
+  },
+  "guide_doc_compact_desc": {
+    "message": "{{compact}} … {{endcompact}}로 감싼 영역은 소스의 줄바꿈과 각 줄바꿈 바로 뒤의 공백·탭을 제거합니다. 일반 텍스트와 줄 안의 공백은 유지합니다. 중첩할 수 있으며 별도의 변수 범위를 만들지 않습니다."
+  },
+  "guide_doc_compact_note": {
+    "message": "소스에 직접 적은 서식만 제거합니다. 문자열·fragment·스니펫 호출이 만든 개행은 유지합니다. 개행을 명시적으로 넣으려면 {{newline()}}을 사용하세요. 블록 바깥의 텍스트는 바뀌지 않습니다."
+  },
   "guide_doc_line_join_title": {
     "message": "코드는 여러 줄로, 결과는 한 줄로"
   },
   "guide_doc_line_join_desc": {
     "message": "줄 끝에 역슬래시(\\)를 붙이면 다음 줄과의 줄바꿈과 다음 줄의 들여쓰기를 제거합니다. 긴 태그를 읽기 쉽게 나눌 때 사용할 수 있습니다."
+  },
+  "guide_doc_newline_title": {
+    "message": "개행 문자 삽입"
+  },
+  "guide_doc_newline_desc": {
+    "message": "newline()과 별칭 nl()은 인수 없이 개행 문자 LF(\\n) 하나를 담은 string을 반환합니다. 변수에 저장하거나 표현식에서 사용할 수 있으며, compact 블록 안에서도 생성된 개행은 유지됩니다."
   },
   "guide_doc_backspace_value_title": {
     "message": "앞의 문자 삭제"
@@ -756,7 +797,7 @@
     "message": "클립보드에 복사하기"
   },
   "guide_doc_copy_value_desc": {
-    "message": "string 또는 fragment를 클립보드에 복사하고 빈 문자열을 반환합니다. fragment의 커서는 {{#번호}} 형태의 텍스트로 기록됩니다. 숫자 등 다른 타입은 str()로 명시적으로 변환하세요. 클립보드 쓰기에 실패하면 오류가 발생합니다."
+    "message": "string 또는 fragment를 클립보드에 복사하고 undefined를 반환합니다. 본문에는 아무것도 삽입하지 않습니다. fragment의 커서는 {{#번호}} 형태의 텍스트로 기록됩니다. 숫자 등 다른 타입은 str()로 명시적으로 변환하세요. 클립보드 쓰기에 실패하면 오류가 발생합니다."
   },
   "guide_doc_copy_note": {
     "message": "클립보드에 Hello, Guest!를 복사합니다. {{copy(upper('hello'))}}처럼 계산한 값을 복사할 수도 있습니다."
@@ -1070,7 +1111,7 @@
   "guide_doc_type_list": {"message": "여러 타입의 원소를 담는 순서 있는 목록"},
   "guide_doc_type_range": {"message": "양 끝을 포함하는 정수 범위"},
   "guide_doc_type_null": {"message": "명시적으로 비어 있는 값"},
-  "guide_doc_type_undefined": {"message": "선언만 한 변수·toast()의 반환값"},
+  "guide_doc_type_undefined": {"message": "선언만 한 변수·copy() 또는 toast()의 반환값"},
   "guide_doc_strict_title": {"message": "함수 인수는 자동 변환하지 않음"},
   "guide_doc_fragments_title": {"message": "fragment와 커서 보존"},
   "guide_doc_fragments_intro": {"message": "커서를 포함한 본문을 값으로 다룰 때는 string 대신 fragment를 사용합니다."},
@@ -1084,7 +1125,7 @@
   "guide_doc_diagnostic_navigation_desc": {"message": "그룹 상단의 오류 및 경고를 접으면 건수를, 펼치면 스니펫별 메시지와 위치를 볼 수 있습니다. 항목을 클릭하면 검색 필터가 해제되고 스니펫·서브그룹이 펼쳐지며 해당 위치로 이동합니다. 접힌 스니펫이나 검색으로 숨긴 스니펫의 진단도 집계합니다."},
   "guide_doc_reference_title": {"message": "내장 함수 타입 표"},
   "guide_doc_reference_intro": {"message": "같은 이름의 함수라도 인수 타입에 따라 서로 다른 시그니처를 가집니다. 각 행은 오버로드 하나이며, 호출 툴팁은 입력한 인수에 맞는 후보만 보여줍니다."},
-  "guide_doc_reference_note": {"message": "?는 선택 인수, ...는 가변 인수입니다. list<string | fragment>는 해당 타입의 원소만 담은 리스트이며 contains<fragment>는 fragment 원소가 하나 이상 필요하다는 뜻입니다. 툴팁의 이전·다음 화살표로 가능한 오버로드를 전환할 수 있습니다."},
+  "guide_doc_reference_note": {"message": "?는 선택 인수, ...는 가변 인수입니다. list<string | fragment>는 string 또는 fragment 원소를 허용하며 어느 쪽도 반드시 포함할 필요는 없습니다. 문자열 구분자를 쓰는 join()은 문자열만 담긴 리스트임이 확실한 경우를 제외하면 string | fragment를 반환 타입으로 표시합니다. 툴팁의 이전·다음 화살표로 가능한 오버로드를 전환할 수 있습니다."},
   "guide_doc_function_column": {"message": "함수"},
   "guide_doc_parameter_column": {"message": "매개변수"},
   "guide_doc_return_column": {"message": "반환 타입"},
@@ -1092,6 +1133,5 @@
   "signature_overloads": {"message": "함수 오버로드"},
   "signature_previous": {"message": "이전 시그니처"},
   "signature_next": {"message": "다음 시그니처"},
-  "signature_no_overload": {"message": "현재 인수 조합과 일치하는 오버로드가 없습니다. 표시된 매개변수 타입을 확인하세요."},
-  "signature_required_elements": {"message": "{types} 원소를 하나 이상 포함"}
+  "signature_no_overload": {"message": "현재 인수 조합과 일치하는 오버로드가 없습니다. 표시된 매개변수 타입을 확인하세요."}
 }

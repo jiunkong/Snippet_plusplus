@@ -1,4 +1,4 @@
-import { FUNCTIONS } from '../language-core/src/index.ts';
+import { FUNCTIONS, formatTypeNames } from '../language-core/src/index.ts';
 import { t } from './i18n.js';
 import { updateTriggerHighlight, updateHighlight } from './highlight.js';
 // Read-only examples share the body editor's tokenizer and token colors.
@@ -19,7 +19,7 @@ export function renderGuideFunctionReference() {
   const body = document.getElementById('guide-function-reference');
   if (!body) return;
   const fragment = document.createDocumentFragment();
-  const formatTypes = types => types === 'any' ? 'any' : types.join(' | ');
+  const formatTypes = types => formatTypeNames(types).join(' | ');
   for (const [name, spec] of Object.entries(FUNCTIONS).sort(([a], [b]) => a.localeCompare(b))) {
     for (const overload of spec.overloads) {
       const row = document.createElement('tr');
@@ -34,15 +34,9 @@ export function renderGuideFunctionReference() {
       for (const parameter of values) {
         const line = document.createElement('code');
         line.className = 'guide-parameter-type';
-        const types = parameter.elementTypes ? `list<${formatTypes(parameter.elementTypes)}>` : formatTypes(parameter.types);
+        const types = formatTypes(parameter.type);
         line.textContent = `${parameter.rest ? '...' : ''}${parameter.name}${parameter.optional ? '?' : ''}: ${types}`;
         parameters.appendChild(line);
-        if (parameter.requiredElementTypes?.length) {
-          const rules = document.createElement('small');
-          rules.className = 'guide-parameter-rules';
-          rules.textContent = 'contains<' + parameter.requiredElementTypes.join(' | ') + '>';
-          parameters.appendChild(rules);
-        }
       }
       if (!values.length) {
         const empty = document.createElement('span');
@@ -52,7 +46,7 @@ export function renderGuideFunctionReference() {
       }
       const result = document.createElement('td');
       const types = document.createElement('code');
-      types.textContent = overload.returnElementTypes ? `list<${formatTypes(overload.returnElementTypes)}>` : formatTypes(overload.returnTypes);
+      types.textContent = formatTypes(overload.returnType);
       result.appendChild(types);
       row.append(heading, parameters, result);
       fragment.appendChild(row);

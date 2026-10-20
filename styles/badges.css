@@ -5,6 +5,7 @@
 /* ── Base Shape ── */
 .syntax-badge,
 .keyword-badge,
+.compact-badge,
 .error-badge {
   border-radius: 2px;
   font-weight: 700;
@@ -47,6 +48,13 @@
   border-bottom: 2px solid #d946ef;
 }
 
+/* Formatting — complete compact tags (muted dark teal) */
+.compact-badge {
+  background: rgba(30, 74, 72, 0.32);
+  color: #5b8e8c;
+  border-bottom: 2px solid #3b6f6c;
+}
+
 /* Color-only highlighting for mixed expressions */
 .hl-fn {
   color: #fde68a !important; /* Light Yellow */
@@ -74,8 +82,12 @@
   font-weight: 700;
 }
 
+.hl-type,
 .hl-fn-type {
   color: #10b981 !important; /* Emerald Green */
+}
+
+.hl-fn-type {
   font-weight: 700;
 }
 
@@ -186,9 +198,17 @@
 }
 
 .error-msg-container::before {
-  content: '⚠️';
+  content: '!';
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
   margin-right: 8px;
-  font-size: 14px;
+  font-size: 11px;
 }
 
 /* ── Newline Visualization ── */

@@ -3,7 +3,7 @@ import { t } from './i18n.js';
 import { analyze, analyzeTrigger, snippetParameterNames } from '../language-core/src/index.ts';
 // Token categories are a language contract; presentation belongs to this host.
 export const TOKEN_CLASSES = Object.freeze({
-    syntax: 'syntax-badge', parenthesis: 'hl-parenthesis', keyword: 'keyword-badge', variable: 'hl-var',
+    syntax: 'syntax-badge', parenthesis: 'hl-parenthesis', keyword: 'keyword-badge', variable: 'hl-var', type: 'hl-type',
     function: 'hl-fn', randomFunction: 'hl-fn-rand', typeFunction: 'hl-fn-type',
     snippetFunction: 'hl-fn-snippet', operator: 'hl-op', arithmeticOperator: 'hl-op-arithmetic', rangeOperator: 'hl-op-range', list: 'hl-list',
     fragmentDelimiter: 'hl-fragment', cursorSyntax: 'cursor-syntax-badge', cursor: 'cursor-badge',
@@ -32,8 +32,22 @@ function diagnosticHighlightSpans(diagnostics, cls) {
 export function renderHighlight(analysis, { visualizeNewlines = false } = {}) {
     const errors = analysis.diagnostics.filter(item => item.severity === 'error');
     const warnings = analysis.diagnostics.filter(item => item.severity === 'warning');
-    const spans = analysis.regions.filter(region => REGION_CLASSES[region.kind]).map(region => ({ ...region, cls: REGION_CLASSES[region.kind], order: 0 }));
+    // Use core keyword/region ranges to style the complete formatting tag,
+    // including delimiters and whitespace, without changing language tokens.
+    const compactTags = [];
+    const syntaxStarts = new Map(analysis.tokens.filter(token => token.kind === 'syntax').map(token => [token.start, token]));
+    const syntaxEnds = new Map(analysis.tokens.filter(token => token.kind === 'syntax').map(token => [token.end, token]));
     for (const token of analysis.tokens) {
+        if (token.kind !== 'keyword' || !['compact', 'endcompact'].includes(analysis.source.slice(token.start, token.end))) continue;
+        const region = analysis.regions.findLast(region => region.kind === 'expression' && region.start <= token.start && region.end >= token.end);
+        if (region) compactTags.push({ start: syntaxEnds.get(region.start)?.start ?? region.start,
+            end: syntaxStarts.get(region.end)?.end ?? region.end, cls: 'compact-badge', order: 0 });
+    }
+    const withinCompactTag = span => compactTags.some(tag => tag.start <= span.start && tag.end >= span.end);
+    const spans = analysis.regions.filter(region => REGION_CLASSES[region.kind] && !withinCompactTag(region)).map(region => ({ ...region, cls: REGION_CLASSES[region.kind], order: 0 }));
+    spans.push(...compactTags);
+    for (const token of analysis.tokens) {
+        if (withinCompactTag(token)) continue;
         const invalidFunction = ['function', 'snippetFunction', 'typeFunction', 'randomFunction'].includes(token.kind) && errors.some(error => error.range.start < token.end && error.range.end > token.start);
         spans.push({ ...token, cls: invalidFunction ? 'hl-fn-err' : TOKEN_CLASSES[token.kind], order: 2 });
     }
